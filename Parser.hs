@@ -24,7 +24,7 @@ program
     = do{ whiteSpace
         ; r <- block
         ; eof
-        ; return r
+        ; return $ Block r
         }
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon --

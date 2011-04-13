@@ -2,4 +2,4 @@ module Main where
 
 import Parser( prettyLuaFromFile )
 
-main  = prettyLuaFromFile "fac.lua"
+main  = prettyLuaFromFile "test/fac.lua"

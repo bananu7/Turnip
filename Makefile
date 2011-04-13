@@ -4,8 +4,8 @@ BINDIR = $(PREFIX)/bin
 OPTS = -O3 #-fglasgow-exts -funbox-strict-fields
 PACKAGES = -package parsec
 
-SRC = Main.hs
-PROG = lua-compiler
+SRC = Turnip.hs
+PROG = Turnip
 
 all:
 	ghc $(PROF) $(OPTS) --make $(PACKAGES) $(SRC) -o $(PROG)

@@ -29,7 +29,7 @@ program
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon --
 block
-    = many1 (do{ s <- stat <|> laststat
+    = many1 (do{ s <- stat <|> laststat -- Not correct, could have many laststatements
         ; optional semi
         ; return s
         })
@@ -76,6 +76,23 @@ repeatStmt
         ; return $ Until e (Block b)
         }
 
+ifStmt :: Parser Stmt
+ifStmt
+    = do{ reserved "if"
+        ; e <- exp_exp
+        ; reserved "then"
+        ; b <- block 
+        ; eb <- many $ do{ reserved "elseif"
+                         ; e_ <- exp_exp
+                         ; reserved "then"
+                         ; b_ <- block
+                         ; return (e_,b_)
+                         }
+        ; df <- option Nothing $ do{ reserved "else"; liftM Just $ block}
+        ; reserved "end"
+        ; return $ If ((e,b):eb) df
+        }
+ 
 -- Var list and name list are variables and identifiers separated by commas --
 varlist = commaSep1 var
 namelist = commaSep1 identifier

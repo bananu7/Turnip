@@ -2,8 +2,6 @@ module LuaAS where
 
 type Name = String
 
-data L_type = Name
-
 data LValue = LVar Name
           | LFieldRef Expr Expr
             deriving Show

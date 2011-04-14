@@ -136,6 +136,23 @@ var = do{ i <- identifier;
         ; return (Var i)
         }
 
+tableconstructor = braces $ option $ [] fieldlist
+
+fieldlist
+    = do{ sepBy field fieldsep
+        ; optional fieldsep
+        }
+field 
+    = do{ brackets exp_exp
+        ; symbol "="
+        ; exp_exp 
+        }
+  <|> do{ identifier
+        ; symbol "="
+        ; exp_exp
+        }
+  <|> exp_exp
+
 fieldsep = comma <|> semi
 
 exp_exp :: Parser Expr

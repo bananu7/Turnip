@@ -19,7 +19,7 @@ prettyLuaFromFile fname
             Right x  -> print x
         }
 
--- A program is a block of LUA --
+-- A program is a block of LUA -
 program 
     = do{ whiteSpace
         ; r <- block
@@ -28,6 +28,7 @@ program
         }
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon --
+block :: Parser Block
 block
     = many1 (do{ s <- stat <|> laststat -- Not correct, could have many laststatements
         ; optional semi
@@ -35,6 +36,7 @@ block
         })
 
 -- Return will return some list of expressions, or an empty list of expressions. 
+laststat :: Parser Stmt
 laststat 
     = do{ reserved "return"
         ; e <- option [] explist
@@ -87,11 +89,11 @@ ifStmt
                          ; e_ <- exp_exp
                          ; reserved "then"
                          ; b_ <- block
-                         ; return (e_,b_)
+                         ; return (e_, Block b_)
                          }
         ; df <- option Nothing $ do{reserved "else"; liftM Just $ block}
         ; reserved "end"
-        ; return $ If ((e, Block b):eb) df
+        ; return $ If ((e, Block b):eb) (Block df)
         }
  
 -- Var list and name list are variables and identifiers separated by commas --

@@ -34,6 +34,7 @@ data Stmt = Do Block
           | If [(Expr, Block)] (Maybe Block)
           | Return [Expr]
           | Break
+          | Expr
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
           | LocalDef [Name] [Expr]

@@ -49,7 +49,8 @@ stat :: Parser Stmt
 stat = choice [
     doStmt,
     whileStmt,
-    repeatStmt
+    repeatStmt,
+    ifStmt
     ]
 
  
@@ -88,9 +89,9 @@ ifStmt
                          ; b_ <- block
                          ; return (e_,b_)
                          }
-        ; df <- option Nothing $ do{ reserved "else"; liftM Just $ block}
+        ; df <- option Nothing $ do{reserved "else"; liftM Just $ block}
         ; reserved "end"
-        ; return $ If ((e,b):eb) df
+        ; return $ If ((e, Block b):eb) df
         }
  
 -- Var list and name list are variables and identifiers separated by commas --

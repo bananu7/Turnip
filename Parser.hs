@@ -1,13 +1,14 @@
 module Parser( prettyLuaFromFile ) where
 
+import Env
 import LuaAS
+
 import Text.ParserCombinators.Parsec 
 import Text.ParserCombinators.Parsec.Expr
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language
 import Data.List
 import Control.Monad (when, liftM)
-
 
 prettyLuaFromFile fname
     = do{ input <- readFile fname
@@ -51,10 +52,10 @@ stat = choice [
     doStmt,
     whileStmt,
     repeatStmt,
-    ifStmt
+    ifStmt,
+    funcStmt
     ]
 
- 
 doStmt :: Parser Stmt
 doStmt
     = do{ b <- between (reserved "do") (reserved "end") block
@@ -90,33 +91,52 @@ ifStmt
                          ; b_ <- block
                          ; return (e_, Block b_)
                          }
-        ; df <- option (Block []) $ do{reserved "else"; b <- block; return (Block b)}
+        ; df <- optionMaybe $ do{reserved "else"; b <- block; return (Block b)}
         ; reserved "end"
-        ; return $ If ((e, Block b):eb) (Block df)
+        ; return $ If ((e, Block b):eb) df
         }
- 
+
+funcStmt :: Parser Stmt
+funcStmt 
+    = do{ reserved "function"
+        ; funcname
+        ; funcbody
+        } 
+
 -- Var list and name list are variables and identifiers separated by commas --
 varlist = commaSep1 var
+
 namelist = commaSep1 identifier
+
+-- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
+funcname 
+    = do{ sepBy identifier dot 
+        ; optional (do{colon;identifier})
+        }
+
+function = do{function; funcbody}
+
+-- A function body has a parametr list (separated by commas and optionally terminated with an ellipsis) and also has a 
+-- block for the main body.
+funcbody :: Parser Stmt
+funcbody
+    = do{ par <- parens (option [] parlist)
+        ; b <- block 
+        ; reserved "end"
+        ; return $ Function par (Block b)
+        }
+
+parlist = commaSep namelist 
+
 explist = commaSep1 exp_exp
--- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access--
+
+-- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
+var :: Parser Expr
 var = do{ i <- identifier;
         ; return (Var i)
         }
 
---prefixexp = var | functioncall | `(´ exp `)´
-
---tableconstructor 
---    = do{ t <- braces (optional fieldlist)
---        ; return i;
---        }
---field ::= `[´ exp `]´ `=´ exp | Name `=´ exp | exp    
-
-
 fieldsep = comma <|> semi
-
-
-
 
 exp_exp :: Parser Expr
 exp_exp = (reserved "nil" >> return (Nil))
@@ -178,28 +198,4 @@ brackets  = P.brackets lexer
 dot       = P.dot lexer
 colon     = P.colon lexer
 commaSep1 = P.commaSep1 lexer
-
---funcname :: Parser String
---funcname = identifier option (many (char '.' identifier) (char ':' identifier))
---varlist = commaSep1 var
---var =  identifier  
---	<|> do prefixexp; brackets exp; 
---	<|> do prefixexp; dot; identifier
---namelist = commaSep1 identifier
---explist = do many (try (commaSep1 exp)); exp
---prefixexp = var <|> functioncall <|> (parens exp)
---functioncall = do prefixexp args <|> do prefixexp colon identifier args 
---args =  option (parens (explist)) <|> tableConstructor <|> String
---function = do reserved "function" funcbody
---funcbody = do option () (parens parlist) Block reserved "end"
---parlist = do option namelist (char ',' "...") <|> do String "..."
---tableConstructor = do option (braces (fieldlist))
---fieldlist = sepEndBy field fieldsep
---field = do (brackets exp) char '=' exp 
---		<|> identifier char '=' exp 
---		<|> exp
---
---fieldsep = comma <|> semi
---parse_file :: FilePath -> IO (Either ParseError Block)
---parse_file path = liftM (parse fileBlock path) (readFile path)
---		where fileBlock = do r <- Block; eof; return r
+commaSep  = P.commaSep lexer

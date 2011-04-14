@@ -10,8 +10,6 @@ data Expr = Number Double
           | StringLiteral String
           | Bool Bool
           | Nil
---          | Expr Ellipsis Expr
-          | Function [Name] Bool Block
           | Call Expr [Expr]
           | MemberCall Expr Name [Expr]
           | TableCons [(Maybe Expr, Expr)]
@@ -21,20 +19,14 @@ data Expr = Number Double
           | Var Name
           deriving Show
 
---data BinOp
---    = Add
---    | Subtract
---    | Multiply
---    | Divide
---    deriving (Show)
 
 data Stmt = Do Block
           | While Expr Block
           | Until Expr Block
           | If [(Expr, Block)] (Maybe Block)
+          | Function [[Name]] Block
           | Return [Expr]
           | Break
-          | Expr
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
           | LocalDef [Name] [Expr]

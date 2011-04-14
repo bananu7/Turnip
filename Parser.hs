@@ -54,6 +54,7 @@ stat = choice [
     repeatStmt,
     ifStmt,
     funcStmt
+--    simpleExpr
     ]
 
 doStmt :: Parser Stmt
@@ -101,13 +102,32 @@ funcStmt
     = do{ reserved "function"
         ; funcname
         ; funcbody
-        } 
+        }
+
+--simpleExpr :: Expr -> Stmt 
+--simpleExpr = do{ e <- exp_exp; return Simple e}
 
 -- Var list and name list are variables and identifiers separated by commas --
 varlist = commaSep1 var
 
 namelist = commaSep1 identifier
 
+prefixexp = var
+    <|> functioncall
+    <|> parens exp_exp
+
+
+args = parens (option [] explist)
+    <|> tableconstructor
+--    <|> stringl
+
+functioncall = do{ prefixexp;args}
+    <|> do{ prefixexp
+          ; colon
+          ; identifier
+          ; args
+          }
+    
 -- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
 funcname 
     = do{ sepBy identifier dot 
@@ -136,11 +156,11 @@ var = do{ i <- identifier;
         ; return (Var i)
         }
 
-tableconstructor = braces $ option $ [] fieldlist
+tableconstructor = braces (option [] fieldlist)
 
 fieldlist
     = do{ sepBy field fieldsep
-        ; optional fieldsep
+       -- ; optional fieldsep
         }
 field 
     = do{ brackets exp_exp
@@ -160,6 +180,7 @@ exp_exp = (reserved "nil" >> return (Nil))
     <|> (reserved "true" >> return (Bool True))
     <|> (reserved "false" >> return (Bool False))
     <|> expr
+
 --------------------------------------------
 --Binary and Unary Expression parser
 --------------------------------------------
@@ -187,10 +208,10 @@ optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
 term =  parens expr
     <|> liftM Var identifier
     <|> liftM Number number
+
 --------------------------------------------
 -- The Lexer
---------------------------------------------
-	
+--------------------------------------------	
 lexer :: P.TokenParser()
 lexer = P.makeTokenParser(
 			emptyDef

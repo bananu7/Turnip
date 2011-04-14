@@ -27,6 +27,7 @@ data Stmt = Do Block
           | Function [[Name]] Block
           | Return [Expr]
           | Break
+          | Simple Expr
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
           | LocalDef [Name] [Expr]

@@ -28,7 +28,6 @@ program
         }
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon --
-block :: Parser Block
 block
     = many1 (do{ s <- stat <|> laststat -- Not correct, could have many laststatements
         ; optional semi
@@ -91,7 +90,7 @@ ifStmt
                          ; b_ <- block
                          ; return (e_, Block b_)
                          }
-        ; df <- option Nothing $ do{reserved "else"; liftM Just $ block}
+        ; df <- option (Block []) $ do{reserved "else"; b <- block; return (Block b)}
         ; reserved "end"
         ; return $ If ((e, Block b):eb) (Block df)
         }

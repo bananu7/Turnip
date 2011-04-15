@@ -1,4 +1,4 @@
-module Parser( prettyLuaFromFile ) where
+module Parser( prettyLuaFromFile, loadAST ) where
 
 import Env
 import LuaAS
@@ -8,8 +8,22 @@ import Text.ParserCombinators.Parsec.Expr
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language
 import Data.List
+import Control.Exception (throw)
 import Control.Monad (when, liftM)
 
+-- Might be better to have a function that reads from the file, and sep function to do the parsing, 
+-- thus separating the IO from the AST
+
+--screw it, do it live
+fromRight :: Either a b -> b
+fromRight (Right b)= b
+
+loadAST fname 
+    = do{ anAST <- parseFromFile program fname
+        ; return $ fromRight anAST
+        }
+
+-- This is for parser testing
 prettyLuaFromFile fname
     = do{ input <- readFile fname
         ; putStr input
@@ -21,6 +35,7 @@ prettyLuaFromFile fname
         }
 
 -- A program is a block of LUA -
+program :: Parser Block
 program 
     = do{ whiteSpace
         ; r <- block
@@ -28,7 +43,8 @@ program
         ; return $ Block r
         }
 
--- A block/chunk is a series of statements, optionally delimited by a semicolon --
+-- A block/chunk is a series of statements, optionally delimited by a semicolon -
+block :: Parser [Stmt]
 block
     = many1 (do{ s <- stat <|> laststat -- Not correct, could have many laststatements
         ; optional semi

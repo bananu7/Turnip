@@ -1,5 +1,6 @@
 module Main where
 
-import Parser( prettyLuaFromFile )
+import Parser( prettyLuaFromFile, loadAST )
+import Env
 
-main  = prettyLuaFromFile "test/fac.lua"
+main  = loadAST "test/fac.lua"

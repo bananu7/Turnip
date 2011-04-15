@@ -1,5 +1,7 @@
 module LuaAS where
 
+import Text.ParserCombinators.Parsec.Pos
+
 type Name = String
 
 data LValue = LVar Name
@@ -7,9 +9,10 @@ data LValue = LVar Name
             deriving Show
 
 data Expr = Number Double 
-          | StringLiteral String
+          | StringLiteral SourcePos String
           | Bool Bool
           | Nil
+          | Ellipsis
           | Call Expr [Expr]
           | MemberCall Expr Name [Expr]
           | TableCons [(Maybe Expr, Expr)]

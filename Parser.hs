@@ -53,7 +53,8 @@ stat = choice [
     whileStmt,
     repeatStmt,
     ifStmt,
-    funcStmt
+    funcStmt,
+    assignOrCallStmt
 --    simpleExpr
     ]
 
@@ -104,27 +105,60 @@ funcStmt
         ; funcbody
         }
 
+assignOrCallStmt
+    = do{ ex <- exp_exp
+        ; case ex of 
+            --Function
+            ; (Call _ _) -> return $ Assignment [] [ex]
+            ; (MemberCall _ _ _) -> return $ Assignment [] [ex]
+            -- Assignment
+            ; (Var n) -> assignStmt [Var n]
+            ; (FieldRef t f) -> assignStmt [LFieldRef t f]
+            ; _ -> fail "Invalid stmt lol"
+        }
+
+
+assignStmt lhs = do{ comma
+        ; lv <- lvalue
+        ; assignStmt (lv:lhs)
+        }
+  <|> do{ symbol "="
+        ; vals <- explist
+        ; return $ Assignment (reverse lhs) vals
+        }
 --simpleExpr :: Expr -> Stmt 
 --simpleExpr = do{ e <- exp_exp; return Simple e}
 
+lvalue 
+    = do{ ex <- exp_exp
+        ; tolvar ex
+        }
+
+tolvar ex 
+    = do{ case ex of
+        ; (Var n) -> return $ LVar n
+        ; (FieldRef t f) -> return $ LFieldRef t f
+        ; _ -> fail "Invalid lvalue"
+        }
+
+
 -- Var list and name list are variables and identifiers separated by commas --
-varlist :: Parser [(Either [Expr] Expr)]
+varlist :: Parser [Expr]
 varlist = commaSep1 var
 
 namelist :: Parser [Name]
 namelist = commaSep1 identifier
 
-prefixexp :: Parser (Either [Expr] Expr)
-prefixexp = var
-    <|> functioncall
-    <|> parens exp_exp
+prefixexp = choice [
+    identifier >>= return . Var,
+    parens exp_exp
+    ]
 
-args :: Parser [Expr]
-args = parens (option [] explist)
-    <|> tableconstructor
+args = do{ (parens $ option [] explist)}
+    <|> (liftM (:[]) $ tableconstructor)
+    <|> (getPosition >>= \pos -> liftM (\s -> [StringLiteral pos s]) $ stringl)
 --   <|> stringl
 
-functioncall :: Parser (Either [Expr] Expr)
 functioncall = do{ prefixexp;args}
     <|> do{ prefixexp
           ; colon
@@ -161,47 +195,81 @@ explist :: Parser [Expr]
 explist = commaSep1 exp_exp
 
 -- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
-var :: Parser (Either [Expr] Expr)
 var = do{ i <- identifier;
         ; return (Var i)
         }
-  <|> do{ prefixexp
-        ; brackets exp
-        }
-  <|> do{ prefixexp
-        ; dot
-        ; identifier
-        }
+--  <|> do{ prefixexp
+--        ; brackets exp_exp
+--        }
+--  <|> do{ prefixexp
+--        ; dot
+ --       ; identifier
+ --       }
 
-tableconstructor :: Parser [Expr]
-tableconstructor = braces (option [] fieldlist)
+tableconstructor = liftM TableCons $ braces fieldlist
 
-fieldlist :: Parser [Expr]
-fieldlist
-    = do{ sepBy field fieldsep
-       -- ; optional fieldsep
-        }
+fieldlist = sepEndBy field fieldsep
 
-field :: Parser Expr
 field 
-    = do{ brackets exp_exp
+    = do{ e <- brackets exp_exp
         ; symbol "="
-        ; exp_exp 
+        ; v <- exp_exp
+        ; return (Just e, v) 
         }
-  <|> do{ identifier
-        ; symbol "="
-        ; exp_exp
+  <|> do{ pos <- getPosition
+        ; id <- try $ do {i <-identifier
+                         ; symbol "="
+                         ; return i
+                         }
+        ; v <- exp_exp
+        ; return (Just (StringLiteral pos id), v)
         }
-  <|> exp_exp
-
+  <|> do{ v <- exp_exp
+        ; return (Nothing, v)
+        }
 
 fieldsep = comma <|> semi
 
-exp_exp :: Parser Expr
-exp_exp = (reserved "nil" >> return (Nil))
-    <|> (reserved "true" >> return (Bool True))
-    <|> (reserved "false" >> return (Bool False))
-    <|> expr
+primaryexp = do
+    pfx <- prefixexp
+    more pfx
+    where
+        more i = do { e <- dot_index i; more e }
+             <|> do { e <- brace_index i; more e }
+             <|> do { e <- member_call i; more e }
+             <|> do { e <- fcall i; more e}
+             <|> return i
+
+        dot_index e 
+            = do{ dot
+                ; pos <- getPosition
+                ; id <- identifier
+                ; return $ FieldRef e (StringLiteral pos id)
+                }
+            
+        brace_index e = liftM (FieldRef e) $ brackets exp_exp
+        
+        member_call e 
+            = do{ colon
+                ; id <- identifier
+                ; arg <- args
+                ; return $ MemberCall e id arg
+                }
+            
+        fcall e = liftM (Call e) args
+
+exp_exp = choice [
+    liftM Number $ number,
+    getPosition >>= \pos -> liftM (StringLiteral pos) $ stringl,
+    reserved "true" >> return (Bool True),
+    reserved "false" >> return (Bool False),
+    reserved "nil" >> return Nil,
+    reserved "..." >> return Ellipsis,
+    tableconstructor,
+--    exp_anonfunction,
+    primaryexp
+    ]
+
 
 --------------------------------------------
 --Binary and Unary Expression parser

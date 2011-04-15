@@ -3,4 +3,8 @@ module Main where
 import Parser( prettyLuaFromFile, loadAST )
 import Env
 
-main  = loadAST "test/fac.lua"
+main  
+    = do{ ast <- loadAST "test/fac.lua"
+        ; let stmts = statements ast
+        ; print ast
+        }

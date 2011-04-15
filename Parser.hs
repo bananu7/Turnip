@@ -108,13 +108,13 @@ funcStmt
 --simpleExpr = do{ e <- exp_exp; return Simple e}
 
 -- Var list and name list are variables and identifiers separated by commas --
-varlist :: Parser [Expr]
+varlist :: Parser [(Either [Expr] Expr)]
 varlist = commaSep1 var
 
 namelist :: Parser [Name]
 namelist = commaSep1 identifier
 
-prefixexp :: Parser [Expr]
+prefixexp :: Parser (Either [Expr] Expr)
 prefixexp = var
     <|> functioncall
     <|> parens exp_exp
@@ -161,7 +161,7 @@ explist :: Parser [Expr]
 explist = commaSep1 exp_exp
 
 -- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
-var :: Parser Expr
+var :: Parser (Either [Expr] Expr)
 var = do{ i <- identifier;
         ; return (Var i)
         }

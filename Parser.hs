@@ -104,23 +104,27 @@ funcStmt
         ; funcbody
         }
 
---simpleExpr :: Expr -> Stmt 
---simpleExpr = do{ e <- exp_exp; return Simple e}
+simpleExpr :: Expr -> Stmt 
+simpleExpr = do{ e <- exp_exp; return Simple e}
 
 -- Var list and name list are variables and identifiers separated by commas --
+varlist :: Parser [Expr]
 varlist = commaSep1 var
 
+namelist :: Parser [Name]
 namelist = commaSep1 identifier
 
+prefixexp :: Parser Expr
 prefixexp = var
     <|> functioncall
     <|> parens exp_exp
 
-
+args :: Parser [Expr]
 args = parens (option [] explist)
     <|> tableconstructor
---    <|> stringl
+--   <|> stringl
 
+functioncall :: Parser [Expr]
 functioncall = do{ prefixexp;args}
     <|> do{ prefixexp
           ; colon
@@ -129,11 +133,15 @@ functioncall = do{ prefixexp;args}
           }
     
 -- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
-funcname 
-    = do{ sepBy identifier dot 
-        ; optional (do{colon;identifier})
-        }
+funcname :: Parser (Name, Maybe Name)
+funcname = do{ n1 <- sepBy identifier dot; n2 <- optionMaybe (colon >> identifier); return (n1,n2)}
 
+
+--    = do{ sepBy identifier dot 
+--        ; optionMaybe (do{colon;identifier})
+--        }
+
+function :: Parser Stmt
 function = do{function; funcbody}
 
 -- A function body has a parametr list (separated by commas and optionally terminated with an ellipsis) and also has a 
@@ -146,8 +154,10 @@ funcbody
         ; return $ Function par (Block b)
         }
 
+parlist :: Parser [[Name]]
 parlist = commaSep namelist 
 
+explist :: Parser [Expr]
 explist = commaSep1 exp_exp
 
 -- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
@@ -155,13 +165,24 @@ var :: Parser Expr
 var = do{ i <- identifier;
         ; return (Var i)
         }
+--  <|> do{ prefixexp
+--        ; brackets exp
+--        }
+--  <|> do{ prefixexp
+ --       ; dot
+  --      ; identifier
+   --     }
 
+tableconstructor :: Parser [Expr]
 tableconstructor = braces (option [] fieldlist)
 
+fieldlist :: Parser [Expr]
 fieldlist
     = do{ sepBy field fieldsep
        -- ; optional fieldsep
         }
+
+field :: Parser Expr
 field 
     = do{ brackets exp_exp
         ; symbol "="
@@ -172,6 +193,7 @@ field
         ; exp_exp
         }
   <|> exp_exp
+
 
 fieldsep = comma <|> semi
 

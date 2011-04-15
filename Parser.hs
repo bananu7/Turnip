@@ -67,7 +67,7 @@ doStmt
 whileStmt :: Parser Stmt
 whileStmt
     = do{ reserved "while"
-        ; e <- exp_exp
+        ; e <- expr
         ; b <- between (reserved "do") (reserved "end") block
         ; return $ While e (Block b)
         }
@@ -77,18 +77,18 @@ repeatStmt
     = do{ reserved "repeat"
         ; b <- block
         ; reserved "until"
-        ; e <- exp_exp
+        ; e <- expr
         ; return $ Until e (Block b)
         }
 
 ifStmt :: Parser Stmt
 ifStmt
     = do{ reserved "if"
-        ; e <- exp_exp
+        ; e <- expr
         ; reserved "then"
         ; b <- block 
         ; eb <- many $ do{ reserved "elseif"
-                         ; e_ <- exp_exp
+                         ; e_ <- expr
                          ; reserved "then"
                          ; b_ <- block
                          ; return (e_, Block b_)
@@ -106,17 +106,16 @@ funcStmt
         }
 
 assignOrCallStmt
-    = do{ ex <- exp_exp
+    = do{ ex <- primaryexp
         ; case ex of 
             --Function
             ; (Call _ _) -> return $ Assignment [] [ex]
             ; (MemberCall _ _ _) -> return $ Assignment [] [ex]
             -- Assignment
-            ; (Var n) -> assignStmt [Var n]
+            ; (Var n) -> assignStmt [LVar n]
             ; (FieldRef t f) -> assignStmt [LFieldRef t f]
-            ; _ -> fail "Invalid stmt lol"
+            ; _ -> fail "Invalid stmt"
         }
-
 
 assignStmt lhs = do{ comma
         ; lv <- lvalue
@@ -130,7 +129,7 @@ assignStmt lhs = do{ comma
 --simpleExpr = do{ e <- exp_exp; return Simple e}
 
 lvalue 
-    = do{ ex <- exp_exp
+    = do{ ex <- primaryexp
         ; tolvar ex
         }
 
@@ -151,7 +150,7 @@ namelist = commaSep1 identifier
 
 prefixexp = choice [
     identifier >>= return . Var,
-    parens exp_exp
+    parens expr
     ]
 
 args = do{ (parens $ option [] explist)}
@@ -192,7 +191,7 @@ parlist :: Parser [[Name]]
 parlist = commaSep namelist 
 
 explist :: Parser [Expr]
-explist = commaSep1 exp_exp
+explist = commaSep1 expr
 
 -- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
 var = do{ i <- identifier;
@@ -211,9 +210,9 @@ tableconstructor = liftM TableCons $ braces fieldlist
 fieldlist = sepEndBy field fieldsep
 
 field 
-    = do{ e <- brackets exp_exp
+    = do{ e <- brackets expr
         ; symbol "="
-        ; v <- exp_exp
+        ; v <- expr
         ; return (Just e, v) 
         }
   <|> do{ pos <- getPosition
@@ -221,10 +220,10 @@ field
                          ; symbol "="
                          ; return i
                          }
-        ; v <- exp_exp
+        ; v <- expr
         ; return (Just (StringLiteral pos id), v)
         }
-  <|> do{ v <- exp_exp
+  <|> do{ v <- expr
         ; return (Nothing, v)
         }
 
@@ -247,7 +246,7 @@ primaryexp = do
                 ; return $ FieldRef e (StringLiteral pos id)
                 }
             
-        brace_index e = liftM (FieldRef e) $ brackets exp_exp
+        brace_index e = liftM (FieldRef e) $ brackets expr
         
         member_call e 
             = do{ colon
@@ -275,7 +274,7 @@ exp_exp = choice [
 --Binary and Unary Expression parser
 --------------------------------------------
 expr :: Parser Expr
-expr = buildExpressionParser optable term
+expr = buildExpressionParser optable exp_exp
 
 optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Prefix (reservedOp "-"   >> return (UnOp "-")) ]
@@ -294,10 +293,6 @@ optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft]
              , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft] 
              ]
-
-term =  parens expr
-    <|> liftM Var identifier
-    <|> liftM Number number
 
 --------------------------------------------
 -- The Lexer

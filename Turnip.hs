@@ -4,7 +4,9 @@ import Parser( prettyLuaFromFile, loadAST )
 import Env
 
 main  
-    = do{ ast <- loadAST "test/fac.lua"
-        ; let stmts = statements ast
+    = do{ input <- readFile "test/fac.lua"
+        ; ast <- loadAST "test/fac.lua"
+        ; putStr input
+--        ; let stmts = statements ast
         ; print ast
         }

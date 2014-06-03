@@ -6,7 +6,7 @@ type Name = String
 
 data LValue = LVar Name
           | LFieldRef Expr Expr
-            deriving Show
+            deriving (Show, Eq)
 
 data Expr = Number Double 
           | StringLiteral SourcePos String
@@ -20,7 +20,7 @@ data Expr = Number Double
           | BinOp String Expr Expr
           | FieldRef Expr Expr
           | Var Name
-          deriving Show
+          deriving (Show, Eq)
 
 
 data Stmt = Do Block
@@ -33,12 +33,12 @@ data Stmt = Do Block
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
           | LocalDef [Name] [Expr]
-          deriving Show
+          deriving (Show, Eq)
 
 data ForGen = ForNum Expr Expr (Maybe Expr)
             | ForIter [Expr]
-            deriving Show
+            deriving (Show, Eq)
 
 data Block = Block [Stmt]
-    deriving Show
+    deriving (Show, Eq)
 

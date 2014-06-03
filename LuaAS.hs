@@ -20,6 +20,7 @@ data Expr = Number Double
           | BinOp String Expr Expr
           | FieldRef Expr Expr
           | Var Name
+          | Lambda [Name] Block
           deriving (Show, Eq)
 
 
@@ -27,7 +28,6 @@ data Stmt = Do Block
           | While Expr Block
           | Until Expr Block
           | If [(Expr, Block)] (Maybe Block)
-          | Function [[Name]] Block
           | Return [Expr]
           | Break
           | For [Name] ForGen Block

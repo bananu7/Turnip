@@ -1,6 +1,6 @@
 module Main where
 
-import Parser( prettyLuaFromFile, loadAST )
+import Parser( prettyLuaFromFile, loadAST, parseLua )
 import Env
 
 main  

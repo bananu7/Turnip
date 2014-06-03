@@ -1,4 +1,4 @@
-module Parser( prettyLuaFromFile, loadAST ) where
+module Parser( prettyLuaFromFile, loadAST, parseLua ) where
 
 import Env
 import LuaAS
@@ -10,6 +10,7 @@ import Text.ParserCombinators.Parsec.Language
 import Data.List
 import Control.Exception (throw)
 import Control.Monad (when, liftM)
+import Control.Applicative ((<$>), (<*>))
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
 -- thus separating the IO from the AST
@@ -22,6 +23,8 @@ loadAST fname
     = do{ anAST <- parseFromFile program fname
         ; return $ fromRight anAST
         }
+
+parseLua text = parse program "" text
 
 -- This is for parser testing
 prettyLuaFromFile fname
@@ -141,6 +144,7 @@ assignStmt lhs = do{ comma
         ; vals <- explist
         ; return $ Assignment (reverse lhs) vals
         }
+
 --simpleExpr :: Expr -> Stmt 
 --simpleExpr = do{ e <- exp_exp; return Simple e}
 
@@ -183,8 +187,10 @@ functioncall = do{ prefixexp;args}
     
 -- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
 funcname :: Parser (Name, Maybe Name)
-funcname = do{ n1 <- fmap (intercalate ".") (sepBy identifier dot); n2 <- optionMaybe (colon >> identifier); return (n1,n2)}
-
+funcname = do
+    n1 <- fmap (intercalate ".") (sepBy identifier dot)
+    n2 <- optionMaybe (colon >> identifier)
+    return (n1,n2)
 
 --    = do{ sepBy identifier dot 
 --        ; optionMaybe (do{colon;identifier})
@@ -309,23 +315,22 @@ optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft]
              , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft] 
              ]
-
 --------------------------------------------
 -- The Lexer
---------------------------------------------	
+--------------------------------------------
 lexer :: P.TokenParser()
 lexer = P.makeTokenParser(
-			emptyDef
-			{reservedNames = ["end","in","repeat","break","false","local","return","do",
-					"for","nil","then","else","function","not","true","elseif","if","until","while"],
-			reservedOpNames = ["+","-","*","/","^","%","..","<","<=",">",">=","==","~=","and","or","not"]}
-			)
+            emptyDef
+            {reservedNames = ["end","in","repeat","break","false","local","return","do",
+                    "for","nil","then","else","function","not","true","elseif","if","until","while"],
+            reservedOpNames = ["+","-","*","/","^","%","..","<","<=",">",">=","==","~=","and","or","not"]}
+            )
 
 whiteSpace= P.whiteSpace lexer
 lexeme    = P.lexeme lexer
 symbol    = P.symbol lexer
 stringl   = P.stringLiteral lexer
-number    = P.float lexer
+number    = try (P.float lexer) <|> (fromIntegral <$> (P.integer lexer))
 parens    = P.parens lexer
 semi      = P.semi lexer
 identifier= P.identifier lexer

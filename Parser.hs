@@ -48,11 +48,10 @@ program
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon -
 block :: Parser [Stmt]
-block
-    = many1 (do{ s <- stat <|> laststat -- Not correct, could have many laststatements
-        ; optional semi
-        ; return s
-        })
+block = many $ do
+    s <- stat <|> laststat -- Not correct, could have many laststatements
+    optional semi
+    return s
 
 -- Return will return some list of expressions, or an empty list of expressions. 
 laststat :: Parser Stmt

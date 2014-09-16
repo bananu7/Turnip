@@ -34,6 +34,7 @@ data Stmt = Do Block
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
           | LocalDef [Name] [Expr]
+          | CallStmt Expr [Expr]
           deriving Eq
 
 instance Show Stmt where
@@ -41,6 +42,7 @@ instance Show Stmt where
     show (Return xs) = "return " ++ show xs
     show (Assignment lvals exprs) = intercalate "\n" $ zipWith (\lval expr -> 
         (show lval) ++ " := " ++ (show expr)) lvals exprs
+    show (CallStmt f params) = show f ++ "(" ++ show params ++ ")"
 
 
 data ForGen = ForNum Expr Expr (Maybe Expr)

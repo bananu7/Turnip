@@ -144,17 +144,17 @@ funcBody = do
     reserved "end"
     return $ (Block b) 
 
-assignOrCallStmt
-    = do{ ex <- primaryexp
-        ; case ex of 
-            --Function
-            ; (Call _ _) -> return $ Assignment [] [ex]
-            ; (MemberCall _ _ _) -> return $ Assignment [] [ex]
-            -- Assignment
-            ; (Var n) -> assignStmt [LVar n]
-            ; (FieldRef t f) -> assignStmt [LFieldRef t f]
-            ; _ -> fail "Invalid stmt"
-        }
+assignOrCallStmt :: Parser Stmt
+assignOrCallStmt = do
+    ex <- primaryexp
+    case ex of 
+        --Function
+        (Call fn params) -> return $ CallStmt fn params
+        (MemberCall _ _ _) -> return $ Assignment [] [ex]
+        -- Assignment
+        (Var n) -> assignStmt [LVar n]
+        (FieldRef t f) -> assignStmt [LFieldRef t f]
+        _ -> fail "Invalid stmt"
 
 assignStmt lhs = do{ comma
         ; lv <- lvalue

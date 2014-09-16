@@ -1,4 +1,4 @@
-module Test where
+module Main where
 
 import Test.Hspec
 
@@ -15,6 +15,11 @@ spec = do
     describe "Parser.parseLua" $ do
         it "should parse simple assignments" $ do
             (parse "x = 5") `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
+            (parse "x = y") `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
+
+        it "should parse multiple assignments" $ do
+            (parse "x,y=1,2") `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])
+
         it "should parse simple comparisons" $ do
             mapM_ (\op -> (parse $ "return 1 " ++ op ++ " 2") 
                             `shouldBe`

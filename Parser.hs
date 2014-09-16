@@ -48,11 +48,10 @@ program
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon -
 block :: Parser [Stmt]
-block
-    = many1 (do{ s <- stat <|> laststat -- Not correct, could have many laststatements
-        ; optional semi
-        ; return s
-        })
+block = many $ do
+    s <- stat <|> laststat -- Not correct, could have many laststatements
+    optional semi
+    return s
 
 -- Return will return some list of expressions, or an empty list of expressions. 
 laststat :: Parser Stmt
@@ -117,12 +116,33 @@ ifStmt
         ; return $ If ((e, Block b):eb) df
         }
 
+-- |"function statement" is just syntax sugar over
+--  assignment of a lambda
 funcStmt :: Parser Stmt
-funcStmt 
-    = do{ reserved "function"
-        ; funcname
-        ; funcbody
-        }
+funcStmt = do 
+    reserved "function"
+    fname <- funcname
+    fparams <- paramList
+    fbody <- funcBody
+
+    case fname of
+        (name, _) -> return $ Assignment [LVar name] [Lambda fparams fbody]
+        -- TODO: proper resolution of LFieldRefs
+
+-- |this is essentially a lambda expression
+lambda :: Parser Expr
+lambda = do 
+    reserved "function"
+    fparams <- paramList
+    fbody <- funcBody
+    return $ Lambda fparams fbody
+    
+paramList = parens (option [] namelist)
+
+funcBody = do
+    b <- block 
+    reserved "end"
+    return $ (Block b) 
 
 assignOrCallStmt
     = do{ ex <- primaryexp
@@ -196,21 +216,10 @@ funcname = do
 --        ; optionMaybe (do{colon;identifier})
 --        }
 
-function :: Parser Stmt
-function = do{function; funcbody}
+--function :: Parser Expr
+--function = do{function; funcbody}
 
--- A function body has a parametr list (separated by commas and optionally terminated with an ellipsis) and also has a 
--- block for the main body.
-funcbody :: Parser Stmt
-funcbody
-    = do{ par <- parens (option [] parlist)
-        ; b <- block 
-        ; reserved "end"
-        ; return $ Function par (Block b)
-        }
 
-parlist :: Parser [[Name]]
-parlist = commaSep namelist 
 
 explist :: Parser [Expr]
 explist = commaSep1 expr
@@ -288,7 +297,8 @@ exp_exp = choice [
     reserved "..." >> return Ellipsis,
     tableconstructor,
 --    exp_anonfunction,
-    primaryexp
+    primaryexp,
+    lambda
     ]
 
 

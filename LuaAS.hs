@@ -1,6 +1,7 @@
 module LuaAS where
 
 import Text.ParserCombinators.Parsec.Pos
+import Data.List(intercalate)
 
 type Name = String
 
@@ -33,12 +34,22 @@ data Stmt = Do Block
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
           | LocalDef [Name] [Expr]
-          deriving (Show, Eq)
+          deriving Eq
+
+instance Show Stmt where
+    show (Do x) = show x
+    show (Return xs) = "return " ++ show xs
+    show (Assignment lvals exprs) = intercalate "\n" $ zipWith (\lval expr -> 
+        (show lval) ++ " := " ++ (show expr)) lvals exprs
+
 
 data ForGen = ForNum Expr Expr (Maybe Expr)
             | ForIter [Expr]
             deriving (Show, Eq)
 
 data Block = Block [Stmt]
-    deriving (Show, Eq)
+    deriving (Eq)
+
+instance Show Block where
+    show (Block stmts) = "\n" ++ (intercalate "\n" . map show $ stmts)
 

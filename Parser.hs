@@ -19,32 +19,29 @@ import Control.Applicative ((<$>), (<*>))
 fromRight :: Either a b -> b
 fromRight (Right b)= b
 
-loadAST fname 
-    = do{ anAST <- parseFromFile program fname
-        ; return $ fromRight anAST
-        }
+loadAST fname = do
+    anAST <- parseFromFile program fname
+    return $ fromRight anAST
 
 parseLua text = parse program "" text
 
 -- This is for parser testing
-prettyLuaFromFile fname
-    = do{ input <- readFile fname
-        ; putStr input
-        ; case parse program fname input of
-            Left err -> do{ putStr "parse error at "
-                          ; print err
-                          }
-            Right x  -> print x
-        }
+prettyLuaFromFile fname = do
+    input <- readFile fname
+    putStr input
+    case parse program fname input of
+        Left err -> do
+            putStr "parse error at "
+            print err
+        Right x -> print x
 
 -- A program is a block of LUA -
 program :: Parser Block
-program 
-    = do{ whiteSpace
-        ; r <- block
-        ; eof
-        ; return $ Block r
-        }
+program = do
+    whiteSpace
+    r <- block
+    eof
+    return $ Block r
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon -
 block :: Parser [Stmt]
@@ -55,14 +52,13 @@ block = many $ do
 
 -- Return will return some list of expressions, or an empty list of expressions. 
 laststat :: Parser Stmt
-laststat 
-    = do{ reserved "return"
-        ; e <- option [] explist
-        ; return $ Return e
-        }
-  <|> do{ reserved "break"
-        ; return Break
-        }
+laststat = do
+    reserved "return"
+    e <- option [] explist
+    return $ Return e
+  <|> do
+    reserved "break"
+    return Break
 
 -- Make a choice to determine what kind of statement is being parsed
 stat :: Parser Stmt
@@ -77,44 +73,40 @@ stat = choice [
     ]
 
 doStmt :: Parser Stmt
-doStmt
-    = do{ b <- between (reserved "do") (reserved "end") block
-        ; return $ Do (Block b)
-        }
+doStmt = do
+    b <- between (reserved "do") (reserved "end") block
+    return $ Do (Block b)
 
 whileStmt :: Parser Stmt
-whileStmt
-    = do{ reserved "while"
-        ; e <- expr
-        ; b <- between (reserved "do") (reserved "end") block
-        ; return $ While e (Block b)
-        }
+whileStmt = do
+    reserved "while"
+    e <- expr
+    b <- between (reserved "do") (reserved "end") block
+    return $ While e (Block b)
 
 repeatStmt :: Parser Stmt
-repeatStmt
-    = do{ reserved "repeat"
-        ; b <- block
-        ; reserved "until"
-        ; e <- expr
-        ; return $ Until e (Block b)
-        }
+repeatStmt = do
+    reserved "repeat"
+    b <- block
+    reserved "until"
+    e <- expr
+    return $ Until e (Block b)
 
 ifStmt :: Parser Stmt
-ifStmt
-    = do{ reserved "if"
-        ; e <- expr
-        ; reserved "then"
-        ; b <- block 
-        ; eb <- many $ do{ reserved "elseif"
-                         ; e_ <- expr
-                         ; reserved "then"
-                         ; b_ <- block
-                         ; return (e_, Block b_)
-                         }
-        ; df <- optionMaybe $ do{reserved "else"; b <- block; return (Block b)}
-        ; reserved "end"
-        ; return $ If ((e, Block b):eb) df
-        }
+ifStmt = do
+    reserved "if"
+    e <- expr
+    reserved "then"
+    b <- block 
+    eb <- many $ do
+        reserved "elseif"
+        e_ <- expr
+        reserved "then"
+        b_ <- block
+        return (e_, Block b_)
+    df <- optionMaybe $ do{reserved "else"; b <- block; return (Block b)}
+    reserved "end"
+    return $ If ((e, Block b):eb) df
 
 -- |"function statement" is just syntax sugar over
 --  assignment of a lambda
@@ -156,30 +148,27 @@ assignOrCallStmt = do
         (FieldRef t f) -> assignStmt [LFieldRef t f]
         _ -> fail "Invalid stmt"
 
-assignStmt lhs = do{ comma
-        ; lv <- lvalue
-        ; assignStmt (lv:lhs)
-        }
-  <|> do{ symbol "="
-        ; vals <- explist
-        ; return $ Assignment (reverse lhs) vals
-        }
+assignStmt lhs = do
+    comma
+    lv <- lvalue
+    assignStmt (lv:lhs)
+  <|> do
+    symbol "="
+    vals <- explist
+    return $ Assignment (reverse lhs) vals
 
 --simpleExpr :: Expr -> Stmt 
 --simpleExpr = do{ e <- exp_exp; return Simple e}
 
-lvalue 
-    = do{ ex <- primaryexp
-        ; tolvar ex
-        }
+lvalue = do
+    ex <- primaryexp
+    tolvar ex
 
-tolvar ex 
-    = do{ case ex of
-        ; (Var n) -> return $ LVar n
-        ; (FieldRef t f) -> return $ LFieldRef t f
-        ; _ -> fail "Invalid lvalue"
-        }
-
+tolvar ex = do
+    case ex of
+        (Var n) -> return $ LVar n
+        (FieldRef t f) -> return $ LFieldRef t f
+        _ -> fail "Invalid lvalue"
 
 -- Var list and name list are variables and identifiers separated by commas --
 varlist :: Parser [Expr]

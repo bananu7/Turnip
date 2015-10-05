@@ -97,16 +97,22 @@ ifStmt = do
     reserved "if"
     e <- expr
     reserved "then"
-    b <- block 
-    eb <- many $ do
+    b <- block
+
+    elseIfBlocks <- many $ do
         reserved "elseif"
-        e_ <- expr
+        e' <- expr
         reserved "then"
-        b_ <- block
-        return (e_, Block b_)
-    df <- optionMaybe $ do{reserved "else"; b <- block; return (Block b)}
+        b' <- block
+        return (e', Block b')
+
+    elseBlock <- optionMaybe $ do
+        reserved "else"
+        b <- block
+        return (Block b)
+
     reserved "end"
-    return $ If ((e, Block b):eb) df
+    return $ If ((e, Block b) : elseIfBlocks) elseBlock
 
 -- |"function statement" is just syntax sugar over
 --  assignment of a lambda

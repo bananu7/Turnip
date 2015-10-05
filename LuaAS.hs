@@ -43,6 +43,10 @@ instance Show Stmt where
     show (Assignment lvals exprs) = intercalate "\n" $ zipWith (\lval expr -> 
         (show lval) ++ " := " ++ (show expr)) lvals exprs
     show (CallStmt f params) = show f ++ "(" ++ show params ++ ")"
+    show (If (block:elseIfBlocks) elseBlock) = "if " ++ show block ++ elseIfBlocksStr ++ elseBlockStr
+      where
+        elseIfBlocksStr = concatMap (("\nelseif " ++) . show) elseIfBlocks
+        elseBlockStr = maybe "" (("\nelse " ++) . show) elseBlock
 
 
 data ForGen = ForNum Expr Expr (Maybe Expr)

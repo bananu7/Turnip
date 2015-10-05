@@ -43,7 +43,7 @@ spec = do
 
         it "should parse if statements" $ do
             parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
-            parse "if true then return true else return false"
-                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool True]])])
+            parse "if true then return true else return false end"
+                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
 
 main = hspec spec

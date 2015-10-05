@@ -14,15 +14,15 @@ spec :: Spec
 spec = do
     describe "Parser.parseLua" $ do
         it "should parse simple assignments" $ do
-            (parse "x = 5") `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
-            (parse "x = y") `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
+            parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
+            parse "x = y" `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
 
         it "should parse multiple assignments" $ do
-            (parse "x,y=1,2") `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])
+            parse "x,y=1,2" `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])
 
         it "should parse assignments using tables" $ do
-            (parse "t[i] = v") `shouldBe` (Block [Assignment [LFieldRef (Var "t") (Var "i")] [Var "v"]])
-            (parse "t[u[i]] = v") `shouldBe` (Block [Assignment [LFieldRef (Var "t") (FieldRef (Var "u") (Var "i"))] [Var "v"]])
+            parse "t[i] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (Var "i")] [Var "v"]])
+            parse "t[u[i]] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (FieldRef (Var "u") (Var "i"))] [Var "v"]])
 
         it "should parse simple comparisons" $ do
             mapM_ (\op -> (parse $ "return 1 " ++ op ++ " 2") 
@@ -32,13 +32,18 @@ spec = do
                   ["==", "~=", ">", "<", ">=", "<="]
                   
         it "should parse function definitions" $ do
-            (parse "function f() end") `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [])]])
-            (parse "function f(x) end") `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] (Block [])]])
-            (parse "function f() return 1 end") `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [Return [Number 1]])]])
+            parse "function f() end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [])]])
+            parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] (Block [])]])
+            parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [Return [Number 1]])]])
 
         it "should parse function calls" $ do
-            (parse "f()") `shouldBe` (Block [CallStmt (Var "f") []])
-            (parse "f(1)") `shouldBe` (Block [CallStmt (Var "f") [Number 1.0]])
-            (parse "f(x,y)") `shouldBe` (Block [CallStmt (Var "f") [Var "x", Var "y"]])
+            parse "f()" `shouldBe` (Block [CallStmt (Var "f") []])
+            parse "f(1)" `shouldBe` (Block [CallStmt (Var "f") [Number 1.0]])
+            parse "f(x,y)" `shouldBe` (Block [CallStmt (Var "f") [Var "x", Var "y"]])
+
+        it "should parse if statements" $ do
+            parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
+            parse "if true then return true else return false"
+                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool True]])])
 
 main = hspec spec

@@ -214,9 +214,9 @@ explist :: Parser [Expr]
 explist = commaSep1 expr
 
 -- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
-var = do{ i <- identifier;
-        ; return (Var i)
-        }
+var = do
+    i <- identifier
+    return (Var i)
 --  <|> do{ prefixexp
 --        ; brackets exp_exp
 --        }
@@ -229,23 +229,24 @@ tableconstructor = liftM TableCons $ braces fieldlist
 
 fieldlist = sepEndBy field fieldsep
 
-field 
-    = do{ e <- brackets expr
-        ; symbol "="
-        ; v <- expr
-        ; return (Just e, v) 
-        }
-  <|> do{ pos <- getPosition
-        ; id <- try $ do {i <-identifier
-                         ; symbol "="
-                         ; return i
-                         }
-        ; v <- expr
-        ; return (Just (StringLiteral pos id), v)
-        }
-  <|> do{ v <- expr
-        ; return (Nothing, v)
-        }
+field = do
+    e <- brackets expr
+    symbol "="
+    v <- expr
+    return (Just e, v)
+
+  <|> do
+    pos <- getPosition
+    id <- try $ do 
+        i <- identifier
+        symbol "="
+        return i
+    v <- expr
+    return (Just (StringLiteral pos id), v)
+
+  <|> do
+    v <- expr
+    return (Nothing, v)
 
 fieldsep = comma <|> semi
 
@@ -256,24 +257,22 @@ primaryexp = do
         more i = do { e <- dot_index i; more e }
              <|> do { e <- brace_index i; more e }
              <|> do { e <- member_call i; more e }
-             <|> do { e <- fcall i; more e}
+             <|> do { e <- fcall i; more e }
              <|> return i
 
-        dot_index e 
-            = do{ dot
-                ; pos <- getPosition
-                ; id <- identifier
-                ; return $ FieldRef e (StringLiteral pos id)
-                }
+        dot_index e = do 
+            dot
+            pos <- getPosition
+            id <- identifier
+            return $ FieldRef e (StringLiteral pos id)
             
         brace_index e = liftM (FieldRef e) $ brackets expr
         
-        member_call e 
-            = do{ colon
-                ; id <- identifier
-                ; arg <- args
-                ; return $ MemberCall e id arg
-                }
+        member_call e = do
+            colon
+            id <- identifier
+            arg <- args
+            return $ MemberCall e id arg
             
         fcall e = liftM (Call e) args
 

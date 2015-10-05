@@ -182,17 +182,19 @@ prefixexp = choice [
     parens expr
     ]
 
-args = do{ (parens $ option [] explist)}
+args = (parens $ option [] explist)
     <|> (liftM (:[]) $ tableconstructor)
     <|> (getPosition >>= \pos -> liftM (\s -> [StringLiteral pos s]) $ stringl)
 --   <|> stringl
 
-functioncall = do{ prefixexp;args}
-    <|> do{ prefixexp
-          ; colon
-          ; identifier
-          ; args
-          }
+functioncall = do
+    prefixexp
+    args
+  <|> do
+    prefixexp
+    colon
+    identifier
+    args
     
 -- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
 funcname :: Parser (Name, Maybe Name)

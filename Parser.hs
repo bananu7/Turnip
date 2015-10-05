@@ -254,10 +254,10 @@ primaryexp = do
     pfx <- prefixexp
     more pfx
     where
-        more i = do { e <- dot_index i; more e }
-             <|> do { e <- brace_index i; more e }
-             <|> do { e <- member_call i; more e }
-             <|> do { e <- fcall i; more e }
+        more i = (dot_index i >>= more)
+             <|> (brace_index i >>= more)
+             <|> (member_call i >>= more)
+             <|> (fcall i >>= more)
              <|> return i
 
         dot_index e = do 

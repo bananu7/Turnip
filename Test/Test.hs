@@ -31,6 +31,11 @@ spec = do
                   )
                   ["==", "~=", ">", "<", ">=", "<="]
                   
+        it "should parse return statements" $ do
+            parse "return false" `shouldBe` (Block [Return [Bool False]])
+            parse "return 1, 2, 3" `shouldBe` (Block [Return [Number 1, Number 2, Number 3]])
+            parse "return (42);" `shouldBe` (Block [Return [Number 42]])
+
         it "should parse function definitions" $ do
             parse "function f() end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [])]])
             parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] (Block [])]])

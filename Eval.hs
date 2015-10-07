@@ -192,12 +192,12 @@ call (FunctionData cls topCls block names) args = do
 
 -------------------------------
 
-runWith :: AST.Block -> Context -> IO [Value]
-runWith b ctx = evalStateT (execBlock b globalTableRef) ctx
+runWith :: AST.Block -> Context -> [Value]
+runWith b ctx = evalState (execBlock b globalTableRef) ctx
     where
         globalTableRef = _Gref $ ctx
 
-run :: AST.Block -> IO [Value]
+run :: AST.Block -> [Value]
 run b = runWith b defaultCtx
 
 defaultCtx :: Context

@@ -1,6 +1,5 @@
 module Parser( prettyLuaFromFile, loadAST, parseLua ) where
 
-import Env
 import LuaAS
 
 import Text.ParserCombinators.Parsec 
@@ -221,7 +220,8 @@ funcname = do
 explist :: Parser [Expr]
 explist = commaSep1 expr
 
--- A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
+-- |A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
+var :: Parser Expr
 var = do
     i <- identifier
     return (Var i)

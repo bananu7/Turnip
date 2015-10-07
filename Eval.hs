@@ -10,8 +10,8 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Data.Maybe
 
-newtype TableRef = TableRef Int deriving (Ord, Eq)
-newtype FunctionRef = FunctionRef Int deriving (Ord, Eq)
+newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
+newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 data Value where {
     Table :: TableRef -> Value;
@@ -20,7 +20,7 @@ data Value where {
     Number :: Double -> Value;
     Boolean :: Bool -> Value;
     Nil :: Value;
-    } deriving (Ord, Eq)
+    } deriving (Ord, Eq, Show)
 
 newtype TableData = TableData (Map.Map Value Value)
 
@@ -150,8 +150,6 @@ execReturnStatement exprs = do
     vals <- map head <$> mapM eval exprs
     return $ Right vals
 
-execReturnStatement _ = error "ExecReturn used to execute non-return stmt"
-
 eval :: AST.Expr -> LuaM [Value]
 eval (AST.Bool b) = return [Boolean b]
 eval (AST.Number n) = return [Number n]
@@ -159,14 +157,12 @@ eval AST.Nil = return [Nil]
 
 -------------------------------
 
-runWith :: AST.Block -> Context -> IO ()
-runWith b ctx = do 
-    _ <- runStateT (execBlock b globalTableRef) ctx
-    return ()
+runWith :: AST.Block -> Context -> IO [Value]
+runWith b ctx = evalStateT (execBlock b globalTableRef) ctx
     where
         globalTableRef = _Gref $ ctx
 
-run :: AST.Block -> IO ()
+run :: AST.Block -> IO [Value]
 run b = runWith b defaultCtx
 
 defaultCtx :: Context

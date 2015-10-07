@@ -63,26 +63,6 @@ coerceToBool :: [Value] -> Bool
 coerceToBool (h:_) = True
 coerceToBool _ = False
 
-call :: Value -> [Value] -> LuaM [Value]
-call (Function ref) args = getFunctionData ref >>= ((flip call') args)
-call _ _ = error "You called something that isn't a function"
-
-call' :: FunctionData -> [Value] -> LuaM [Value]
-call' (BuiltinFunction sig fn) args = do
-    -- ensure args match signature
-    -- if yes, extract them into list of Haskell values ? what about Haskell functions operating on Lua-level values ?
-    result <- fn args
-    -- call the fn and take its result
-    -- possibly with liftIO
-    return result
-
-call' (FunctionData cls topCls block names) args = do
-    -- for every arg set cls[names[i]] = args[i]
-    -- in case of a (trailing) vararg function, set `arg` variable to hold
-    -- (the REST of) the arguments
-    result <- execBlock block topCls
-    return result
-
 execBlock :: AST.Block -> TableRef -> LuaM [Value]
 execBlock (AST.Block stmts) cls = do
     mVals <- forM stmts $ \stmt -> do
@@ -150,10 +130,65 @@ execReturnStatement exprs = do
     vals <- map head <$> mapM eval exprs
     return $ Right vals
 
+getGlobalTable :: LuaM TableData
+getGlobalTable = do
+    gref <- gets _Gref
+    -- assume that _G is always present (as it should)
+    (Just _G) <- Map.lookup gref <$> gets tables
+    return _G
+
 eval :: AST.Expr -> LuaM [Value]
-eval (AST.Bool b) = return [Boolean b]
+
 eval (AST.Number n) = return [Number n]
+eval (AST.StringLiteral _ str) = return [Str str]
+eval (AST.Bool b) = return [Boolean b]
 eval AST.Nil = return [Nil]
+eval AST.Ellipsis = error "how do you even eval ellipsis"
+
+-- lambda needs to be stored in the function table
+eval (AST.Lambda argNames b) = do
+    (TableData _G) <- getGlobalTable
+    return [Nil]
+
+eval (AST.Var name) = do
+    (TableData _G) <- getGlobalTable
+    let mVal = Map.lookup (Str name) _G
+    case mVal of
+        Just val -> return [val]
+        Nothing -> return [Nil]
+
+eval (AST.Call fn args) = do
+    -- theoretically always a Nil should be returned, but
+    -- it's not in the type system yet. Big TODO on [Values]
+    -- custom type - perhaps called ValuePack?
+    argVs <- map head <$> mapM eval args
+    fnV <- eval fn
+    case fnV of 
+        (Function ref:_) -> do
+            fData <- getFunctionData ref
+            call fData argVs
+        _ -> error "Trying to call something that doesn't eval to a function!"
+
+-- this is essentially the same as regular call
+-- TODO should it even be a difference in the AST?
+eval (AST.BinOp name lhs rhs) = eval (AST.Call (AST.Var name) [lhs, rhs])
+eval (AST.UnOp name expr) = eval (AST.Call (AST.Var name) [expr])
+
+call :: FunctionData -> [Value] -> LuaM [Value]
+call (BuiltinFunction sig fn) args = do
+    -- ensure args match signature
+    -- if yes, extract them into list of Haskell values ? what about Haskell functions operating on Lua-level values ?
+    result <- fn args
+    -- call the fn and take its result
+    -- possibly with liftIO
+    return result
+
+call (FunctionData cls topCls block names) args = do
+    -- for every arg set cls[names[i]] = args[i]
+    -- in case of a (trailing) vararg function, set `arg` variable to hold
+    -- (the REST of) the arguments
+    result <- execBlock block topCls
+    return result
 
 -------------------------------
 

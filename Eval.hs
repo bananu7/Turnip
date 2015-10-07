@@ -12,13 +12,14 @@ import Control.Monad.State
 newtype TableRef = TableRef Int deriving (Ord, Eq)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq)
 
-data Value where
-    Table :: TableRef -> Value
-    Function :: FunctionRef -> Value
-    Str :: String -> Value
-    Number :: Double -> Value
-    Boolean :: Bool -> Value
-    Nil :: Value
+data Value where {
+    Table :: TableRef -> Value;
+    Function :: FunctionRef -> Value;
+    Str :: String -> Value;
+    Number :: Double -> Value;
+    Boolean :: Bool -> Value;
+    Nil :: Value;
+    } deriving (Ord, Eq)
 
 newtype TableData = TableData (Map.Map Value Value)
 
@@ -32,7 +33,7 @@ data FunctionData = FunctionData { closure :: TableData, topLevelClosure :: Tabl
                   | BuiltinFunction { signature :: NativeSignature, fn :: NativeFunction }
 
 data Context = Context {
-    _G :: Map.Map String Value,
+    _Gref :: TableRef,
     functions :: Map.Map FunctionRef FunctionData,
     tables :: Map.Map TableRef TableData
     }
@@ -142,3 +143,23 @@ eval (AST.Bool b) = return [Boolean b]
 eval (AST.Number n) = return [Number n]
 eval AST.Nil = return [Nil]
 
+
+
+runWith :: AST.Block -> Context -> IO ()
+runWith b ctx = do 
+    _ <- runStateT (execBlock b globalTableRef) ctx
+    return ()
+    where
+        globalTableRef = _Gref $ ctx
+
+run :: AST.Block -> IO ()
+run b = runWith b defaultCtx
+
+defaultCtx :: Context
+defaultCtx = Context {
+    _Gref = gRef,
+    functions = Map.fromList [],
+    tables = Map.fromList [(gRef, TableData $ Map.fromList [])]
+    }
+  where
+    gRef = TableRef 999

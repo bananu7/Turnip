@@ -71,6 +71,15 @@ library
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
+executable main
+  default-language:    Haskell2010
+  main-is: main.hs
+  build-depends:       base >=4.7 && <4.9
+                     , parsec >=3.1 && <3.2
+                     , containers
+                     , transformers
+                     , mtl
+
 test-suite test
     type: exitcode-stdio-1.0
     main-is: Test.hs

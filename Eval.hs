@@ -8,6 +8,7 @@ import Prelude hiding (Nil)
 import qualified LuaAS as AST
 import qualified Data.Map as Map
 import Control.Monad.State
+import Data.Maybe
 
 newtype TableRef = TableRef Int deriving (Ord, Eq)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq)
@@ -84,11 +85,24 @@ call' (FunctionData cls topCls block names) args = do
 
 execBlock :: AST.Block -> TableRef -> LuaM [Value]
 execBlock (AST.Block stmts) cls = do
-    forM_ stmts $ \stmt -> do
-        maybeResult <- execStmt stmt cls
-        return Nil
-    return [Nil]
-        -- the only statement that return values is Return
+    mVals <- forM stmts $ \stmt -> do
+        case stmt of
+            -- the only statement that return values is Return
+            AST.Return exprs -> do
+                eitherResult <- execReturnStatement exprs
+                case eitherResult of
+                    Right res -> return $ Just res
+                    Left _ -> return (Nothing :: Maybe [Value])
+            _ -> do
+                maybeError <- execStmt stmt cls
+                return Nothing
+
+    let vals = catMaybes mVals
+
+    case vals of
+        (h:_) -> return h
+        [] -> return [Nil]
+
         -- if it's a break statement and we're in the loop, we should stop processing this block immediately.
         -- a break statement outside of the loop should be thrown out at pre-analysis stage, so keeping
         -- the "in loop" state isn't necessary
@@ -128,22 +142,22 @@ execStmt (AST.While e b) cls = do
         return Nothing
     else
         return Nothing
-    -- check the value in cls
-    -- exec block
-    -- go to beginning
-
     -- if no change has been made to lua state, it can be safely assumed that it's
     --- an infinite loop
 
-execReturnStatement :: AST.Stmt -> LuaM (Either LuaError [Value])
-execReturnStatement s = return $ Right [Nil]
+execReturnStatement :: [AST.Expr] -> LuaM (Either LuaError [Value])
+execReturnStatement exprs = do
+    vals <- map head <$> mapM eval exprs
+    return $ Right vals
+
+execReturnStatement _ = error "ExecReturn used to execute non-return stmt"
 
 eval :: AST.Expr -> LuaM [Value]
 eval (AST.Bool b) = return [Boolean b]
 eval (AST.Number n) = return [Number n]
 eval AST.Nil = return [Nil]
 
-
+-------------------------------
 
 runWith :: AST.Block -> Context -> IO ()
 runWith b ctx = do 

@@ -4,6 +4,8 @@ import Parser( prettyLuaFromFile, loadAST, parseLua )
 import Eval
 
 main = do
-    input <- readFile "test/fac.lua"
-    ast <- loadAST "test/fac.lua"
-    run ast
+    --ast <- loadAST "test/fac.lua"
+    let maybeAst = parseLua "return 1"
+    case maybeAst of
+        Right ast -> run ast
+        Left err -> print err

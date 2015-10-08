@@ -52,8 +52,9 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Parser, LuaAS, Eval
   
-  -- Modules included in this library but not exported.
-  -- other-modules:       
+  other-modules:       Eval.Eval,
+                       Eval.Util,
+                       Eval.Types
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    

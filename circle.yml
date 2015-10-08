@@ -3,6 +3,8 @@ machine:
     version: 7.10.1
 
 dependencies:
+  pre:
+     - wget https://www.stackage.org/nightly-2015-05-05/cabal.config
   override: 
      - cabal install --upgrade-dependencies --constraint="template-haskell installed" --dependencies-only --enable-tests --force-reinstalls
 

@@ -64,6 +64,7 @@ library
                      , containers
                      , transformers
                      , mtl
+                     , lens
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -79,6 +80,7 @@ executable main
                        , containers
                        , transformers
                        , mtl
+                       , lens
 
 test-suite test
     type: exitcode-stdio-1.0

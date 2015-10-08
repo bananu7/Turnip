@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Eval where
 
@@ -10,9 +11,12 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Data.Maybe
 import Debug.Trace
+import Control.Lens hiding (Context)
 
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
+
+type LuaM a = forall m . MonadState Context m => m a
 
 data Value where {
     Table :: TableRef -> Value;
@@ -23,7 +27,7 @@ data Value where {
     Nil :: Value;
     } deriving (Ord, Eq, Show)
 
-newtype TableData = TableData (Map.Map Value Value)
+type TableData = Map.Map Value Value
 
 type NativeType = String -- todo
 type NativeSignature = [NativeType]
@@ -35,30 +39,40 @@ data FunctionData = FunctionData { closure :: TableData, topLevelClosure :: Tabl
                   | BuiltinFunction { signature :: NativeSignature, fn :: NativeFunction }
 
 data Context = Context {
-    _Gref :: TableRef,
-    functions :: Map.Map FunctionRef FunctionData,
-    tables :: Map.Map TableRef TableData
+    _gRef :: TableRef,
+    _functions :: Map.Map FunctionRef FunctionData,
+    _tables :: Map.Map TableRef TableData,
+    _lastId :: Int
     }
+makeLenses ''Context
 
 ----------------------
-
-type LuaM a = forall m . MonadState Context m => m a
 
 type LuaError = String
 
 getFunctionData :: FunctionRef -> LuaM FunctionData
 getFunctionData ref = do
-    fns <- gets functions
+    fns <- use functions
     case Map.lookup ref fns of
         Just fdata -> return fdata
         Nothing -> error "Function ref dead" -- should never really happen
 
 getTableData :: TableRef -> LuaM TableData
 getTableData ref = do
-    ts <- gets tables
+    ts <- use tables
     case Map.lookup ref ts of
         Just tdata -> return tdata
         Nothing -> error "Function ref dead" -- should never really happen
+
+uniqueFunctionRef :: LuaM FunctionRef
+uniqueFunctionRef = do
+    lastId += 1
+    FunctionRef <$> use lastId
+
+uniqueTableRef :: LuaM TableRef
+uniqueTableRef = do
+    lastId += 1
+    TableRef <$> use lastId
 
 coerceToBool :: [Value] -> Bool
 coerceToBool (h:_) = True
@@ -133,9 +147,9 @@ execReturnStatement exprs = do
 
 getGlobalTable :: LuaM TableData
 getGlobalTable = do
-    gref <- gets _Gref
+    gref <- use gRef
     -- assume that _G is always present (as it should)
-    (Just _G) <- Map.lookup gref <$> gets tables
+    (Just _G) <- Map.lookup gref <$> use tables
     return _G
 
 eval :: AST.Expr -> LuaM [Value]
@@ -148,13 +162,13 @@ eval AST.Ellipsis = error "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda argNames b) = do
-    (TableData _G) <- getGlobalTable
+    _G <- getGlobalTable
     return [Nil]
 
 eval (AST.Var name) = do
-    (TableData _G) <- getGlobalTable
+    _G <- getGlobalTable
 
-    let mVal = Map.lookup (Str name) (trace ("_G is " ++ show _G) _G)
+    let mVal = Map.lookup (Str name) _G
     case mVal of
         Just val -> return [val]
         Nothing -> return [Nil]
@@ -164,7 +178,7 @@ eval (AST.Call fn args) = do
     -- it's not in the type system yet. Big TODO on [Values]
     -- custom type - perhaps called ValuePack?
     argVs <- map head <$> mapM eval args
-    fnV <- eval (trace ("evaling fn " ++ show fn) fn)
+    fnV <- eval fn
 
     case fnV of 
         (Function ref:_) -> do
@@ -200,31 +214,30 @@ luaOpPlus ((Number a):(Number b):_) = return $ [Number (a + b)]
 luaOpPlus _ = error "Plus operator takes exactly two numeric arguments"
 
 runWith :: AST.Block -> Context -> [Value]
-runWith b ctx = evalState (execBlock b globalTableRef) ctx
+runWith b ctx = evalState code ctx
     where
-        globalTableRef = _Gref $ ctx
+        globalTableRef = ctx ^. gRef
+        code = do
+            addNativeFunction "+" (BuiltinFunction [] luaOpPlus)
+            execBlock b globalTableRef
 
 run :: AST.Block -> [Value]
-run b = runWith b defaultCtxWithLib
+run b = runWith b defaultCtx
 
 defaultCtx :: Context
 defaultCtx = Context {
-    _Gref = gRef,
-    functions = Map.fromList [],
-    tables = Map.fromList [(gRef, TableData $ Map.fromList [])]
+    _gRef = gRef,
+    _functions = Map.fromList [],
+    _tables = Map.fromList [(gRef, Map.fromList [])],
+    _lastId = 1
     }
   where
     gRef = TableRef 999
 
-defaultCtxWithLib = addNativeFunction "+" (BuiltinFunction [] luaOpPlus) $ defaultCtx 
+addNativeFunction :: String -> FunctionData -> LuaM ()
+addNativeFunction name fdata = do
+    newRef <- uniqueFunctionRef
+    functions . at newRef .= Just fdata
 
-addNativeFunction :: String -> FunctionData -> Context -> Context
-addNativeFunction name fn ctx = newCtx
-    where
-        newRef :: FunctionRef
-        newRef = (\(FunctionRef i) -> FunctionRef (i+1)) $ fst $ Map.findMax (functions ctx)
-        ctxWithNewRef = ctx { functions = Map.insert newRef fn (functions ctx) }
-
-        insertNewValue :: TableData -> TableData
-        insertNewValue (TableData td) = TableData $ Map.insert (Str name) (Function newRef) td
-        newCtx = ctxWithNewRef { tables = Map.adjust insertNewValue (_Gref ctx) (tables ctx) }
+    gTabRef <- use gRef
+    tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)

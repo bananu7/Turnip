@@ -9,6 +9,7 @@ import qualified LuaAS as AST
 import qualified Data.Map as Map
 import Control.Monad.State
 import Data.Maybe
+import Debug.Trace
 
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
@@ -152,7 +153,8 @@ eval (AST.Lambda argNames b) = do
 
 eval (AST.Var name) = do
     (TableData _G) <- getGlobalTable
-    let mVal = Map.lookup (Str name) _G
+
+    let mVal = Map.lookup (Str name) (trace ("_G is " ++ show _G) _G)
     case mVal of
         Just val -> return [val]
         Nothing -> return [Nil]
@@ -162,12 +164,13 @@ eval (AST.Call fn args) = do
     -- it's not in the type system yet. Big TODO on [Values]
     -- custom type - perhaps called ValuePack?
     argVs <- map head <$> mapM eval args
-    fnV <- eval fn
+    fnV <- eval (trace ("evaling fn " ++ show fn) fn)
+
     case fnV of 
         (Function ref:_) -> do
             fData <- getFunctionData ref
             call fData argVs
-        _ -> error "Trying to call something that doesn't eval to a function!"
+        x -> error $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
@@ -192,13 +195,17 @@ call (FunctionData cls topCls block names) args = do
 
 -------------------------------
 
+luaOpPlus :: NativeFunction
+luaOpPlus ((Number a):(Number b):_) = return $ [Number (a + b)]
+luaOpPlus _ = error "Plus operator takes exactly two numeric arguments"
+
 runWith :: AST.Block -> Context -> [Value]
 runWith b ctx = evalState (execBlock b globalTableRef) ctx
     where
         globalTableRef = _Gref $ ctx
 
 run :: AST.Block -> [Value]
-run b = runWith b defaultCtx
+run b = runWith b defaultCtxWithLib
 
 defaultCtx :: Context
 defaultCtx = Context {
@@ -208,3 +215,16 @@ defaultCtx = Context {
     }
   where
     gRef = TableRef 999
+
+defaultCtxWithLib = addNativeFunction "+" (BuiltinFunction [] luaOpPlus) $ defaultCtx 
+
+addNativeFunction :: String -> FunctionData -> Context -> Context
+addNativeFunction name fn ctx = newCtx
+    where
+        newRef :: FunctionRef
+        newRef = (\(FunctionRef i) -> FunctionRef (i+1)) $ fst $ Map.findMax (functions ctx)
+        ctxWithNewRef = ctx { functions = Map.insert newRef fn (functions ctx) }
+
+        insertNewValue :: TableData -> TableData
+        insertNewValue (TableData td) = TableData $ Map.insert (Str name) (Function newRef) td
+        newCtx = ctxWithNewRef { tables = Map.adjust insertNewValue (_Gref ctx) (tables ctx) }

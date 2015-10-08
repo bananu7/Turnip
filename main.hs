@@ -8,6 +8,6 @@ main = do
     let maybeAst = parseLua "return 1 + 1"
     case maybeAst of
         Right ast -> do
-            result <- run ast
+            let result = run ast
             mapM_ print result
         Left err -> print err

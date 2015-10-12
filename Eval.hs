@@ -29,6 +29,7 @@ runWith b ctx = evalState code ctx
         globalTableRef = ctx ^. gRef
         code = do
             addNativeFunction "+" (BuiltinFunction [] luaOpPlus)
+            addNativeFunction "-" (BuiltinFunction [] luaOpMinus)
             execBlock b globalTableRef
 
 run :: AST.Block -> [Value]

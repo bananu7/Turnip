@@ -57,6 +57,6 @@ gen ts n f = do
       app :: Q Exp
       app = foldl AppE (VarE f) <$> params 
 
-    let body = normalB app
+    let body = normalB $ [| return $ [ Number $(app) ] |]
 
     (:[]) <$> funD fn [clause match body []]

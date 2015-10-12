@@ -20,7 +20,8 @@ spec = do
     describe "Eval" $ do
         it "should eval return blocks" $
             runParse "return 1" `shouldBe` [Number 1.0]
-        it "should eval operator calls" $
+        it "should eval operator calls" $ do
             runParse "return 1 + 1" `shouldBe` [Number 2.0]
+            runParse "return 3 - 2" `shouldBe` [Number 1.0]
 
 main = hspec spec

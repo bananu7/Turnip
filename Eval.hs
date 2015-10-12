@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Eval (run, Value(..)) where
 
@@ -14,10 +15,13 @@ import Control.Lens hiding (Context)
 import Eval.Types
 import Eval.Eval
 import Eval.Util
+import Eval.TH
 
 luaOpPlus :: NativeFunction
 luaOpPlus ((Number a):(Number b):_) = return $ [Number (a + b)]
 luaOpPlus _ = error "Plus operator takes exactly two numeric arguments"
+
+$(gen ["Int", "Int"] "luaOpMinus" '(-))
 
 runWith :: AST.Block -> Context -> [Value]
 runWith b ctx = evalState code ctx

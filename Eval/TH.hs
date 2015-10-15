@@ -25,33 +25,15 @@ gen ts n f = do
     let fn = mkName n
     xn <- newName "xs"
 
-    let
-        toPatName :: Name -> Q (Pat, Name) 
-        toPatName p = do
-            name <- newName "x"
-            liftM2 (,) (conP p [varP name]) (pure name)
-
-    let
-       typeToMatch :: String -> Q (Pat, Name)
-       typeToMatch t = case t of
-        "Int" -> toPatName 'Number
-        "String" -> toPatName 'Str
-        "Bool" -> toPatName 'Boolean
-
-    let
-      matches :: Q [(Pat, Name)]
-      matches = mapM typeToMatch ts
-
-    matches' <- matches
-    let matches'' = return matches'
+    matches <- mapM typeToMatch ts
 
     let
      match :: [Q Pat]
-     match = [ListP . map fst <$> matches'']
+     match = [return . ListP . map fst $ matches]
 
     let
      params :: Q [Exp]
-     params = mapM (varE . snd) =<< matches''
+     params = mapM (varE . snd) matches
 
     let
       app :: Q Exp
@@ -60,3 +42,18 @@ gen ts n f = do
     let body = normalB $ [| return $ [ Number $(app) ] |]
 
     (:[]) <$> funD fn [clause match body []]
+
+toPatName :: Name -> Q (Pat, Name) 
+toPatName p = do
+    name <- newName "x"
+    liftM2 (,) (conP p [varP name]) (pure name)
+
+typeToMatch :: String -> Q (Pat, Name)
+typeToMatch t = case t of
+    "Int" -> toPatName 'Number
+    "String" -> toPatName 'Str
+    "Bool" -> toPatName 'Boolean
+
+
+
+

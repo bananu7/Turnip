@@ -8,17 +8,6 @@ import Language.Haskell.TH
 import Control.Applicative
 import Control.Monad
 import Data.Typeable
-    
-genFn :: String -> Q [Dec]
-genFn n = do
-    fn <- newName n
-    xn <- newName "x"
-    
-    let fakeSig = ["ell", "puppy"]
-    let stmts :: [StmtQ]; stmts = map (\s -> noBindS $ [e| print s |]) fakeSig
-    
-    let body = normalB . doE $ stmts
-    (:[]) <$> funD fn [clause [varP xn] body []]
 
 gen :: [String] -> String -> Name -> Q [Dec]
 gen ts n f = do
@@ -28,12 +17,12 @@ gen ts n f = do
     matches <- mapM typeToMatch ts
 
     let
-     match :: [Q Pat]
-     match = [return . ListP . map fst $ matches]
+      match :: [Q Pat]
+      match = [return . ListP . map fst $ matches]
 
     let
-     params :: Q [Exp]
-     params = mapM (varE . snd) matches
+      params :: Q [Exp]
+      params = mapM (varE . snd) matches
 
     let
       app :: Q Exp
@@ -43,11 +32,13 @@ gen ts n f = do
 
     (:[]) <$> funD fn [clause match body []]
 
+-- |Transforms a constructor Name into a pattern match for a newly introduced name
 toPatName :: Name -> Q (Pat, Name) 
 toPatName p = do
     name <- newName "x"
     liftM2 (,) (conP p [varP name]) (pure name)
 
+-- |Transforms a type information string into a pattern for that with a anme
 typeToMatch :: String -> Q (Pat, Name)
 typeToMatch t = case t of
     "Int" -> toPatName 'Number

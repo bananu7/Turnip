@@ -23,5 +23,6 @@ spec = do
         it "should eval operator calls" $ do
             runParse "return 1 + 1" `shouldBe` [Number 2.0]
             runParse "return 3 - 2" `shouldBe` [Number 1.0]
+            runParse "return 3 * 8" `shouldBe` [Number 24.0]
 
 main = hspec spec

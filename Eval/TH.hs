@@ -1,13 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Eval.TH where
+module Eval.TH (genDecls, genLibLoadFunction, entry, TypeT(..), Sig(..)) where
 
 import qualified Eval.Types as Eval
+import Eval.Util
 
 import Language.Haskell.TH
+
 import Control.Applicative
 import Control.Monad
 import Data.Typeable
+import Data.Char
 
 -- |Function signature has n params and one return value
 data Sig = Sig [TypeT] TypeT
@@ -29,10 +32,35 @@ toPatName p = do
 
 typeToMatch = toPatName . typeToName
 
+type Entry = (Sig, String, Name, Name)
+
+entry :: Sig -> String -> Name -> Q Entry
+entry sig luaName origName = do
+    tempName <- newName ("lua" ++ toSafeSuffix luaName)
+    return (sig, luaName, tempName, origName)
+    where
+        toSafeSuffix = concat . map (show . ord)
+        
+genDecls :: [Entry] -> Q [Dec]
+genDecls = mapM (\(sig, _, tempName, origName) -> genDec sig tempName origName)
+
+genLibLoadFunction :: [Entry] -> Q [Dec]
+genLibLoadFunction xs = do
+    let stmts = mapM toAddFunctionStatement xs
+    let body = stmts >>= return . DoE    
+
+    [d|
+        loadBaseLibrary :: Eval.LuaM ()
+        loadBaseLibrary = $( body )
+        |]
+    where
+        toAddFunctionStatement :: Entry -> Q Stmt
+        toAddFunctionStatement (_, luaName, tempName, _) = noBindS $ [e| addNativeFunction $(litE $ stringL luaName) (Eval.BuiltinFunction [] $(varE tempName)) |]
+
 -- |Generates a declaration of a function compatible with Lua interface
-gen :: Sig -> String -> Name -> Q [Dec]
-gen (Sig paramTs returnT) n f = do
-    let fn = mkName n
+-- @param n - the new name
+genDec :: Sig -> Name -> Name -> Q Dec
+genDec (Sig paramTs returnT) tempName origName = do
     xn <- newName "xs"
 
     matches <- mapM typeToMatch paramTs
@@ -49,10 +77,10 @@ gen (Sig paramTs returnT) n f = do
 
     let
       app :: Q Exp
-      app = foldl AppE (VarE f) <$> params 
+      app = foldl AppE (VarE origName) <$> params 
 
     -- this rather convoluted body just means to use appropriate type wrapper for the function's
     -- return type
     let body = normalB $ [| return $ [ $(appE (conE $ typeToName returnT) app) ] |]
 
-    (:[]) <$> funD fn [clause match body []]
+    funD tempName [clause match body []]

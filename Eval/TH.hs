@@ -18,7 +18,7 @@ gen ts n f = do
 
     let
       match :: [Q Pat]
-      match = [return . ListP . map fst $ matches]
+      match = [return . ListP $ (map fst $ matches) ++ [WildP]]
 
     let
       params :: Q [Exp]
@@ -45,6 +45,24 @@ typeToMatch t = case t of
     "String" -> toPatName 'Str
     "Bool" -> toPatName 'Boolean
 
+{-
+data SimpleType = IntT | StringT | BoolT deriving (Eq, Show)
+type Sig = ([SimpleType], SimpleType)
 
+nameToSig :: Name -> Q Sig
+nameToSig n = infoToSig <$> reify n
+
+infoToSig :: Info -> Maybe Sig
+infoToSig (VarI _ t _ _) = Just $ typeToSig t
+infoToSig _ = Nothing
+
+typeToSig :: Type -> Maybe Sig
+typeToSig t = 
+    case t of 
+        AppT ArrowT rest = 
+        AppT a b
+        _ = Nothing
+
+-}
 
 

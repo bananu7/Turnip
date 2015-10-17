@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 
-module Eval (run, Value(..)) where
+module Eval (run, runWith, defaultCtx, Context(), Value(..)) where
 
 import Prelude hiding (Nil)
 
@@ -16,8 +16,8 @@ import Eval.Eval
 import Eval.Util
 import Eval.Lib (loadBaseLibrary)
 
-runWith :: AST.Block -> Context -> [Value]
-runWith b ctx = evalState code ctx
+runWith :: AST.Block -> Context -> ([Value], Context)
+runWith b ctx = runState code ctx
     where
         globalTableRef = ctx ^. gRef
         code = do
@@ -25,7 +25,7 @@ runWith b ctx = evalState code ctx
             execBlock b globalTableRef
 
 run :: AST.Block -> [Value]
-run b = runWith b defaultCtx
+run b = fst $ runWith b defaultCtx
 
 defaultCtx :: Context
 defaultCtx = Context {

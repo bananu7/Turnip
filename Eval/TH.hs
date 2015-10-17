@@ -2,19 +2,40 @@
 
 module Eval.TH where
 
-import Eval.Types
+import qualified Eval.Types as Eval
 
 import Language.Haskell.TH
 import Control.Applicative
 import Control.Monad
 import Data.Typeable
 
-gen :: [String] -> String -> Name -> Q [Dec]
-gen ts n f = do
+-- |Function signature has n params and one return value
+data Sig = Sig [TypeT] TypeT
+
+data TypeT = NumberT | StringT | BooleanT
+
+-- |Transforms a type information value into a data construct name
+typeToName :: TypeT -> Name
+typeToName t = case t of
+    NumberT -> 'Eval.Number
+    StringT -> 'Eval.Str
+    BooleanT -> 'Eval.Boolean
+
+-- |Transforms a constructor Name into a pattern match for a newly introduced name
+toPatName :: Name -> Q (Pat, Name) 
+toPatName p = do
+    name <- newName "x"
+    liftM2 (,) (conP p [varP name]) (pure name)
+
+typeToMatch = toPatName . typeToName
+
+-- |Generates a declaration of a function compatible with Lua interface
+gen :: Sig -> String -> Name -> Q [Dec]
+gen (Sig paramTs returnT) n f = do
     let fn = mkName n
     xn <- newName "xs"
 
-    matches <- mapM typeToMatch ts
+    matches <- mapM typeToMatch paramTs
 
     let
       match :: [Q Pat]
@@ -30,41 +51,8 @@ gen ts n f = do
       app :: Q Exp
       app = foldl AppE (VarE f) <$> params 
 
-    let body = normalB $ [| return $ [ Number $(app) ] |]
+    -- this rather convoluted body just means to use appropriate type wrapper for the function's
+    -- return type
+    let body = normalB $ [| return $ [ $(appE (conE $ typeToName returnT) app) ] |]
 
     (:[]) <$> funD fn [clause match body []]
-
--- |Transforms a constructor Name into a pattern match for a newly introduced name
-toPatName :: Name -> Q (Pat, Name) 
-toPatName p = do
-    name <- newName "x"
-    liftM2 (,) (conP p [varP name]) (pure name)
-
--- |Transforms a type information string into a pattern for that with a name
-typeToMatch :: String -> Q (Pat, Name)
-typeToMatch t = case t of
-    "Int" -> toPatName 'Number
-    "String" -> toPatName 'Str
-    "Bool" -> toPatName 'Boolean
-
-{-
-data SimpleType = IntT | StringT | BoolT deriving (Eq, Show)
-type Sig = ([SimpleType], SimpleType)
-
-nameToSig :: Name -> Q Sig
-nameToSig n = infoToSig <$> reify n
-
-infoToSig :: Info -> Maybe Sig
-infoToSig (VarI _ t _ _) = Just $ typeToSig t
-infoToSig _ = Nothing
-
-typeToSig :: Type -> Maybe Sig
-typeToSig t = 
-    case t of 
-        AppT ArrowT rest = 
-        AppT a b
-        _ = Nothing
-
--}
-
-

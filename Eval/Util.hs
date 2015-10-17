@@ -41,3 +41,11 @@ getGlobalTable = do
     -- assume that _G is always present (as it should)
     (Just _G) <- Map.lookup gref <$> use tables
     return _G
+
+addNativeFunction :: String -> FunctionData -> LuaM ()
+addNativeFunction name fdata = do
+    newRef <- uniqueFunctionRef
+    functions . at newRef .= Just fdata
+
+    gTabRef <- use gRef
+    tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)

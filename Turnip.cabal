@@ -55,7 +55,8 @@ library
   other-modules:       Eval.Eval,
                        Eval.Util,
                        Eval.Types,
-                       Eval.TH
+                       Eval.TH,
+                       Eval.Lib
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    

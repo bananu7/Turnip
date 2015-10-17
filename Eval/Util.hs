@@ -5,6 +5,7 @@ module Eval.Util where
 import Eval.Types
 import Control.Lens
 import qualified Data.Map as Map (lookup)
+import Control.Applicative ((<$>))
 
 getFunctionData :: FunctionRef -> LuaM FunctionData
 getFunctionData ref = do

@@ -18,7 +18,9 @@ gen ts n f = do
 
     let
       match :: [Q Pat]
-      match = [return . ListP $ (map fst $ matches) ++ [WildP]]
+      -- to accept more args, it'd need to use ConP '(:) [m, WildP]
+      -- but I'm too lazy to write it right now
+      match = [return . ListP $ (map fst $ matches)]
 
     let
       params :: Q [Exp]
@@ -38,7 +40,7 @@ toPatName p = do
     name <- newName "x"
     liftM2 (,) (conP p [varP name]) (pure name)
 
--- |Transforms a type information string into a pattern for that with a anme
+-- |Transforms a type information string into a pattern for that with a name
 typeToMatch :: String -> Q (Pat, Name)
 typeToMatch t = case t of
     "Int" -> toPatName 'Number

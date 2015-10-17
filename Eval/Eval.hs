@@ -8,6 +8,7 @@ import qualified Data.Map as Map
 import qualified LuaAS as AST
 import Eval.Types
 import Eval.Util
+import Control.Applicative ((<$>))
 
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction sig fn) args = do

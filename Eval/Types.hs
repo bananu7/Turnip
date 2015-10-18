@@ -9,12 +9,13 @@ import Control.Monad.State
 import Control.Lens hiding (Context)
 import qualified LuaAS as AST (Block)
 import Control.Applicative
+import Control.Monad.Except
 
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 -- Applicative is here just for 7.8 (I know, right)
-type LuaM a = forall m . (MonadState Context m, Applicative m) => m a
+type LuaM a = forall m . (MonadState Context m, Applicative m, MonadError String m) => m a
 
 data Value where {
     Table :: TableRef -> Value;

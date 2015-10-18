@@ -9,8 +9,10 @@ import qualified Data.Map as Map
 import qualified LuaAS as AST
 import Eval.Types
 import Eval.Util
+
 import Control.Applicative ((<$>))
 import Control.Lens
+import Control.Monad.Except
 
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction sig fn) args = do
@@ -33,7 +35,7 @@ eval (AST.Number n) = return [Number n]
 eval (AST.StringLiteral _ str) = return [Str str]
 eval (AST.Bool b) = return [Boolean b]
 eval AST.Nil = return [Nil]
-eval AST.Ellipsis = error "how do you even eval ellipsis"
+eval AST.Ellipsis = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda argNames b) = do
@@ -59,7 +61,7 @@ eval (AST.Call fn args) = do
         (Function ref:_) -> do
             fData <- getFunctionData ref
             call fData argVs
-        x -> error $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
+        x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.FieldRef t k) = do
     tv <- eval t
@@ -78,7 +80,7 @@ eval (AST.FieldRef t k) = do
                 Just v -> return [v]
                 Nothing -> return [Nil]
 
-        _ -> error "Trying to index a non-table"
+        _ -> throwError "Trying to index a non-table"
 
 
 -- this is essentially the same as regular call

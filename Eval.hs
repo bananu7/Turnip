@@ -10,21 +10,26 @@ import Control.Monad.State
 import Data.Maybe
 import Debug.Trace
 import Control.Lens hiding (Context)
+import Control.Monad.Except
+import Control.Monad.Trans.Either
 
 import Eval.Types
 import Eval.Eval
 import Eval.Util
 import Eval.Lib (loadBaseLibrary)
 
-runWith :: AST.Block -> Context -> ([Value], Context)
+-- Context isn't under Either because it's always modified up to
+-- the point where the error happened.
+runWith :: AST.Block -> Context -> (Either String [Value], Context)
 runWith b ctx = runState code ctx
     where
         globalTableRef = ctx ^. gRef
-        code = do
+
+        code = runEitherT $ do
             loadBaseLibrary
             execBlock b globalTableRef
 
-run :: AST.Block -> [Value]
+run :: AST.Block -> Either String [Value]
 run b = fst $ runWith b defaultCtx
 
 defaultCtx :: Context

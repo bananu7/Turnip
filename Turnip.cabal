@@ -69,6 +69,7 @@ library
                      , mtl
                      , lens
                      , template-haskell
+                     , either
   
   ghc-options: -ddump-splices -ddump-to-file
 
@@ -88,6 +89,7 @@ executable main
                        , mtl
                        , lens
                        , template-haskell
+                       , either
 
 test-suite test
     type: exitcode-stdio-1.0

@@ -12,8 +12,7 @@ successful (Right x) = x
 successful (Left err) = error $ show err
 
 parse = successful . parseLua
-
-runParse = run . parse
+runParse = successful . run . parse
 
 spec :: Spec
 spec = do

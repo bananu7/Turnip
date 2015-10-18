@@ -22,9 +22,11 @@ repl = do
         case maybeAST of
             Right ast -> do
                 ctx <- get
-                result <- state $ runWith ast
-                liftIO $ print result
+                maybeResult <- state $ runWith ast
+                case maybeResult of 
+                    Right result -> liftIO $ print result
+                    Left error -> liftIO . putStrLn $ "Lua error " ++ show error
 
             Left error ->
-                liftIO . putStrLn $ "Parse error" ++ show error
+                liftIO . putStrLn $ "Parse error " ++ show error
 

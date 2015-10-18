@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Eval.Eval where
 
@@ -9,6 +10,7 @@ import qualified LuaAS as AST
 import Eval.Types
 import Eval.Util
 import Control.Applicative ((<$>))
+import Control.Lens
 
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction sig fn) args = do
@@ -58,6 +60,26 @@ eval (AST.Call fn args) = do
             fData <- getFunctionData ref
             call fData argVs
         x -> error $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
+
+eval (AST.FieldRef t k) = do
+    tv <- eval t
+
+    -- we ignore any values returned by the expression because
+    -- we only want to index the first one anyway
+    case head tv of
+        (Table tRef) -> do
+            -- similarly here
+            kV <- head <$> eval k
+
+            t <- getTableData tRef
+            let mVal :: Maybe Value = t ^. at kV
+
+            case mVal of
+                Just v -> return [v]
+                Nothing -> return [Nil]
+
+        _ -> error "Trying to index a non-table"
+
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?

@@ -15,7 +15,7 @@ import Control.Lens
 import Control.Monad.Except
 
 call :: FunctionData -> [Value] -> LuaM [Value]
-call (BuiltinFunction sig fn) args = do
+call (BuiltinFunction fn) args = do
     -- ensure args match signature
     -- if yes, extract them into list of Haskell values ? what about Haskell functions operating on Lua-level values ?
     result <- fn args
@@ -151,6 +151,11 @@ execStmt (AST.While e b) cls = do
         return Nothing
     -- if no change has been made to lua state, it can be safely assumed that it's
     --- an infinite loop
+
+-- call statement is a naked call expression with result ignored
+execStmt (AST.CallStmt f ps) cls = do
+    _ <- eval (AST.Call f ps)
+    return Nothing
 
 execReturnStatement :: [AST.Expr] -> LuaM (Either LuaError [Value])
 execReturnStatement exprs = do

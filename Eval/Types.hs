@@ -28,14 +28,11 @@ data Value where {
 
 type TableData = Map.Map Value Value
 
-type NativeType = String -- todo
-type NativeSignature = [NativeType]
-
 -- I don't think it's supposed to be an existential
 type NativeFunction = [Value] -> LuaM [Value]
 
 data FunctionData = FunctionData { closure :: TableData, topLevelClosure :: TableRef, block :: AST.Block, paramNames :: [String] }
-                  | BuiltinFunction { signature :: NativeSignature, fn :: NativeFunction }
+                  | BuiltinFunction { fn :: NativeFunction }
 
 data Context = Context {
     _gRef :: TableRef,

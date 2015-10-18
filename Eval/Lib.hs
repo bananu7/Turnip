@@ -6,6 +6,10 @@ module Eval.Lib (loadBaseLibrary) where
 import Eval.Types
 import Eval.TH
 import Eval.Util
+import Control.Monad.Except
+
+luaerror [Str err] = throwError err
+luaerror _ = throwError ""
 
 -- math helpers
 deg x = x / pi * 180
@@ -16,6 +20,7 @@ $(do
         ,entry (Sig [NumberT, NumberT] NumberT) "-" '(-)
         ,entry (Sig [NumberT, NumberT] NumberT) "*" '(*)
         ,entry (Sig [NumberT, NumberT] NumberT) "/" '(/)
+
         -- math
         ,entry (Sig [NumberT] NumberT) "math.abs" 'abs
         ,entry (Sig [NumberT] NumberT) "math.acos" 'acos
@@ -38,3 +43,7 @@ $(do
     return $ temps ++ loadLib
  )
 
+loadBaseLibrary :: LuaM ()
+loadBaseLibrary = do
+    loadBaseLibraryGen
+    addNativeFunction "error" (BuiltinFunction luaerror)

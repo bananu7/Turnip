@@ -6,6 +6,7 @@ import Eval.Types
 import Control.Lens
 import qualified Data.Map as Map (lookup)
 import Control.Applicative ((<$>))
+import Data.Map
 
 getFunctionData :: FunctionRef -> LuaM FunctionData
 getFunctionData ref = do
@@ -49,3 +50,17 @@ addNativeFunction name fdata = do
 
     gTabRef <- use gRef
     tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)
+
+makeNewTable :: LuaM TableRef
+makeNewTable = do
+    newRef <- uniqueTableRef
+    tables . at newRef .= Just (fromList [])
+    return newRef
+
+setTableField :: TableRef -> (Value, Value) -> LuaM ()
+setTableField tRef (k,v) = tables . at tRef . traversed %= insert k v
+
+getTableField :: TableRef -> Value -> LuaM Value
+getTableField tRef k = getTableData tRef >>= \t -> case t ^. at k of
+    Just v -> return v
+    Nothing -> return Nil

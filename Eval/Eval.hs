@@ -27,8 +27,13 @@ call (FunctionData cls topCls block names) args = do
     -- for every arg set cls[names[i]] = args[i]
     -- in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
-    result <- execBlock block topCls
-    return result
+    cl <- makeNewTable
+    sequence_ $ zipWith (setArg cl) names args
+    execBlock block cl
+  where
+    setArg :: TableRef -> String -> Value -> LuaM ()
+    setArg cl n v = setTableField cl (Str n, v)
+
 
 eval :: AST.Expr -> LuaM [Value]
 eval (AST.Number n) = return [Number n]

@@ -52,5 +52,7 @@ spec = do
             parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
             parse "if true then return true else return false end"
                 `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
+            parse "if true then return true elseif false then return false end"
+                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
 
 main = hspec spec

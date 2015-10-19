@@ -27,5 +27,7 @@ spec = do
             runParse "if true then return 5 end" `shouldBe` [Number 5.0]
             runParse "if false then return 0 end; return 1" `shouldBe` [Number 1.0]
             runParse "if false then else return 6 end" `shouldBe` [Number 6.0]
+            runParse "if false then elseif true then return 3 end" `shouldBe` [Number 3.0]
+            runParse "if false then elseif false then else return 2 end" `shouldBe` [Number 2.0]
 
 main = hspec spec

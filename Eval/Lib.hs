@@ -8,9 +8,6 @@ import Eval.TH
 import Eval.Util
 import Control.Monad.Except
 
-luaerror [Str err] = throwError err
-luaerror _ = throwError ""
-
 -- math helpers
 deg x = x / pi * 180
 
@@ -43,7 +40,21 @@ $(do
     return $ temps ++ loadLib
  )
 
+-- Polymorphic comparison operators
+luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
+luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
+luaCmpGT xs = throwError "Can't compare those values"
+
+luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
+luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
+luaCmpLT _ = throwError "Can't compare those values"
+
+luaerror [Str err] = throwError err
+luaerror _ = throwError ""
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
+    addNativeFunction ">" (BuiltinFunction luaCmpGT)
+    addNativeFunction "<" (BuiltinFunction luaCmpLT)
     addNativeFunction "error" (BuiltinFunction luaerror)

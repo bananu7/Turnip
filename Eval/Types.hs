@@ -43,3 +43,7 @@ data Context = Context {
 makeLenses ''Context
 
 type LuaError = String
+
+-- |This type represents something that breaks the block execution
+-- and moves up the statement chain.
+data Bubble = BreakBubble | ReturnBubble [Value] | EmptyBubble deriving (Show, Eq)

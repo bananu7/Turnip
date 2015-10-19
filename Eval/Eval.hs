@@ -29,7 +29,11 @@ call (FunctionData cls topCls block names) args = do
     -- (the REST of) the arguments
     cl <- makeNewTable
     sequence_ $ zipWith (setArg cl) names args
-    execBlock block cl
+    res <- execBlock block cl
+    case res of
+        ReturnBubble vs -> return vs
+        _ -> return [Nil]
+
   where
     setArg :: TableRef -> String -> Value -> LuaM ()
     setArg cl n v = setTableField cl (Str n, v)
@@ -95,51 +99,38 @@ eval (AST.UnOp name expr) = eval (AST.Call (AST.Var name) [expr])
 
 --------------
 
-execBlock :: AST.Block -> TableRef -> LuaM [Value]
-execBlock (AST.Block stmts) cls = do
-    mVals <- forM stmts $ \stmt -> do
-        case stmt of
-            -- the only statement that return values is Return
-            AST.Return exprs -> do
-                eitherResult <- execReturnStatement exprs
-                case eitherResult of
-                    Right res -> return $ Just res
-                    Left _ -> return (Nothing :: Maybe [Value])
-            _ -> do
-                maybeError <- execStmt stmt cls
-                return Nothing
+runUntil :: Monad m => [a] -> (a -> m Bubble) -> m Bubble
+runUntil (h:t) f = do
+    r <- f h
+    case r of
+        -- if there was no bubble breaking the block execution
+        -- just move on to the next statement
+        EmptyBubble -> runUntil t f
+        x -> return x
+        
+runUntil [] _ = return EmptyBubble
 
-    let vals = catMaybes mVals
+execBlock :: AST.Block -> TableRef -> LuaM Bubble
+execBlock (AST.Block stmts) cls = runUntil stmts $ \stmt -> do
+    case stmt of
+        -- the only statement that return values is Return
+        AST.Return exprs -> execReturnStatement exprs
+        _ -> execStmt stmt cls
 
-    case vals of
-        (h:_) -> return h
-        [] -> return [Nil]
+execStmt :: AST.Stmt -> TableRef -> LuaM Bubble
 
-        -- if it's a break statement and we're in the loop, we should stop processing this block immediately.
-        -- a break statement outside of the loop should be thrown out at pre-analysis stage, so keeping
-        -- the "in loop" state isn't necessary
+execStmt (AST.If blocks mElseB) cls = do
+    -- if an else block is present, we can append it to the list
+    -- with a predicate that always evals to True.
+    let blocks' = case mElseB of
+                    Just elseB -> blocks ++ [(AST.Bool True, elseB)]
+                    Nothing -> blocks
 
-        -- if it's a return statement the block execution should be stopped as well, and the value returned
-
-        -- if any of the functions raises an error, execution should be stopped
-
-execStmt :: AST.Stmt -> TableRef -> LuaM (Maybe LuaError)
-
-execStmt (AST.If bs elseB) cls = do
-    forM_ bs $ \(expr, b) -> do
+    runUntil blocks' $ \(expr, b) -> do
         result <- coerceToBool <$> eval expr
         if result
-          then do
-            _ <- execBlock b cls
-            return ()
-          else
-            return ()
-
-    return Nothing
-        -- for every elseif block
-        -- eval its condition and exec if met
-
-    -- if "else" block is present, exec it if everything else fails
+          then execBlock b cls
+          else return EmptyBubble
 
 --execStmt (For ...) = do
     -- assign values to cls
@@ -149,20 +140,19 @@ execStmt (AST.If bs elseB) cls = do
 
 execStmt (AST.While e b) cls = do
     result <- coerceToBool <$> eval e
-    if result then do
+    if result then
         execStmt (AST.While e b) cls
-        return Nothing
     else
-        return Nothing
+        return EmptyBubble
     -- if no change has been made to lua state, it can be safely assumed that it's
-    --- an infinite loop
+    -- an infinite loop
 
 -- call statement is a naked call expression with result ignored
 execStmt (AST.CallStmt f ps) cls = do
     _ <- eval (AST.Call f ps)
-    return Nothing
+    return EmptyBubble
 
-execReturnStatement :: [AST.Expr] -> LuaM (Either LuaError [Value])
+execReturnStatement :: [AST.Expr] -> LuaM Bubble
 execReturnStatement exprs = do
     vals <- map head <$> mapM eval exprs
-    return $ Right vals
+    return $ ReturnBubble vals

@@ -27,7 +27,10 @@ runWith b ctx = runState code ctx
 
         code = runEitherT $ do
             loadBaseLibrary
-            execBlock b globalTableRef
+            result <- execBlock b globalTableRef
+            case result of
+                ReturnBubble vs -> right vs
+                _ -> right [Nil]
 
 run :: AST.Block -> Either String [Value]
 run b = fst $ runWith b defaultCtx

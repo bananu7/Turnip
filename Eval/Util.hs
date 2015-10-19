@@ -33,6 +33,8 @@ uniqueTableRef = do
     TableRef <$> use lastId
 
 coerceToBool :: [Value] -> Bool
+coerceToBool (Boolean x:_) = x
+coerceToBool (Nil:_) = False
 coerceToBool (h:_) = True
 coerceToBool _ = False
 

@@ -25,6 +25,7 @@ spec = do
             runParse "return 3 * 8" `shouldBe` [Number 24.0]
         it "should eval if statements" $ do
             runParse "if true then return 5 end" `shouldBe` [Number 5.0]
+            runParse "if false then return 0 end; return 1" `shouldBe` [Number 1.0]
             runParse "if false then else return 6 end" `shouldBe` [Number 6.0]
 
 main = hspec spec

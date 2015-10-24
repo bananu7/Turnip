@@ -30,4 +30,9 @@ spec = do
             runParse "if false then elseif true then return 3 end" `shouldBe` [Number 3.0]
             runParse "if false then elseif false then else return 2 end" `shouldBe` [Number 2.0]
 
+        it "should eval functions" $ do
+            runParse "function f() end; return f()" `shouldBe` [Nil]
+            runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
+            runParse "function f(x) return x end; return f(6)" `shouldBe` [Number 6.0]
+
 main = hspec spec

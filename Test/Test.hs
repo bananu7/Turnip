@@ -16,6 +16,7 @@ spec = do
         it "should parse simple assignments" $ do
             parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
             parse "x = y" `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
+            parse "f = function() end" `shouldBe` Block [Assignment [LVar "f"] [Lambda [] $ Block []]]
 
         it "should parse multiple assignments" $ do
             parse "x,y=1,2" `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])

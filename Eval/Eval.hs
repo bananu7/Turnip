@@ -47,9 +47,11 @@ eval AST.Nil = return [Nil]
 eval AST.Ellipsis = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
-eval (AST.Lambda argNames b) = do
-    _G <- getGlobalTable
-    return [Nil]
+eval (AST.Lambda parNames b) = do
+    g <- use gRef
+    newRef <- uniqueFunctionRef
+    functions . at newRef .= (Just $ FunctionData (Map.fromList []) g b parNames)
+    return [Function newRef]
 
 eval (AST.Var name) = do
     _G <- getGlobalTable
@@ -61,8 +63,7 @@ eval (AST.Var name) = do
 
 eval (AST.Call fn args) = do
     -- theoretically always a Nil should be returned, but
-    -- it's not in the type system yet. Big TODO on [Values]
-    -- custom type - perhaps called ValuePack?
+    -- it's not in the type system yet. (wrt head)
     argVs <- map head <$> mapM eval args
     fnV <- eval fn
 
@@ -114,7 +115,7 @@ execBlock :: AST.Block -> TableRef -> LuaM Bubble
 execBlock (AST.Block stmts) cls = runUntil stmts $ \stmt -> do
     case stmt of
         -- the only statement that return values is Return
-        AST.Return exprs -> execReturnStatement exprs
+        AST.Return exprs -> execReturnStatement exprs cls
         _ -> execStmt stmt cls
 
 execStmt :: AST.Stmt -> TableRef -> LuaM Bubble

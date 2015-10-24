@@ -25,6 +25,7 @@ spec = do
         it "should parse assignments using tables" $ do
             parse "t[i] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (Var "i")] [Var "v"]])
             parse "t[u[i]] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (FieldRef (Var "u") (Var "i"))] [Var "v"]])
+            parse "t[i][u] = v" `shouldBe` Block [Assignment [LFieldRef (FieldRef (Var "t") (Var "i")) (Var "u")] [Var "v"]]
 
         it "should parse simple comparisons" $ do
             mapM_ (\op -> (parse $ "return 1 " ++ op ++ " 2") 
@@ -53,6 +54,6 @@ spec = do
             parse "if true then return true else return false end"
                 `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
             parse "if true then return true elseif false then return false end"
-                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
+                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])       
 
 main = hspec spec

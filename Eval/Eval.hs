@@ -152,6 +152,31 @@ execStmt (AST.CallStmt f ps) cls = do
     _ <- eval (AST.Call f ps)
     return EmptyBubble
 
+
+-- this is a special case of an unpacking assignment
+execStmt (AST.Assignment lvals [expr]) cls = do
+    vals <- eval expr
+    -- fill in the missing Nil-s for zip
+    let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
+
+    sequence_ $ zipWith assignLValue lvals vals
+    return EmptyBubble
+
+
+assignLValue :: AST.LValue -> Value -> LuaM ()
+assignLValue (AST.LVar name) v = do
+    g <- use gRef
+    setTableField g (Str name, v)
+
+assignLValue (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
+
+{-
+executionStmt (AST.Assignment lvals exprs) = do
+    sequence_ $ zipWith assigner lvals exprs
+  where
+    assigner (LVar lval val = do
+-}
+
 execReturnStatement :: [AST.Expr] -> LuaM Bubble
 execReturnStatement exprs = do
     vals <- map head <$> mapM eval exprs

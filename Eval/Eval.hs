@@ -14,6 +14,24 @@ import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.Except
 
+-- This function fills in the Nil for the missing Value
+extractVal :: Maybe Value -> Value
+extractVal (Just v) = v
+extractVal Nothing = Nil
+
+-- This is a stack of tables forming a stack of nested closures
+type Closure = [TableData]
+closureLookup :: Value -> Closure -> LuaM Value
+-- descend recursively with lookups, picking the closest name first
+closureLookup v (topCls:cls) = case Map.lookup v topCls of
+    Just val -> return val
+    Nothing -> closureLookup v cls
+-- if closure lookup fails, try global lookup
+closureLookup v _ = do  
+    _G <- getGlobalTable
+    let mVal = Map.lookup v _G
+    return $ extractVal mVal
+
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction fn) args = do
     -- ensure args match signature
@@ -27,9 +45,12 @@ call (FunctionData cls topCls block names) args = do
     -- for every arg set cls[names[i]] = args[i]
     -- in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
-    cl <- makeNewTable
+    let cl = cls
+
+    -- this should be moved to LuaM so that the closure setting could
+    -- actually be monadic
     sequence_ $ zipWith (setArg cl) names args
-    res <- execBlock block cl
+    res <- execBlock block ()
     case res of
         ReturnBubble vs -> return vs
         _ -> return [Nil]
@@ -39,33 +60,32 @@ call (FunctionData cls topCls block names) args = do
     setArg cl n v = setTableField cl (Str n, v)
 
 
-eval :: AST.Expr -> LuaM [Value]
-eval (AST.Number n) = return [Number n]
-eval (AST.StringLiteral _ str) = return [Str str]
-eval (AST.Bool b) = return [Boolean b]
-eval AST.Nil = return [Nil]
-eval AST.Ellipsis = throwError "how do you even eval ellipsis"
+eval :: AST.Expr -> Closure -> LuaM [Value]
+-- Literals don't use the closure parameter
+eval (AST.Number n) _ = return [Number n]
+eval (AST.StringLiteral _ str) _ = return [Str str]
+eval (AST.Bool b) _ = return [Boolean b]
+eval AST.Nil _ = return [Nil]
+
+-- In order to eval ellipsis, the closure needs to differentiate between
+-- outer local variables and parameters
+eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
-eval (AST.Lambda parNames b) = do
+eval (AST.Lambda parNames b) _ = do
     g <- use gRef
     newRef <- uniqueFunctionRef
     functions . at newRef .= (Just $ FunctionData (Map.fromList []) g b parNames)
     return [Function newRef]
 
-eval (AST.Var name) = do
-    _G <- getGlobalTable
 
-    let mVal = Map.lookup (Str name) _G
-    case mVal of
-        Just val -> return [val]
-        Nothing -> return [Nil]
+eval (AST.Var name) cls = (:[]) <$> closureLookup (Str name) cls
 
-eval (AST.Call fn args) = do
+eval (AST.Call fn args) cls = do
     -- theoretically always a Nil should be returned, but
     -- it's not in the type system yet. (wrt head)
-    argVs <- map head <$> mapM eval args
-    fnV <- eval fn
+    argVs <- map head <$> mapM (\a -> eval a cls) args
+    fnV <- eval fn cls
 
     case fnV of 
         (Function ref:_) -> do
@@ -73,30 +93,27 @@ eval (AST.Call fn args) = do
             call fData argVs
         x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
-eval (AST.FieldRef t k) = do
-    tv <- eval t
+eval (AST.FieldRef t k) cls = do
+    tv <- eval t cls
 
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
     case head tv of
         (Table tRef) -> do
             -- similarly here
-            kV <- head <$> eval k
+            kV <- head <$> eval k cls
 
             t <- getTableData tRef
             let mVal :: Maybe Value = t ^. at kV
-
-            case mVal of
-                Just v -> return [v]
-                Nothing -> return [Nil]
+            return $ [extractVal mVal]
 
         _ -> throwError "Trying to index a non-table"
 
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
-eval (AST.BinOp name lhs rhs) = eval (AST.Call (AST.Var name) [lhs, rhs])
-eval (AST.UnOp name expr) = eval (AST.Call (AST.Var name) [expr])
+eval (AST.BinOp name lhs rhs) cls = eval (AST.Call (AST.Var name) [lhs, rhs]) cls
+eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
 
 --------------
 
@@ -111,14 +128,14 @@ runUntil (h:t) f = do
         
 runUntil [] _ = return EmptyBubble
 
-execBlock :: AST.Block -> TableRef -> LuaM Bubble
+execBlock :: AST.Block -> Closure -> LuaM Bubble
 execBlock (AST.Block stmts) cls = runUntil stmts $ \stmt -> do
     case stmt of
         -- the only statement that return values is Return
         AST.Return exprs -> execReturnStatement exprs cls
         _ -> execStmt stmt cls
 
-execStmt :: AST.Stmt -> TableRef -> LuaM Bubble
+execStmt :: AST.Stmt -> Closure -> LuaM Bubble
 
 execStmt (AST.If blocks mElseB) cls = do
     -- if an else block is present, we can append it to the list
@@ -128,7 +145,7 @@ execStmt (AST.If blocks mElseB) cls = do
                     Nothing -> blocks
 
     runUntil blocks' $ \(expr, b) -> do
-        result <- coerceToBool <$> eval expr
+        result <- coerceToBool <$> eval expr cls
         if result
           then execBlock b cls
           else return EmptyBubble
@@ -178,7 +195,7 @@ executionStmt (AST.Assignment lvals exprs) = do
     assigner (LVar lval val = do
 -}
 
-execReturnStatement :: [AST.Expr] -> LuaM Bubble
-execReturnStatement exprs = do
+execReturnStatement :: [AST.Expr] -> TableRef -> LuaM Bubble
+execReturnStatement exprs cls = do
     vals <- map head <$> mapM eval exprs
     return $ ReturnBubble vals

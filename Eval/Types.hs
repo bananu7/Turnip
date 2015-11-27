@@ -31,7 +31,7 @@ type TableData = Map.Map Value Value
 -- I don't think it's supposed to be an existential
 type NativeFunction = [Value] -> LuaM [Value]
 
-data FunctionData = FunctionData { closure :: TableData, topLevelClosure :: TableRef, block :: AST.Block, paramNames :: [String] }
+data FunctionData = FunctionData { closure :: TableData, block :: AST.Block, paramNames :: [String] }
                   | BuiltinFunction { fn :: NativeFunction }
 
 data Context = Context {

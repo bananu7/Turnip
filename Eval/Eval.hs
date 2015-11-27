@@ -41,23 +41,20 @@ call (BuiltinFunction fn) args = do
     -- possibly with liftIO
     return result
 
-call (FunctionData cls topCls block names) args = do
+call (FunctionData cls block names) args = do
     -- for every arg set cls[names[i]] = args[i]
     -- in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
 
     -- this should be moved to LuaM so that the closure setting could
     -- actually be monadic
-    let cl' = foldl1 setArg cls $ zip names args
+    let topCl = Map.fromList $ zip (map Str names) args
+    let clsWithArgs = [topCl, cls]
 
-    res <- execBlock block ()
+    res <- execBlock block clsWithArgs
     case res of
         ReturnBubble vs -> return vs
         _ -> return [Nil]
-
-  where
-    setArg :: Closure -> (String, Value) -> Closure
-    setArg cl (n, v) = Map.insert cl n v
 
 
 eval :: AST.Expr -> Closure -> LuaM [Value]
@@ -75,7 +72,7 @@ eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
 eval (AST.Lambda parNames b) _ = do
     g <- use gRef
     newRef <- uniqueFunctionRef
-    functions . at newRef .= (Just $ FunctionData (Map.fromList []) g b parNames)
+    functions . at newRef .= (Just $ FunctionData (Map.fromList []) b parNames)
     return [Function newRef]
 
 
@@ -157,7 +154,7 @@ execStmt (AST.If blocks mElseB) cls = do
     -- change the local value of index in cls and go to beginning
 
 execStmt (AST.While e b) cls = do
-    result <- coerceToBool <$> eval e
+    result <- coerceToBool <$> eval e cls
     if result then
         execStmt (AST.While e b) cls
     else
@@ -167,13 +164,13 @@ execStmt (AST.While e b) cls = do
 
 -- call statement is a naked call expression with result ignored
 execStmt (AST.CallStmt f ps) cls = do
-    _ <- eval (AST.Call f ps)
+    _ <- eval (AST.Call f ps) cls
     return EmptyBubble
 
 
 -- this is a special case of an unpacking assignment
 execStmt (AST.Assignment lvals [expr]) cls = do
-    vals <- eval expr
+    vals <- eval expr cls
     -- fill in the missing Nil-s for zip
     let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
 
@@ -195,7 +192,7 @@ executionStmt (AST.Assignment lvals exprs) = do
     assigner (LVar lval val = do
 -}
 
-execReturnStatement :: [AST.Expr] -> TableRef -> LuaM Bubble
+execReturnStatement :: [AST.Expr] -> Closure -> LuaM Bubble
 execReturnStatement exprs cls = do
-    vals <- map head <$> mapM eval exprs
+    vals <- map head <$> mapM (\e -> eval e cls) exprs
     return $ ReturnBubble vals

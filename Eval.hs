@@ -27,7 +27,7 @@ runWith b ctx = runState code ctx
 
         code = runEitherT $ do
             loadBaseLibrary
-            result <- execBlock b globalTableRef
+            result <- execBlock b []
             case result of
                 ReturnBubble vs -> right vs
                 _ -> right [Nil]

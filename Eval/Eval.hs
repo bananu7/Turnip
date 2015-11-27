@@ -45,19 +45,19 @@ call (FunctionData cls topCls block names) args = do
     -- for every arg set cls[names[i]] = args[i]
     -- in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
-    let cl = cls
 
     -- this should be moved to LuaM so that the closure setting could
     -- actually be monadic
-    sequence_ $ zipWith (setArg cl) names args
+    let cl' = foldl1 setArg cls $ zip names args
+
     res <- execBlock block ()
     case res of
         ReturnBubble vs -> return vs
         _ -> return [Nil]
 
   where
-    setArg :: TableRef -> String -> Value -> LuaM ()
-    setArg cl n v = setTableField cl (Str n, v)
+    setArg :: Closure -> (String, Value) -> Closure
+    setArg cl (n, v) = Map.insert cl n v
 
 
 eval :: AST.Expr -> Closure -> LuaM [Value]

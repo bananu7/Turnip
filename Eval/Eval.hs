@@ -173,20 +173,42 @@ execStmt (AST.CallStmt f ps) cls = do
 -- this is a special case of an unpacking assignment
 execStmt (AST.Assignment lvals [expr]) cls = do
     vals <- eval expr cls
+    execAssignment cls lvals vals
+    return EmptyBubble
+
+-- this is "regular" multiple assignment
+execStmt (AST.Assignment lvals exprs) cls = do
+    -- this takes the first value of every expression
+    -- it only happens when there are more than 1 expr on rhs
+    vals <- mapM (\e -> head <$> eval e cls) exprs
+    execAssignment cls lvals vals
+    return EmptyBubble
+
+-- LocalDef is very similar to regular assignment
+execStmt (AST.LocalDef names exprs) cls = do
+    -- we need to turn the names into LValues, and it's done by mapping LVar
+    let lvals = map AST.LVar names
+    vals <- mapM (\e -> head <$> eval e cls) exprs
+    execAssignment cls lvals vals
+    return EmptyBubble
+
+-- this is a simple helper that picks either top level closure or global table
+assignmentTarget :: Closure -> LuaM TableRef
+assignmentTarget [] = use gRef
+assignmentTarget (cls:_) = return cls
+
+execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
+execAssignment cls lvals vals = do
+    target <- assignmentTarget cls
     -- fill in the missing Nil-s for zip
     let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
 
-    sequence_ $ zipWith assignLValue lvals vals
-    return EmptyBubble
+    sequence_ $ zipWith (assignLValue target) lvals vals
 
-execStmt (AST.LocalDef {}) cls = error "This needs to write to top closure level, meaning closures need to be in LuaM"
+assignLValue :: TableRef -> AST.LValue -> Value -> LuaM ()
+assignLValue ref (AST.LVar name) v = setTableField ref (Str name, v)
 
-assignLValue :: AST.LValue -> Value -> LuaM ()
-assignLValue (AST.LVar name) v = do
-    g <- use gRef
-    setTableField g (Str name, v)
-
-assignLValue (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
+assignLValue ref (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
 
 {-
 executionStmt (AST.Assignment lvals exprs) = do

@@ -32,6 +32,10 @@ closureLookup v _ = do
     let mVal = Map.lookup v _G
     return $ extractVal mVal
 
+flattenClosure :: Closure -> TableData
+flattenClosure [] = Map.empty
+flattenClosure (h:t) = foldl Map.union h t
+
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction fn) args = do
     -- ensure args match signature
@@ -69,10 +73,10 @@ eval AST.Nil _ = return [Nil]
 eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
-eval (AST.Lambda parNames b) _ = do
+eval (AST.Lambda parNames b) cls = do
     g <- use gRef
     newRef <- uniqueFunctionRef
-    functions . at newRef .= (Just $ FunctionData (Map.fromList []) b parNames)
+    functions . at newRef .= (Just $ FunctionData (flattenClosure cls) b parNames)
     return [Function newRef]
 
 

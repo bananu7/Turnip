@@ -35,4 +35,9 @@ spec = do
             runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
             runParse "function f(x) return x end; return f(6)" `shouldBe` [Number 6.0]
 
+        it "should eval more complex functions" $ do
+            runParse "function add(a,b) return a+b end; return add(3,4)" `shouldBe` [Number 7.0]
+            runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
+            runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
+
 main = hspec spec

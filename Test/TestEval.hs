@@ -40,4 +40,7 @@ spec = do
             runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
             runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
 
+        --it "should properly scope locals" $ do
+        --    runParse "x = 1; function f() local x = 2; return x end; f()" `shouldBe` [Number 2.0]
+
 main = hspec spec

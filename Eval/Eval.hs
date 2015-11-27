@@ -181,6 +181,7 @@ execStmt (AST.Assignment lvals [expr]) cls = do
     sequence_ $ zipWith assignLValue lvals vals
     return EmptyBubble
 
+execStmt (AST.LocalDef {}) cls = error "This needs to write to top closure level, meaning closures need to be in LuaM"
 
 assignLValue :: AST.LValue -> Value -> LuaM ()
 assignLValue (AST.LVar name) v = do

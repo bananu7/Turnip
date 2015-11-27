@@ -47,6 +47,7 @@ instance Show Stmt where
       where
         elseIfBlocksStr = concatMap (("\nelseif " ++) . show) elseIfBlocks
         elseBlockStr = maybe "" (("\nelse " ++) . show) elseBlock
+    show (LocalDef names exprs) = "local " ++ (intercalate "," names) ++ " = " ++ (intercalate "," $ map show exprs)
 
 
 data ForGen = ForNum Expr Expr (Maybe Expr)

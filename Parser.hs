@@ -67,6 +67,7 @@ stat = choice [
     repeatStmt,
     ifStmt,
     funcStmt,
+    localStmt,
     assignOrCallStmt
 --    simpleExpr
     ]
@@ -140,6 +141,24 @@ funcBody = do
     b <- block 
     reserved "end"
     return $ (Block b) 
+
+localStmt :: Parser Stmt
+localStmt = reserved "local" >> (localFuncStmt <|> localAssignStmt)
+    where
+        localFuncStmt = do
+            reserved "function"
+            -- regular function names aren't allowed here,
+            -- because local functions can't be methods (with dots inside)
+            fname <- identifier
+            fparams <- paramList
+            fbody <- funcBody
+            return $ LocalDef [fname] [Lambda fparams fbody]
+
+        localAssignStmt = do
+            names <- namelist
+            symbol "="
+            vals <- explist
+            return $ LocalDef names vals
 
 assignOrCallStmt :: Parser Stmt
 assignOrCallStmt = do

@@ -43,5 +43,20 @@ spec = do
         it "should properly scope locals" $ do
             runParse "x = 1; function f() local x = 2; return x end; return f()" `shouldBe` [Number 2.0]
             runParse "function f() local x = 2; local function g() return x end; return g; end; return f()()" `shouldBe` [Number 2.0]
+            runParse (unlines [
+                 "function f()"
+                ,"  local x = 2;"
+                ,"  local function g()"
+                ,"    x = 3"
+                ,"  end"
+                ,"  local function h()"
+                ,"    return x"
+                ,"  end"
+                ,"  return g, h"
+                ,"end"
+                ,"g,h = f();"
+                ,"g();"
+                ,"return h();"])
+                 `shouldBe` [Number 3.0]
 
 main = hspec spec

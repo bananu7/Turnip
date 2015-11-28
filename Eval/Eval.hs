@@ -193,20 +193,30 @@ execStmt (AST.LocalDef names exprs) cls = do
     return EmptyBubble
 
 -- this is a simple helper that picks either top level closure or global table
-assignmentTarget :: Closure -> LuaM TableRef
-assignmentTarget [] = use gRef
-assignmentTarget (cls:_) = return cls
+assignmentTarget :: Closure -> AST.LValue -> LuaM TableRef
+assignmentTarget [] _ = use gRef
+-- before choosing local closure for assignment, we should first check
+-- whether the value doesn't exist in the closure
+-- this is essentially the core of lexical scoping, I suppose
+assignmentTarget (topCls:cls) (AST.LVar name) = do
+    t <- getTableData topCls
+    case Map.lookup (Str name) t of
+        -- if the name appears in the closure, we assign to this one
+        (Just _) -> return topCls
+        -- otherwise we try going down the stack
+        Nothing -> assignmentTarget cls (AST.LVar name)
 
 execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
 execAssignment cls lvals vals = do
-    target <- assignmentTarget cls
     -- fill in the missing Nil-s for zip
     let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
 
-    sequence_ $ zipWith (assignLValue target) lvals vals
+    sequence_ $ zipWith (assignLValue cls) lvals vals
 
-assignLValue :: TableRef -> AST.LValue -> Value -> LuaM ()
-assignLValue ref (AST.LVar name) v = setTableField ref (Str name, v)
+assignLValue :: Closure -> AST.LValue -> Value -> LuaM ()
+assignLValue cls (AST.LVar name) v = do
+    target <- assignmentTarget cls (AST.LVar name)
+    setTableField target (Str name, v)
 
 assignLValue ref (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
 

@@ -185,11 +185,16 @@ execStmt (AST.Assignment lvals exprs) cls = do
     return EmptyBubble
 
 -- LocalDef is very similar to regular assignment
-execStmt (AST.LocalDef names exprs) cls = do
+execStmt (AST.LocalDecl names) cls = do
     -- we need to turn the names into LValues, and it's done by mapping LVar
-    let lvals = map AST.LVar names
-    vals <- mapM (\e -> head <$> eval e cls) exprs
-    execAssignment cls lvals vals
+    declTarget :: TableRef <- case cls of
+        (topCls:_) -> pure topCls
+        _ -> use gRef
+
+    -- we have to force using this target here to create new names
+    -- in the top level closure; assignmentTarget only uses existing ones
+    mapM_ (\name -> setTableField declTarget (Str name, Nil)) names
+
     return EmptyBubble
 
 -- this is a simple helper that picks either top level closure or global table

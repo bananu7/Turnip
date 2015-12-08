@@ -33,7 +33,7 @@ data Stmt = Do Block
           | Break
           | For [Name] ForGen Block
           | Assignment [LValue] [Expr]
-          | LocalDef [Name] [Expr]
+          | LocalDecl [Name]
           | CallStmt Expr [Expr]
           deriving Eq
 
@@ -47,7 +47,7 @@ instance Show Stmt where
       where
         elseIfBlocksStr = concatMap (("\nelseif " ++) . show) elseIfBlocks
         elseBlockStr = maybe "" (("\nelse " ++) . show) elseBlock
-    show (LocalDef names exprs) = "local " ++ (intercalate "," names) ++ " = " ++ (intercalate "," $ map show exprs)
+    show (LocalDecl names) = "local " ++ (intercalate "," names)
 
 
 data ForGen = ForNum Expr Expr (Maybe Expr)

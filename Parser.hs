@@ -8,7 +8,7 @@ import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language
 import Data.List
 import Control.Exception (throw)
-import Control.Monad (when, liftM)
+import Control.Monad (when, liftM, join)
 import Control.Applicative ((<$>), (<*>))
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
@@ -44,10 +44,13 @@ program = do
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon -
 block :: Parser [Stmt]
-block = many $ do
-    s <- stat <|> laststat -- Not correct, could have many laststatements
-    optional semi
-    return s
+block = concat <$> many (regularStmt <|> localStmt)
+  where 
+    regularStmt :: Parser [Stmt]
+    regularStmt = do
+        s <- stat <|> laststat -- Not correct, could have many laststatements
+        optional semi
+        return [s]
 
 -- Return will return some list of expressions, or an empty list of expressions. 
 laststat :: Parser Stmt
@@ -67,7 +70,6 @@ stat = choice [
     repeatStmt,
     ifStmt,
     funcStmt,
-    localStmt,
     assignOrCallStmt
 --    simpleExpr
     ]
@@ -142,7 +144,16 @@ funcBody = do
     reserved "end"
     return $ (Block b) 
 
-localStmt :: Parser Stmt
+{-
+I've decided to desugar local statements to something much easier to eval. Thus:
+   local x = 5
+becomes
+   local x
+   x = 5
+Which thanks to closure local scoping will be properly assigned.
+This however requires localStmt to emit more than one statement
+-}
+localStmt :: Parser [Stmt]
 localStmt = reserved "local" >> (localFuncStmt <|> localAssignStmt)
     where
         localFuncStmt = do
@@ -152,13 +163,21 @@ localStmt = reserved "local" >> (localFuncStmt <|> localAssignStmt)
             fname <- identifier
             fparams <- paramList
             fbody <- funcBody
-            return $ LocalDef [fname] [Lambda fparams fbody]
+            optional semi
+            return $ [
+                LocalDecl [fname],
+                Assignment [LVar fname] [Lambda fparams fbody]
+                ]
 
         localAssignStmt = do
             names <- namelist
             symbol "="
             vals <- explist
-            return $ LocalDef names vals
+            optional semi
+            return $ [
+                LocalDecl names,
+                Assignment (map LVar names) vals
+                ]
 
 assignOrCallStmt :: Parser Stmt
 assignOrCallStmt = do

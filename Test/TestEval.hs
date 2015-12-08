@@ -59,4 +59,14 @@ spec = do
                 ,"return h();"])
                  `shouldBe` [Number 3.0]
 
+        it "should properly prefer local assignment" $ do
+            runParse (unlines [
+                 "x = 1"
+                ,"function f()"
+                ,"  local x = 2"
+                ,"end"
+                ,"f()"
+                ,"return x"
+                ]) `shouldBe` [Number 1.0]
+
 main = hspec spec

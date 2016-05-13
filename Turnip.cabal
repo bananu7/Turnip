@@ -71,7 +71,7 @@ library
                      , template-haskell
                      , either
   
-  ghc-options: -ddump-splices -ddump-to-file
+  ghc-options: -ddump-splices -ddump-to-file -Wall
 
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -90,6 +90,7 @@ executable main
                        , lens
                        , template-haskell
                        , either
+                       , Turnip
 
 test-suite test
     type: exitcode-stdio-1.0

@@ -7,9 +7,6 @@ import Text.ParserCombinators.Parsec.Expr
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language
 import Data.List
-import Control.Exception (throw)
-import Control.Monad (when, liftM, join)
-import Control.Applicative ((<$>), (<*>))
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
 -- thus separating the IO from the AST
@@ -18,13 +15,16 @@ import Control.Applicative ((<$>), (<*>))
 fromRight :: Either a b -> b
 fromRight (Right b)= b
 
+loadAST :: String -> IO Block
 loadAST fname = do
     anAST <- parseFromFile program fname
     return $ fromRight anAST
 
+parseLua :: String -> Either ParseError Block
 parseLua text = parse program "" text
 
 -- This is for parser testing
+prettyLuaFromFile :: FilePath -> IO ()
 prettyLuaFromFile fname = do
     input <- readFile fname
     putStr input
@@ -110,8 +110,8 @@ ifStmt = do
 
     elseBlock <- optionMaybe $ do
         reserved "else"
-        b <- block
-        return (Block b)
+        b' <- block
+        return (Block b')
 
     reserved "end"
     return $ If ((e, Block b) : elseIfBlocks) elseBlock
@@ -200,9 +200,6 @@ assignStmt lhs = do
     vals <- explist
     return $ Assignment (reverse lhs) vals
 
---simpleExpr :: Expr -> Stmt 
---simpleExpr = do{ e <- exp_exp; return Simple e}
-
 lvalue = do
     ex <- primaryexp
     tolvar ex
@@ -212,10 +209,6 @@ tolvar ex = do
         (Var n) -> return $ LVar n
         (FieldRef t f) -> return $ LFieldRef t f
         _ -> fail "Invalid lvalue"
-
--- Var list and name list are variables and identifiers separated by commas --
-varlist :: Parser [Expr]
-varlist = commaSep1 var
 
 namelist :: Parser [Name]
 namelist = commaSep1 identifier
@@ -257,19 +250,6 @@ funcname = do
 
 explist :: Parser [Expr]
 explist = commaSep1 expr
-
--- |A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
-var :: Parser Expr
-var = do
-    i <- identifier
-    return (Var i)
---  <|> do{ prefixexp
---        ; brackets exp_exp
---        }
---  <|> do{ prefixexp
---        ; dot
- --       ; identifier
- --       }
 
 tableconstructor = liftM TableCons $ braces fieldlist
 

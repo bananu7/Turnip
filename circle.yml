@@ -12,7 +12,7 @@ dependencies:
     - tar -xzvf stack.gz
     - sudo mv stack-1.0.4.1-linux-x86_64/stack /usr/bin/stack
     - chmod +x /usr/bin/stack
-    - cd ~/Hate
+    - cd ~/Turnip
   override:
     - stack setup
     - stack build

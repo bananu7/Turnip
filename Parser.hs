@@ -14,7 +14,7 @@ import Control.Monad (liftM)
 
 --screw it, do it live
 fromRight :: Either a b -> b
-fromRight (Right b)= b
+fromRight (Right b) = b
 
 loadAST :: String -> IO Block
 loadAST fname = do
@@ -72,7 +72,6 @@ stat = choice [
     ifStmt,
     funcStmt,
     assignOrCallStmt
---    simpleExpr
     ]
 
 doStmt :: Parser Stmt
@@ -222,7 +221,6 @@ prefixexp = choice [
 args = (parens $ option [] explist)
     <|> (liftM (:[]) $ tableconstructor)
     <|> (getPosition >>= \pos -> liftM (\s -> [StringLiteral pos s]) $ stringl)
---   <|> stringl
 
 functioncall = do
     prefixexp
@@ -239,15 +237,6 @@ funcname = do
     n1 <- fmap (intercalate ".") (sepBy identifier dot)
     n2 <- optionMaybe (colon >> identifier)
     return (n1,n2)
-
---    = do{ sepBy identifier dot 
---        ; optionMaybe (do{colon;identifier})
---        }
-
---function :: Parser Expr
---function = do{function; funcbody}
-
-
 
 explist :: Parser [Expr]
 explist = commaSep1 expr

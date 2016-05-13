@@ -7,9 +7,7 @@ import Text.ParserCombinators.Parsec.Expr
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language
 import Data.List
-import Control.Exception (throw)
-import Control.Monad (when, liftM)
-import Control.Applicative ((<$>), (<*>))
+import Control.Monad (liftM)
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
 -- thus separating the IO from the AST
@@ -18,13 +16,16 @@ import Control.Applicative ((<$>), (<*>))
 fromRight :: Either a b -> b
 fromRight (Right b)= b
 
+loadAST :: String -> IO Block
 loadAST fname = do
     anAST <- parseFromFile program fname
     return $ fromRight anAST
 
+parseLua :: String -> Either ParseError Block
 parseLua text = parse program "" text
 
 -- This is for parser testing
+prettyLuaFromFile :: FilePath -> IO ()
 prettyLuaFromFile fname = do
     input <- readFile fname
     putStr input
@@ -44,10 +45,13 @@ program = do
 
 -- A block/chunk is a series of statements, optionally delimited by a semicolon -
 block :: Parser [Stmt]
-block = many $ do
-    s <- stat <|> laststat -- Not correct, could have many laststatements
-    optional semi
-    return s
+block = concat <$> many (regularStmt <|> localStmt)
+  where 
+    regularStmt :: Parser [Stmt]
+    regularStmt = do
+        s <- stat <|> laststat -- Not correct, could have many laststatements
+        optional semi
+        return [s]
 
 -- Return will return some list of expressions, or an empty list of expressions. 
 laststat :: Parser Stmt
@@ -107,8 +111,8 @@ ifStmt = do
 
     elseBlock <- optionMaybe $ do
         reserved "else"
-        b <- block
-        return (Block b)
+        b' <- block
+        return (Block b')
 
     reserved "end"
     return $ If ((e, Block b) : elseIfBlocks) elseBlock
@@ -141,6 +145,41 @@ funcBody = do
     reserved "end"
     return $ (Block b) 
 
+{-
+I've decided to desugar local statements to something much easier to eval. Thus:
+   local x = 5
+becomes
+   local x
+   x = 5
+Which thanks to closure local scoping will be properly assigned.
+This however requires localStmt to emit more than one statement
+-}
+localStmt :: Parser [Stmt]
+localStmt = reserved "local" >> (localFuncStmt <|> localAssignStmt)
+    where
+        localFuncStmt = do
+            reserved "function"
+            -- regular function names aren't allowed here,
+            -- because local functions can't be methods (with dots inside)
+            fname <- identifier
+            fparams <- paramList
+            fbody <- funcBody
+            optional semi
+            return $ [
+                LocalDecl [fname],
+                Assignment [LVar fname] [Lambda fparams fbody]
+                ]
+
+        localAssignStmt = do
+            names <- namelist
+            symbol "="
+            vals <- explist
+            optional semi
+            return $ [
+                LocalDecl names,
+                Assignment (map LVar names) vals
+                ]
+
 assignOrCallStmt :: Parser Stmt
 assignOrCallStmt = do
     ex <- primaryexp
@@ -162,9 +201,6 @@ assignStmt lhs = do
     vals <- explist
     return $ Assignment (reverse lhs) vals
 
---simpleExpr :: Expr -> Stmt 
---simpleExpr = do{ e <- exp_exp; return Simple e}
-
 lvalue = do
     ex <- primaryexp
     tolvar ex
@@ -174,10 +210,6 @@ tolvar ex = do
         (Var n) -> return $ LVar n
         (FieldRef t f) -> return $ LFieldRef t f
         _ -> fail "Invalid lvalue"
-
--- Var list and name list are variables and identifiers separated by commas --
-varlist :: Parser [Expr]
-varlist = commaSep1 var
 
 namelist :: Parser [Name]
 namelist = commaSep1 identifier
@@ -219,19 +251,6 @@ funcname = do
 
 explist :: Parser [Expr]
 explist = commaSep1 expr
-
--- |A variable is either an identifier, a value of a certain index in a table, third option is syntactic sugar for table access
-var :: Parser Expr
-var = do
-    i <- identifier
-    return (Var i)
---  <|> do{ prefixexp
---        ; brackets exp_exp
---        }
---  <|> do{ prefixexp
---        ; dot
- --       ; identifier
- --       }
 
 tableconstructor = liftM TableCons $ braces fieldlist
 

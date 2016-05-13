@@ -4,7 +4,7 @@ module Eval.Util where
 
 import Eval.Types
 import Control.Lens
-import qualified Data.Map as Map (lookup)
+import qualified Data.Map as Map (lookup, empty)
 import Control.Applicative ((<$>))
 import Data.Map
 
@@ -53,11 +53,14 @@ addNativeFunction name fdata = do
     gTabRef <- use gRef
     tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)
 
-makeNewTable :: LuaM TableRef
-makeNewTable = do
+makeNewTableWith :: TableData -> LuaM TableRef
+makeNewTableWith initial = do
     newRef <- uniqueTableRef
-    tables . at newRef .= Just (fromList [])
+    tables . at newRef .= Just initial
     return newRef
+
+makeNewTable :: LuaM TableRef
+makeNewTable = makeNewTableWith Map.empty
 
 setTableField :: TableRef -> (Value, Value) -> LuaM ()
 setTableField tRef (k,v) = tables . at tRef . traversed %= insert k v

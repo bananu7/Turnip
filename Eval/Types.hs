@@ -11,6 +11,7 @@ import qualified LuaAS as AST (Block)
 import Control.Applicative
 import Control.Monad.Except
 
+-- TODO - think about reference counting on those
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
@@ -31,7 +32,10 @@ type TableData = Map.Map Value Value
 -- I don't think it's supposed to be an existential
 type NativeFunction = [Value] -> LuaM [Value]
 
-data FunctionData = FunctionData { closure :: TableData, block :: AST.Block, paramNames :: [String] }
+-- This is a stack of tables forming a stack of nested closures
+type Closure = [TableRef]
+
+data FunctionData = FunctionData { closure :: Closure, block :: AST.Block, paramNames :: [String] }
                   | BuiltinFunction { fn :: NativeFunction }
 
 data Context = Context {

@@ -55,6 +55,11 @@ spec = do
             parse "if true then return true else return false end"
                 `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
             parse "if true then return true elseif false then return false end"
-                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])       
+                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
+
+        it "should parse local definitions" $ do
+            parse "local x = 5" `shouldBe` Block [LocalDecl ["x"], Assignment [LVar "x"] [Number 5.0]]
+            parse "local a,b = 1,2" `shouldBe` Block [LocalDecl ["a", "b"], Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0]]
+            parse "local function f() end" `shouldBe` Block [LocalDecl ["f"], Assignment [LVar "f"] [Lambda [] (Block [])]]
 
 main = hspec spec

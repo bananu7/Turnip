@@ -40,4 +40,33 @@ spec = do
             runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
             runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
 
+        it "should properly scope locals" $ do
+            runParse "x = 1; function f() local x = 2; return x end; return f()" `shouldBe` [Number 2.0]
+            runParse "function f() local x = 2; local function g() return x end; return g; end; return f()()" `shouldBe` [Number 2.0]
+            runParse (unlines [
+                 "function f()"
+                ,"  local x = 2;"
+                ,"  local function g()"
+                ,"    x = 3"
+                ,"  end"
+                ,"  local function h()"
+                ,"    return x"
+                ,"  end"
+                ,"  return g, h"
+                ,"end"
+                ,"g,h = f();"
+                ,"g();"
+                ,"return h();"])
+                 `shouldBe` [Number 3.0]
+
+        it "should properly prefer local assignment" $ do
+            runParse (unlines [
+                 "x = 1"
+                ,"function f()"
+                ,"  local x = 2"
+                ,"end"
+                ,"f()"
+                ,"return x"
+                ]) `shouldBe` [Number 1.0]
+
 main = hspec spec

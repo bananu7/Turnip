@@ -1,13 +1,25 @@
 machine:
-  ghc:
-    version: 7.10.1
+  pre:
+    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 20
+    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.6 20
+    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
+    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10
 
 dependencies:
   pre:
-     - wget https://www.stackage.org/nightly-2015-05-05/cabal.config
-  override: 
-     - cabal install --upgrade-dependencies --constraint="template-haskell installed" --dependencies-only --enable-tests --force-reinstalls
+    - cd /tmp
+    - wget https://github.com/commercialhaskell/stack/releases/download/v1.0.4/stack-1.0.4.1-linux-x86_64.tar.gz -O stack.gz
+    - tar -xzvf stack.gz
+    - sudo mv stack-1.0.4.1-linux-x86_64/stack /usr/bin/stack
+    - chmod +x /usr/bin/stack
+    - cd ~/Turnip
+  override:
+    - stack setup
+    - stack build
+  cache_directories:
+    - .stack-work
+    - ~/.stack
 
 test:
-  pre:
-    - cabal configure --enable-tests
+  override:
+    - stack test

@@ -3,14 +3,11 @@
 
 module Eval.Eval where
 
-import Control.Monad
-import Data.Maybe
 import qualified Data.Map as Map
 import qualified LuaAS as AST
 import Eval.Types
 import Eval.Util
 
-import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.Except
 
@@ -19,22 +16,18 @@ extractVal :: Maybe Value -> Value
 extractVal (Just v) = v
 extractVal Nothing = Nil
 
--- This is a stack of tables forming a stack of nested closures
-type Closure = [TableData]
 closureLookup :: Value -> Closure -> LuaM Value
 -- descend recursively with lookups, picking the closest name first
-closureLookup v (topCls:cls) = case Map.lookup v topCls of
-    Just val -> return val
-    Nothing -> closureLookup v cls
+closureLookup v (topRef:cls) = do
+    topCls <- getTableData topRef
+    case Map.lookup v topCls of
+        Just val -> return val
+        Nothing -> closureLookup v cls
 -- if closure lookup fails, try global lookup
 closureLookup v _ = do  
     _G <- getGlobalTable
     let mVal = Map.lookup v _G
     return $ extractVal mVal
-
-flattenClosure :: Closure -> TableData
-flattenClosure [] = Map.empty
-flattenClosure (h:t) = foldl Map.union h t
 
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction fn) args = do
@@ -47,13 +40,15 @@ call (BuiltinFunction fn) args = do
 
 call (FunctionData cls block names) args = do
     -- for every arg set cls[names[i]] = args[i]
-    -- in case of a (trailing) vararg function, set `arg` variable to hold
+    -- TODO: in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
 
-    -- this should be moved to LuaM so that the closure setting could
-    -- actually be monadic
-    let topCl = Map.fromList $ zip (map Str names) args
-    let clsWithArgs = [topCl, cls]
+    -- this is table data containing arguments
+    let argsTableData = Map.fromList $ zip (map Str names) args
+    -- we turn it into a regular, registered table
+    newCls <- makeNewTableWith argsTableData
+    -- and append it to the closure stack
+    let clsWithArgs = newCls : cls
 
     res <- execBlock block clsWithArgs
     case res of
@@ -74,11 +69,9 @@ eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames b) cls = do
-    g <- use gRef
     newRef <- uniqueFunctionRef
-    functions . at newRef .= (Just $ FunctionData (flattenClosure cls) b parNames)
+    functions . at newRef .= (Just $ FunctionData cls b parNames)
     return [Function newRef]
-
 
 eval (AST.Var name) cls = (:[]) <$> closureLookup (Str name) cls
 
@@ -175,19 +168,56 @@ execStmt (AST.CallStmt f ps) cls = do
 -- this is a special case of an unpacking assignment
 execStmt (AST.Assignment lvals [expr]) cls = do
     vals <- eval expr cls
+    execAssignment cls lvals vals
+    return EmptyBubble
+
+-- this is "regular" multiple assignment
+execStmt (AST.Assignment lvals exprs) cls = do
+    -- this takes the first value of every expression
+    -- it only happens when there are more than 1 expr on rhs
+    vals <- mapM (\e -> head <$> eval e cls) exprs
+    execAssignment cls lvals vals
+    return EmptyBubble
+
+-- LocalDef is very similar to regular assignment
+execStmt (AST.LocalDecl names) cls = do
+    declTarget :: TableRef <- case cls of
+        (topCls:_) -> pure topCls
+        _ -> use gRef
+
+    -- we have to force using this target here to create new names
+    -- in the top level closure; assignmentTarget only uses existing ones
+    mapM_ (\name -> setTableField declTarget (Str name, Nil)) names
+
+    return EmptyBubble
+
+-- this is a simple helper that picks either top level closure or global table
+assignmentTarget :: Closure -> AST.LValue -> LuaM TableRef
+assignmentTarget [] _ = use gRef
+-- before choosing local closure for assignment, we should first check
+-- whether the value doesn't exist in the closure
+-- this is essentially the core of lexical scoping, I suppose
+assignmentTarget (topCls:cls) (AST.LVar name) = do
+    t <- getTableData topCls
+    case Map.lookup (Str name) t of
+        -- if the name appears in the closure, we assign to this one
+        (Just _) -> return topCls
+        -- otherwise we try going down the stack
+        Nothing -> assignmentTarget cls (AST.LVar name)
+
+execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
+execAssignment cls lvals vals = do
     -- fill in the missing Nil-s for zip
     let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
 
-    sequence_ $ zipWith assignLValue lvals vals
-    return EmptyBubble
+    sequence_ $ zipWith (assignLValue cls) lvals vals
 
+assignLValue :: Closure -> AST.LValue -> Value -> LuaM ()
+assignLValue cls (AST.LVar name) v = do
+    target <- assignmentTarget cls (AST.LVar name)
+    setTableField target (Str name, v)
 
-assignLValue :: AST.LValue -> Value -> LuaM ()
-assignLValue (AST.LVar name) v = do
-    g <- use gRef
-    setTableField g (Str name, v)
-
-assignLValue (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
+assignLValue ref (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
 
 {-
 executionStmt (AST.Assignment lvals exprs) = do

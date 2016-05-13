@@ -7,15 +7,11 @@ import Prelude hiding (Nil)
 import qualified LuaAS as AST
 import qualified Data.Map as Map
 import Control.Monad.State
-import Data.Maybe
-import Debug.Trace
 import Control.Lens hiding (Context)
-import Control.Monad.Except
 import Control.Monad.Trans.Either
 
 import Eval.Types
 import Eval.Eval
-import Eval.Util
 import Eval.Lib (loadBaseLibrary)
 
 -- Context isn't under Either because it's always modified up to
@@ -23,8 +19,6 @@ import Eval.Lib (loadBaseLibrary)
 runWith :: AST.Block -> Context -> (Either String [Value], Context)
 runWith b ctx = runState code ctx
     where
-        globalTableRef = ctx ^. gRef
-
         code = runEitherT $ do
             loadBaseLibrary
             result <- execBlock b []

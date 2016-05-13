@@ -3,14 +3,11 @@
 
 module Eval.Eval where
 
-import Control.Monad
-import Data.Maybe
 import qualified Data.Map as Map
 import qualified LuaAS as AST
 import Eval.Types
 import Eval.Util
 
-import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.Except
 
@@ -72,11 +69,9 @@ eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames b) cls = do
-    g <- use gRef
     newRef <- uniqueFunctionRef
     functions . at newRef .= (Just $ FunctionData cls b parNames)
     return [Function newRef]
-
 
 eval (AST.Var name) cls = (:[]) <$> closureLookup (Str name) cls
 
@@ -186,7 +181,6 @@ execStmt (AST.Assignment lvals exprs) cls = do
 
 -- LocalDef is very similar to regular assignment
 execStmt (AST.LocalDecl names) cls = do
-    -- we need to turn the names into LValues, and it's done by mapping LVar
     declTarget :: TableRef <- case cls of
         (topCls:_) -> pure topCls
         _ -> use gRef

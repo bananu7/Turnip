@@ -69,6 +69,7 @@ stat = choice [
     doStmt,
     whileStmt,
     repeatStmt,
+    forStmt,
     ifStmt,
     funcStmt,
     assignOrCallStmt
@@ -93,6 +94,27 @@ repeatStmt = do
     reserved "until"
     e <- expr
     return $ Until e (Block b)
+
+forStmt :: Parser Stmt
+forStmt = do
+    reserved "for"
+    vs <- namelist
+
+    forGen <- do
+        reserved "in"
+        es <- explist
+        return $ ForIter es
+      <|> do
+        symbol "="
+        start <- expr
+        comma
+        stop <- expr
+        step <- optionMaybe $ comma >> expr
+        return $ ForNum start stop step
+
+    b <- between (reserved "do") (reserved "end") block
+
+    return $ For vs forGen (Block b)
 
 ifStmt :: Parser Stmt
 ifStmt = do

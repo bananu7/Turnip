@@ -49,9 +49,30 @@ instance Show Stmt where
         elseBlockStr = maybe "" (("\nelse " ++) . show) elseBlock
     show (LocalDecl names) = "local " ++ (intercalate "," names)
 
+    show (For names (ForNum a b ms) block) = concat [
+        "for ",
+        (intercalate "," names),
+        " = ",
+        show a,
+        ",",
+        show b,
+        stepStr,
+        " do",
+        show block
+        ," end"
+        ]
+        where
+          stepStr = case ms of
+              Nothing -> ""
+              Just s -> "," ++ show s
 
-data ForGen = ForNum Expr Expr (Maybe Expr)
-            | ForIter [Expr]
+    show (For names (ForIter es) block) =
+        "for " ++ (intercalate "," names) ++ " in " ++ (intercalate "," (map show es)) ++ " do" ++ show block ++ "end"
+
+    show Break = "break"
+
+data ForGen = ForNum Expr Expr (Maybe Expr) -- for var = min,max,step do
+            | ForIter [Expr]                -- for x in y do
             deriving (Show, Eq)
 
 data Block = Block [Stmt]

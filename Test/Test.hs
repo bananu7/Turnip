@@ -81,5 +81,20 @@ spec = do
                         ])
                     ]
 
+            it "should parse numeric-for loops" $ do
+                parse "for x = 1,2 do end" `shouldBe` Block [For ["x"] (ForNum (Number 1.0) (Number 2.0) Nothing) (Block [])]
+                parse "for x = 5,1,-1 do break end" `shouldBe`
+                    Block [
+                        For ["x"] (ForNum (Number 5.0) (Number 1.0) (Just $ UnOp "-" (Number 1.0))) (Block [
+                            Break
+                        ])
+                    ]
+
+            it "should parse generic-for loops" $ do
+                parse "for x in y do end" `shouldBe` Block [For ["x"] (ForIter [Var "y"]) (Block [])]
+                parse "for k,v in pairs(t) do end" `shouldBe`
+                    Block [
+                        For ["k", "v"] (ForIter [Call (Var "pairs") [Var "t"]]) (Block [])
+                    ]
 
 main = hspec spec

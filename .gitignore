@@ -2,6 +2,7 @@
 *.o
 *.exe
 *.*~
+*.dump-splices
 dist/
 .cabal-sandbox/
 cabal.sandbox.config

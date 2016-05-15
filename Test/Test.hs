@@ -13,6 +13,15 @@ parse = successful . parseLua
 spec :: Spec
 spec = do
     describe "Parser.parseLua" $ do
+        describe "literals" $ do
+            it "should parse integers" $ parse "return 5" `shouldBe` Block [Return [Number 5.0]]
+            it "should parse floats" $ parse "return 4.2" `shouldBe` Block [Return [Number 4.2]]
+            it "should parse negative numbers" $ do
+                parse "return -3" `shouldBe` Block [Return [UnOp "-" (Number 3.0)]]
+                parse "return -2.9" `shouldBe` Block [Return [UnOp "-" (Number 2.9)]]
+            -- this one can't be easily done because of the SourcePos
+            --it "should parse strings" $ parse "\"test\"" `shouldBe` [StringLiteral 0 "test"]
+
         it "should parse simple assignments" $ do
             parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
             parse "x = y" `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])

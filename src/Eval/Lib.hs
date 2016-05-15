@@ -14,7 +14,7 @@ deg x = x / pi * 180
 $(do
     entries <- sequence [
         entry (Sig [NumberT, NumberT] NumberT) "+" '(+)
-        ,entry (Sig [NumberT, NumberT] NumberT) "-" '(-)
+        -- minus sign needs a helper, see below
         ,entry (Sig [NumberT, NumberT] NumberT) "*" '(*)
         ,entry (Sig [NumberT, NumberT] NumberT) "/" '(/)
 
@@ -52,9 +52,15 @@ luaCmpLT _ = throwError "Can't compare those values"
 luaerror [Str err] = throwError err
 luaerror _ = throwError ""
 
+--unary negate
+luaMinusHelper (Number a : []) = return $ [Number (-a)]
+luaMinusHelper (Number a : Number b : _) = return $ [Number (a - b)]
+luaMinusHelper _ = throwError "Can't subtract those things"
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
+    addNativeFunction "-" (BuiltinFunction luaMinusHelper)
     addNativeFunction "error" (BuiltinFunction luaerror)

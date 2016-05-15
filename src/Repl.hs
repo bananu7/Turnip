@@ -7,11 +7,16 @@ import Eval
 import Control.Monad.State
 import System.IO
 
+import Paths_Turnip (version)
+import Data.Version (showVersion)
+
 disableBuffering = hSetBuffering stdout NoBuffering
 
 repl :: IO ()
 repl = do
     disableBuffering 
+    putStrLn $ "Turnip REPL v" ++ showVersion version ++ "\n"
+
     (flip evalStateT) defaultCtx $ forever $ do
         line <- liftIO $ do
             putStr "> "

@@ -69,6 +69,25 @@ spec = do
                 ,"return x"
                 ]) `shouldBe` [Number 1.0]
 
+        it "should properly declare local missing multiple assignments" $ do
+            runParse (unlines [
+                 "x, y = 1,2"
+                ,"function f()"
+                ,"  local x,y = 3" -- y doesn't receive a value
+                ,"  y = 5"         -- but should still be declared as a local
+                ,"end"
+                ,"return y"
+                ]) `shouldBe` [Number 2.0]
+
+        describe "assignments" $ do
+            it "should handle trivial assignments" $ do
+                runParse "x = 1; return x" `shouldBe` [Number 1.0]
+                runParse "x = 1; x = 2; return x" `shouldBe` [Number 2.0]
+            it "should handle multiple assignments" $ do
+                runParse "x, y = 1, 2; return x, y" `shouldBe` [Number 1.0, Number 2.0]
+                runParse "x, y = 1; return x, y" `shouldBe` [Number 1.0, Nil]
+                runParse "x, y = 1, 2, 3; return x, y" `shouldBe` [Number 1.0, Number 2.0]
+
         describe "loops" $ do
             it "should properly skip a loop with a false clause" $ do
                 runParse "while false do return 3 end return 1" `shouldBe` [Number 1.0]

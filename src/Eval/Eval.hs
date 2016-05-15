@@ -218,7 +218,14 @@ assignmentTarget (topCls:cls) (AST.LVar name) = do
 execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
 execAssignment cls lvals vals = do
     -- fill in the missing Nil-s for zip
-    let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
+    -- let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
+
+    -- because of how zipWith works, this isn't necessary; namely, only
+    -- the assignments that have the vals are executed at all
+    -- this does not impact local definitions, because they are executed with
+    -- separate declarator statements NOW. Since that could change in the future,
+    -- I'm keeping the above code for reference, if a need to pad the assingment
+    -- with Nils appears.
 
     sequence_ $ zipWith (assignLValue cls) lvals vals
 

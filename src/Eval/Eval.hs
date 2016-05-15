@@ -152,18 +152,22 @@ execStmt (AST.If blocks mElseB) cls = do
 
 execStmt (AST.While e b) cls = do
     result <- coerceToBool <$> eval e cls
-    if result then
-        execStmt (AST.While e b) cls
+    if result then do
+        blockResult <- execBlock b cls
+        case blockResult of
+            EmptyBubble -> execStmt (AST.While e b) cls
+            breakingBubble -> return breakingBubble
     else
         return EmptyBubble
     -- if no change has been made to lua state, it can be safely assumed that it's
     -- an infinite loop
 
+execStmt AST.Break _ = return BreakBubble
+
 -- call statement is a naked call expression with result ignored
 execStmt (AST.CallStmt f ps) cls = do
     _ <- eval (AST.Call f ps) cls
     return EmptyBubble
-
 
 -- this is a special case of an unpacking assignment
 execStmt (AST.Assignment lvals [expr]) cls = do

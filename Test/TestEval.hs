@@ -69,4 +69,47 @@ spec = do
                 ,"return x"
                 ]) `shouldBe` [Number 1.0]
 
+        describe "loops" $ do
+            it "should properly skip a loop with a false clause" $ do
+                runParse "while false do return 3 end return 1" `shouldBe` [Number 1.0]
+
+            it "should properly break out of a trivial while-loop" $ do
+                runParse (unlines [
+                     "while true do"
+                    ,"  break"
+                    ,"end"
+                    ,"return 1"
+                    ]) `shouldBe` [Number 1.0]
+
+            it "should properly return out of a trivial while-loop" $ do
+                runParse (unlines [
+                     "while true do"
+                    ,"  return 2"
+                    ,"end"
+                    ,"return 1"
+                    ]) `shouldBe` [Number 2.0]
+
+            it "should properly handle a simple while-loop" $ do
+                runParse (unlines [
+                     "x = 1"
+                    ,"while x < 5 do"
+                    ,"  x = x + 1"
+                    ,"end"
+                    ,"return x"
+                    ]) `shouldBe` [Number 5.0]
+
+            it "should correctly handle breaking out of a nested loop" $ do
+                runParse (unlines [
+                     "x = 1"
+                    ,"c = 1"
+                    ,"while c < 3 do"
+                    ,"  local y = 1"
+                    ,"  while y < 2 do"  -- this could theoretically
+                    ,"    x = x * 2"     -- multiply x by 4
+                    ,"    break"         -- however, it only does multiplication by 2
+                    ,"  end"             -- thus the value of x becomes
+                    ,"end"               -- 1 * 2 * 2 = 4
+                    ,"return x"
+                    ]) `shouldBe` [Number 4.0]
+
 main = hspec spec

@@ -62,4 +62,15 @@ spec = do
             parse "local a,b = 1,2" `shouldBe` Block [LocalDecl ["a", "b"], Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0]]
             parse "local function f() end" `shouldBe` Block [LocalDecl ["f"], Assignment [LVar "f"] [Lambda [] (Block [])]]
 
+        describe "loops" $ do
+            it "should parse while loops" $ do
+                parse "while true do end" `shouldBe` Block [While (Bool True) (Block [])]
+                parse "while x < 1 do break end" `shouldBe`
+                    Block [
+                        While (BinOp "<" (Var "x") (Number 1.0)) (Block [
+                            Break
+                        ])
+                    ]
+
+
 main = hspec spec

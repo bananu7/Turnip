@@ -155,8 +155,14 @@ execStmt (AST.While e b) cls = do
     if result then do
         blockResult <- execBlock b cls
         case blockResult of
+            -- In case the inner block didn't break, just recurse
             EmptyBubble -> execStmt (AST.While e b) cls
-            breakingBubble -> return breakingBubble
+            -- While 'contains' the break bubble and turns it into
+            -- an empty one, closing the statement.
+            BreakBubble -> return EmptyBubble
+            -- Any other bubble (like return) can't be handled, 
+            -- and is forwarded.
+            x -> return x
     else
         return EmptyBubble
     -- if no change has been made to lua state, it can be safely assumed that it's

@@ -103,6 +103,7 @@ spec = do
                      "x = 1"
                     ,"c = 1"
                     ,"while c < 3 do"
+                    ,"  c = c+1"         -- this is just a counter
                     ,"  local y = 1"
                     ,"  while y < 2 do"  -- this could theoretically
                     ,"    x = x * 2"     -- multiply x by 4

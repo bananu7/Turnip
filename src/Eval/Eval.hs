@@ -110,6 +110,15 @@ eval (AST.FieldRef t k) cls = do
 eval (AST.BinOp name lhs rhs) cls = eval (AST.Call (AST.Var name) [lhs, rhs]) cls
 eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
 
+-- TODO - should a comma-separated expression list have a dedicated AST node
+evalExpressionList :: [AST.Expr] -> Closure -> LuaM [Value]
+evalExpressionList xs cls = do
+    firsts <- mapM (flip eval cls) (init xs)
+    let singular = map head firsts
+    pack <- eval (last xs) cls
+
+    return $ singular ++ pack
+
 --------------
 
 runUntil :: Monad m => [a] -> (a -> m Bubble) -> m Bubble
@@ -160,22 +169,7 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
     -- (When we use simple iterators, the factory returns
     -- only the iterator function, so the invariant state
     -- and the control variable get nil.)
-    [f, s, var] <- case explist of
-        -- HACK HOTFIX 
-        -- This will break miserably if `explist` is badly formed
-        -- Needs to be expanded with error checking or plainly better
-        -- computation as a (like a) multiple assignment.
-
-        -- at least three elements        
-        ef : es : ev : _ -> sequence [head <$> eval ef cls, head <$> eval es cls, head <$> eval ev cls]
-        -- one concrete, two filled from the pack
-        ef : rest : _ -> do
-            efv <- (head <$> eval ef cls)
-            restv <- take 2 <$> eval rest cls
-            return $ efv : restv
-        --               m V      : m [V]
-        -- one pack (typical?)
-        rest : _ -> traceShow rest $ take 3 <$> eval rest cls
+    [f, s, var] <- evalExpressionList explist cls
 
     -- A function reference is (hopefully )returned after evaluating
     -- the explist

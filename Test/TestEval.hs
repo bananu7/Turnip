@@ -150,7 +150,7 @@ spec = do
                 runParse (unlines[
                      "function f()"
                     ,"  local x = 5"
-                    ,"  for x in (function() return nil end)() do"
+                    ,"  for x in (function() return nil end) do"
                     ,"  end"
                     ,"  return x"
                     ,"end"

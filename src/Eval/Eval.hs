@@ -17,6 +17,9 @@ extractVal :: Maybe Value -> Value
 extractVal (Just v) = v
 extractVal Nothing = Nil
 
+padWithNils :: Int -> [Value] -> [Value]
+padWithNils n xs = xs ++ replicate (n - length xs) Nil
+
 closureLookup :: Value -> Closure -> LuaM Value
 -- descend recursively with lookups, picking the closest name first
 closureLookup v (topRef:cls) = do
@@ -169,7 +172,7 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
     -- (When we use simple iterators, the factory returns
     -- only the iterator function, so the invariant state
     -- and the control variable get nil.)
-    [f, s, var] <- evalExpressionList explist cls
+    [f, s, var] <- padWithNils 3 <$> evalExpressionList explist cls
 
     -- A function reference is (hopefully )returned after evaluating
     -- the explist
@@ -186,15 +189,15 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
             execAssignment cls (map AST.LVar names) vars
 
             let var' = head vars
-
-            blockResult <- execBlock b cls
-            case blockResult of
-                EmptyBubble -> loopBody fv s var'
-                BreakBubble -> return EmptyBubble
-                x -> return x
----}
-
-
+            if coerceToBool [var']
+                then do
+                    blockResult <- execBlock b cls
+                    case blockResult of
+                        EmptyBubble -> loopBody fv s var'
+                        BreakBubble -> return EmptyBubble
+                        x -> return x
+                else
+                    return EmptyBubble
 
 execStmt (AST.While e b) cls = do
     result <- coerceToBool <$> eval e cls
@@ -264,7 +267,7 @@ assignmentTarget (topCls:cls) (AST.LVar name) = do
 execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
 execAssignment cls lvals vals = do
     -- fill in the missing Nil-s for zip
-    -- let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
+    -- let valsPadded = padWithNils (length lvals) vals
 
     -- because of how zipWith works, this isn't necessary; namely, only
     -- the assignments that have the vals are executed at all

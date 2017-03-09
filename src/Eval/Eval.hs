@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Eval.Eval where
 
@@ -14,8 +15,8 @@ import Debug.Trace
 
 -- This function fills in the Nil for the missing Value
 extractVal :: Maybe Value -> Value
-extractVal (Just v) = v
 extractVal Nothing = Nil
+extractVal (Just v) = v
 
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
@@ -180,9 +181,12 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
         Function fref -> getFunctionData fref 
         _ -> throwError "The iterator is not a function" 
 
-    loopBody fv s var
+    newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
+    let cls' = newCls : cls
+
+    loopBody cls' fv s var
     where
-        loopBody fv s var = do
+        loopBody cls fv s var = do
             -- the first value is the "iterator"
             vars <- call fv [s, var]
             -- the rest are put in the local variables
@@ -193,7 +197,7 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
                 then do
                     blockResult <- execBlock b cls
                     case blockResult of
-                        EmptyBubble -> loopBody fv s var'
+                        EmptyBubble -> loopBody cls fv s var'
                         BreakBubble -> return EmptyBubble
                         x -> return x
                 else

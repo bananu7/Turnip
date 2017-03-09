@@ -88,7 +88,7 @@ spec = do
                 runParse "x, y = 1; return x, y" `shouldBe` [Number 1.0, Nil]
                 runParse "x, y = 1, 2, 3; return x, y" `shouldBe` [Number 1.0, Number 2.0]
 
-        describe "loops" $ do
+        describe "while loop" $ do
             it "should properly skip a loop with a false clause" $ do
                 runParse "while false do return 3 end return 1" `shouldBe` [Number 1.0]
 
@@ -131,5 +131,25 @@ spec = do
                     ,"end"               -- 1 * 2 * 2 = 4
                     ,"return x"
                     ]) `shouldBe` [Number 4.0]
+
+        describe "for loop" $ do
+            it "should correctly handle basic for loops" $ do
+                runParse (unlines [
+                     "t = function() end"
+                    ,"for k,v in t do"
+                    ,"end"
+                    ,"return true"
+                    ]) `shouldBe` [Boolean True]
+
+            it "should properly scope iteration-for-loop variables" $ do
+                runParse (unlines[
+                     "function f()"
+                    ,"  local x = 5"
+                    ,"  for x in function() return nil end do"
+                    ,"  end"
+                    ,"  return x"
+                    ,"end"
+                    ,"return f()"
+                    ]) `shouldBe` [Number 5.0]
 
 main = hspec spec

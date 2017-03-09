@@ -135,8 +135,13 @@ spec = do
         describe "for loop" $ do
             it "should correctly handle basic for loops" $ do
                 runParse (unlines [
-                     "t = function() end"
-                    ,"for k,v in t do"
+                     "local t = function()"
+                    ,"  local f = false"
+                    ,"  local s = false"
+                    ,"  local v = false"
+                    ,"  return f, s, v"
+                    ,"end"
+                    ,"for k,v in t() do"
                     ,"end"
                     ,"return true"
                     ]) `shouldBe` [Boolean True]
@@ -145,7 +150,7 @@ spec = do
                 runParse (unlines[
                      "function f()"
                     ,"  local x = 5"
-                    ,"  for x in function() return nil end do"
+                    ,"  for x in (function() return nil end)() do"
                     ,"  end"
                     ,"  return x"
                     ,"end"

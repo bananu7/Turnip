@@ -10,6 +10,7 @@ import Eval.Util
 
 import Control.Lens
 import Control.Monad.Except
+import Debug.Trace
 
 -- This function fills in the Nil for the missing Value
 extractVal :: Maybe Value -> Value
@@ -170,11 +171,11 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
         -- one concrete, two filled from the pack
         ef : rest : _ -> do
             efv <- (head <$> eval ef cls)
-            restv <- eval rest cls
+            restv <- take 2 <$> eval rest cls
             return $ efv : restv
         --               m V      : m [V]
         -- one pack (typical?)
-        rest : _ -> eval rest cls
+        rest : _ -> traceShow rest $ take 3 <$> eval rest cls
 
     -- A function reference is (hopefully )returned after evaluating
     -- the explist

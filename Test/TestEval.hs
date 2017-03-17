@@ -16,10 +16,10 @@ parse = successful . parseLua
 runParse :: String -> [Value]
 runParse = successful . run . parse
 
-runFile :: FilePath -> IO [Value]
-runFile f = do
-    contents <- readFile f
-    return $ runParse contents
+testFile path desc =
+    runIO (readFile path) >>=
+      \fileContents -> it desc $ do
+         runParse fileContents `shouldBe` [Boolean True]
 
 spec :: Spec
 spec = do
@@ -153,9 +153,7 @@ spec = do
                     ,"return true"
                     ]) `shouldBe` [Boolean True]
 
-            runIO (readFile "Test/lua/for-loop-basic.lua") >>=
-              \fileContents -> it "should correctly handle a synthetic iterator" $ do
-                runParse fileContents `shouldBe` [Number 6.0]
+            testFile "Test/lua/for-loop-basic.lua" "should correctly handle a synthetic iterator"
 
             it "should properly scope iteration-for-loop variables" $ do
                 runParse (unlines[

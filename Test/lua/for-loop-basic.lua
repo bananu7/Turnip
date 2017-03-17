@@ -14,4 +14,4 @@ local cnt = 0
 for i in t(4) do
   cnt = cnt + i
 end
-return cnt
+return (cnt == 6)

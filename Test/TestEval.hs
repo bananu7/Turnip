@@ -153,8 +153,8 @@ spec = do
                     ,"return true"
                     ]) `shouldBe` [Boolean True]
 
-            fileContents <- runIO (readFile "Test/lua/for-loop-basic.lua")
-            it "should correctly handle a synthetic iterator" $ do                
+            runIO (readFile "Test/lua/for-loop-basic.lua") >>=
+              \fileContents -> it "should correctly handle a synthetic iterator" $ do
                 runParse fileContents `shouldBe` [Number 6.0]
 
             it "should properly scope iteration-for-loop variables" $ do

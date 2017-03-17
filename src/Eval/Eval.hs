@@ -164,7 +164,8 @@ execStmt (AST.If blocks mElseB) cls = do
     -- exec block
     -- change the local value of index in cls and go to beginning
 
-
+-- The semantics for that version have been taken from PIL 7.2
+-- https://www.lua.org/pil/7.2.html
 execStmt (AST.For names (AST.ForIter explist) b) cls = do
     -- Like in a multiple assignment, only the last (or the only)
     -- element of the list can result in more than one value;

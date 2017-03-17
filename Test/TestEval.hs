@@ -17,7 +17,7 @@ runParse :: String -> [Value]
 runParse = successful . run . parse
 
 testFile path desc =
-    runIO (readFile path) >>=
+    runIO (readFile $ "Test/lua/" ++ path) >>=
       \fileContents -> it desc $ do
          runParse fileContents `shouldBe` [Boolean True]
 
@@ -153,7 +153,7 @@ spec = do
                     ,"return true"
                     ]) `shouldBe` [Boolean True]
 
-            testFile "Test/lua/for-loop-basic.lua" "should correctly handle a synthetic iterator"
+            testFile "for-loop-basic.lua" "should correctly handle a synthetic iterator"
 
             it "should properly scope iteration-for-loop variables" $ do
                 runParse (unlines[
@@ -165,5 +165,9 @@ spec = do
                     ,"end"
                     ,"return f()"
                     ]) `shouldBe` [Number 5.0]
+
+            testFile "for-loop-numeric.lua" "should correctly handle a simple numeric loop"
+            testFile "for-loop-numeric-reverse.lua" "should correctly handle a reverse numeric loop"
+
 
 main = hspec spec

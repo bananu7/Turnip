@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Eval.Eval where
 
@@ -158,11 +159,35 @@ execStmt (AST.If blocks mElseB) cls = do
           then execBlock b cls
           else return EmptyBubble
 
---execStmt (For ...) = do
-    -- assign values to cls
-    -- while the condition is met
-    -- exec block
-    -- change the local value of index in cls and go to beginning
+execStmt (AST.For names (AST.ForNum emin emax mestep) b) cls = do
+    newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
+    let cls' = newCls : cls
+
+    step <- case mestep of
+        Just estep -> head <$> eval estep cls
+        Nothing -> pure $ Number 1.0
+
+    vmin <- head <$> eval emin cls
+    vmax <- head <$> eval emax cls
+
+    case (vmin, vmax, step) of
+        (Number i, Number n, Number s) -> loopBody cls' i n s
+        _ -> throwError "'for' limits and step must be numbers"
+
+    where
+        loopBody cls i n step = do
+            let cont = if step > 0 then i <= n else i >= n
+            if cont then do
+                -- TODO: duplication between numeric and generic for
+                execAssignment cls (map AST.LVar names) [Number i]
+                blockResult <- execBlock b cls
+                let i' = i + step
+                case blockResult of
+                    EmptyBubble -> loopBody cls i' n step
+                    BreakBubble -> return EmptyBubble
+                    x -> return x
+            else
+                return EmptyBubble
 
 -- The semantics for that version have been taken from PIL 7.2
 -- https://www.lua.org/pil/7.2.html
@@ -196,6 +221,7 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
             let var' = head vars
             if coerceToBool [var']
                 then do
+                    -- TODO: duplication between numeric and generic for
                     blockResult <- execBlock b cls
                     case blockResult of
                         EmptyBubble -> loopBody cls fv s var'

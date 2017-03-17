@@ -12,7 +12,14 @@ successful (Right x) = x
 successful (Left err) = error $ show err
 
 parse = successful . parseLua
+
+runParse :: String -> [Value]
 runParse = successful . run . parse
+
+runFile :: FilePath -> IO [Value]
+runFile f = do
+    contents <- readFile f
+    return $ runParse contents
 
 spec :: Spec
 spec = do
@@ -133,18 +140,22 @@ spec = do
                     ]) `shouldBe` [Number 4.0]
 
         describe "for loop" $ do
-            it "should correctly handle basic for loops" $ do
+            it "should correctly handle a trivial for loop" $ do
                 runParse (unlines [
                      "local t = function()"
-                    ,"  local f = false"
-                    ,"  local s = false"
-                    ,"  local v = false"
+                    ,"  local f = function() return nil end" -- iterator fn
+                    ,"  local s = false" -- state invariant
+                    ,"  local v = false" -- iteration variable returned by f
                     ,"  return f, s, v"
                     ,"end"
                     ,"for k,v in t() do"
                     ,"end"
                     ,"return true"
                     ]) `shouldBe` [Boolean True]
+
+            fileContents <- runIO (readFile "Test/lua/for-loop-basic.lua")
+            it "should correctly handle a synthetic iterator" $ do                
+                runParse fileContents `shouldBe` [Number 6.0]
 
             it "should properly scope iteration-for-loop variables" $ do
                 runParse (unlines[

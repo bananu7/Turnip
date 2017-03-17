@@ -1,5 +1,7 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Eval.Eval where
 
@@ -10,11 +12,15 @@ import Eval.Util
 
 import Control.Lens
 import Control.Monad.Except
+import Debug.Trace
 
 -- This function fills in the Nil for the missing Value
 extractVal :: Maybe Value -> Value
-extractVal (Just v) = v
 extractVal Nothing = Nil
+extractVal (Just v) = v
+
+padWithNils :: Int -> [Value] -> [Value]
+padWithNils n xs = xs ++ replicate (n - length xs) Nil
 
 closureLookup :: Value -> Closure -> LuaM Value
 -- descend recursively with lookups, picking the closest name first
@@ -109,6 +115,15 @@ eval (AST.FieldRef t k) cls = do
 eval (AST.BinOp name lhs rhs) cls = eval (AST.Call (AST.Var name) [lhs, rhs]) cls
 eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
 
+-- TODO - should a comma-separated expression list have a dedicated AST node
+evalExpressionList :: [AST.Expr] -> Closure -> LuaM [Value]
+evalExpressionList xs cls = do
+    firsts <- mapM (flip eval cls) (init xs)
+    let singular = map head firsts
+    pack <- eval (last xs) cls
+
+    return $ singular ++ pack
+
 --------------
 
 runUntil :: Monad m => [a] -> (a -> m Bubble) -> m Bubble
@@ -144,11 +159,76 @@ execStmt (AST.If blocks mElseB) cls = do
           then execBlock b cls
           else return EmptyBubble
 
---execStmt (For ...) = do
-    -- assign values to cls
-    -- while the condition is met
-    -- exec block
-    -- change the local value of index in cls and go to beginning
+execStmt (AST.For names (AST.ForNum emin emax mestep) b) cls = do
+    newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
+    let cls' = newCls : cls
+
+    step <- case mestep of
+        Just estep -> head <$> eval estep cls
+        Nothing -> pure $ Number 1.0
+
+    vmin <- head <$> eval emin cls
+    vmax <- head <$> eval emax cls
+
+    case (vmin, vmax, step) of
+        (Number i, Number n, Number s) -> loopBody cls' i n s
+        _ -> throwError "'for' limits and step must be numbers"
+
+    where
+        loopBody cls i n step = do
+            let cont = if step > 0 then i <= n else i >= n
+            if cont then do
+                -- TODO: duplication between numeric and generic for
+                execAssignment cls (map AST.LVar names) [Number i]
+                blockResult <- execBlock b cls
+                let i' = i + step
+                case blockResult of
+                    EmptyBubble -> loopBody cls i' n step
+                    BreakBubble -> return EmptyBubble
+                    x -> return x
+            else
+                return EmptyBubble
+
+-- The semantics for that version have been taken from PIL 7.2
+-- https://www.lua.org/pil/7.2.html
+execStmt (AST.For names (AST.ForIter explist) b) cls = do
+    -- Like in a multiple assignment, only the last (or the only)
+    -- element of the list can result in more than one value;
+    -- and the number of values is adjusted to three, extra
+    -- values being discarded or nils added as needed.
+    -- (When we use simple iterators, the factory returns
+    -- only the iterator function, so the invariant state
+    -- and the control variable get nil.)
+    [f, s, var] <- padWithNils 3 <$> evalExpressionList explist cls
+
+    -- A function reference is (hopefully )returned after evaluating
+    -- the explist
+    fv <- case f of
+        Function fref -> getFunctionData fref 
+        _ -> throwError "The iterator is not a function" 
+
+    newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
+    let cls' = newCls : cls
+
+    loopBody cls' fv s var
+    where
+        loopBody cls fv s var = do
+            -- the first value is the "iterator"
+            vars <- call fv [s, var]
+            -- the rest are put in the local variables
+            execAssignment cls (map AST.LVar names) vars
+
+            let var' = head vars
+            if coerceToBool [var']
+                then do
+                    -- TODO: duplication between numeric and generic for
+                    blockResult <- execBlock b cls
+                    case blockResult of
+                        EmptyBubble -> loopBody cls fv s var'
+                        BreakBubble -> return EmptyBubble
+                        x -> return x
+                else
+                    return EmptyBubble
 
 execStmt (AST.While e b) cls = do
     result <- coerceToBool <$> eval e cls
@@ -218,7 +298,7 @@ assignmentTarget (topCls:cls) (AST.LVar name) = do
 execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
 execAssignment cls lvals vals = do
     -- fill in the missing Nil-s for zip
-    -- let valsPadded = vals ++ replicate (length lvals - length vals) (Nil)
+    -- let valsPadded = padWithNils (length lvals) vals
 
     -- because of how zipWith works, this isn't necessary; namely, only
     -- the assignments that have the vals are executed at all

@@ -12,7 +12,14 @@ successful (Right x) = x
 successful (Left err) = error $ show err
 
 parse = successful . parseLua
+
+runParse :: String -> [Value]
 runParse = successful . run . parse
+
+testFile desc path =
+    runIO (readFile $ "Test/lua/" ++ path) >>=
+      \fileContents -> it desc $ do
+         runParse fileContents `shouldBe` [Boolean True]
 
 spec :: Spec
 spec = do
@@ -88,7 +95,7 @@ spec = do
                 runParse "x, y = 1; return x, y" `shouldBe` [Number 1.0, Nil]
                 runParse "x, y = 1, 2, 3; return x, y" `shouldBe` [Number 1.0, Number 2.0]
 
-        describe "loops" $ do
+        describe "while loop" $ do
             it "should properly skip a loop with a false clause" $ do
                 runParse "while false do return 3 end return 1" `shouldBe` [Number 1.0]
 
@@ -131,5 +138,40 @@ spec = do
                     ,"end"               -- 1 * 2 * 2 = 4
                     ,"return x"
                     ]) `shouldBe` [Number 4.0]
+
+        describe "for loop" $ do
+            it "should correctly handle a trivial for loop" $ do
+                runParse (unlines [
+                     "local t = function()"
+                    ,"  local f = function() return nil end" -- iterator fn
+                    ,"  local s = false" -- state invariant
+                    ,"  local v = false" -- iteration variable returned by f
+                    ,"  return f, s, v"
+                    ,"end"
+                    ,"for k,v in t() do"
+                    ,"end"
+                    ,"return true"
+                    ]) `shouldBe` [Boolean True]
+
+            testFile "should correctly handle a synthetic iterator" "for-loop-basic.lua"
+
+            it "should properly scope iteration-for-loop variables" $ do
+                runParse (unlines[
+                     "function f()"
+                    ,"  local x = 5"
+                    ,"  for x in (function() return nil end) do"
+                    ,"  end"
+                    ,"  return x"
+                    ,"end"
+                    ,"return f()"
+                    ]) `shouldBe` [Number 5.0]
+
+            testFile "should correctly handle a simple numeric loop" "for-loop-numeric.lua"
+            testFile "should correctly handle a reverse numeric loop" "for-loop-numeric-reverse.lua"
+
+            it "should correctly handle for loops that shouldn't run even once" $ do
+                runParse "for x = 2,1 do return false end return true" `shouldBe` [Boolean True]
+                runParse "for x = 1,2,-1 do return false end return true" `shouldBe` [Boolean True]
+
 
 main = hspec spec

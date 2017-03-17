@@ -68,7 +68,7 @@ genDec (Sig paramTs returnT) tempName origName = do
     let
       match :: [Q Pat]
       -- to accept more args, it'd need to use ConP '(:) [m, WildP]
-      -- but I'm too lazy to write it right now
+      -- but I'm too lazy to write it right now (TODO)
       match = [return . ListP $ (map fst $ matches)]
 
     let

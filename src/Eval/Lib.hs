@@ -41,6 +41,13 @@ $(do
  )
 
 -- Polymorphic comparison operators
+luaCmpEQ (Number a : Number b : _) = return [Boolean $ a == b]
+luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
+luaCmpEQ (Boolean a : Boolean b : _) = return [Boolean $ a == b]
+luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
+luaCmpEQ (Nil : Nil : _) = return [Boolean True]
+luaCmpEQ _ = return [Boolean False]
+
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
 luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
 luaCmpGT xs = throwError "Can't compare those values"
@@ -60,6 +67,7 @@ luaMinusHelper _ = throwError "Can't subtract those things"
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
+    addNativeFunction "==" (BuiltinFunction luaCmpEQ)
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
     addNativeFunction "-" (BuiltinFunction luaMinusHelper)

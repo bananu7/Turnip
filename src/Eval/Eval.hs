@@ -133,7 +133,7 @@ eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
 eval (AST.TableCons entries) cls = do
     tr <- makeNewTable
 
-    flip evalStateT 1 $
+    flip evalStateT (1 :: Int) $
         forM_ entries (addEntry tr)
 
     return [Table tr]
@@ -364,13 +364,6 @@ assignLValue cls (AST.LFieldRef t k) v = do
     case tv of
         Table tr -> setTableField tr (kv,v)
         _ -> throwError "Trying to assign to a field of non-table"
-
-{-
-executionStmt (AST.Assignment lvals exprs) = do
-    sequence_ $ zipWith assigner lvals exprs
-  where
-    assigner (LVar lval val = do
--}
 
 execReturnStatement :: [AST.Expr] -> Closure -> LuaM Bubble
 execReturnStatement exprs cls = do

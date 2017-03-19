@@ -103,7 +103,8 @@ eval (AST.MemberCall obj fName args) cls = do
         Table tr -> do
             fV <- getTableField tr (Str fName)
             case fV of
-                Function ref -> callRef ref argVs
+                -- objV is prepended to the argument list as the 'self' parameter
+                Function ref -> callRef ref (objV : argVs)
                 x -> throwError $ "Attempt to call method '" ++ fName ++ "' (" ++ show x ++ ")"
         _ -> throwError $ "Attempt to index a non-table (" ++ show objV ++ ")"
 

@@ -113,7 +113,7 @@ spec = do
                 runParse "t = { f = function() return 1 end }; return t:f()"
                     `shouldBe` [Number 1.0]
             it "should properly pass self to method calls" $ do
-                runParse "t = { x = 5, f = function() return self.x end }; return t:f()"
+                runParse "t = { x = 5, f = function(self) return self.x end }; return t:f()"
                     `shouldBe` [Number 5.0]
 
         describe "while loop" $ do

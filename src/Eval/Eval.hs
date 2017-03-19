@@ -90,10 +90,10 @@ eval (AST.Call fn args) cls = do
     -- theoretically always a Nil should be returned, but
     -- it's not in the type system yet. (wrt head)
     argVs <- map head <$> mapM (\a -> eval a cls) args
-    fnV <- eval fn cls
+    fnV <- head <$> eval fn cls
 
     case fnV of 
-        (Function ref:_) -> callRef ref argVs
+        Function ref -> callRef ref argVs
         x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.MemberCall obj fName args) cls = do

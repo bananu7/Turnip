@@ -110,8 +110,11 @@ spec = do
                 runParse "t = { x = 1 }; return t.x" `shouldBe` [Number 1.0]
                 runParse "t = {}; t.x = 2; return t[\"x\"]" `shouldBe` [Number 2.0]
             it "should handle method call (:) syntax sugar" $ do
-                runParse "t = { x = 1, f = function() return self.x end }; return t:f()"
+                runParse "t = { f = function() return 1 end }; return t:f()"
                     `shouldBe` [Number 1.0]
+            it "should properly pass self to method calls" $ do
+                runParse "t = { x = 5, f = function() return self.x end }; return t:f()"
+                    `shouldBe` [Number 5.0]
 
         describe "while loop" $ do
             it "should properly skip a loop with a false clause" $ do

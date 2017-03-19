@@ -95,6 +95,10 @@ spec = do
                 runParse "x, y = 1; return x, y" `shouldBe` [Number 1.0, Nil]
                 runParse "x, y = 1, 2, 3; return x, y" `shouldBe` [Number 1.0, Number 2.0]
 
+        describe "tables" $ do
+            it "should handle table assignments" $ do
+                runParse "t = {}; t[1] = 4; return t[1]" `shouldBe` [Number 4.0]
+
         describe "while loop" $ do
             it "should properly skip a loop with a false clause" $ do
                 runParse "while false do return 3 end return 1" `shouldBe` [Number 1.0]

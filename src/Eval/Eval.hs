@@ -109,11 +109,28 @@ eval (AST.FieldRef t k) cls = do
 
         _ -> throwError "Trying to index a non-table"
 
-
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
 eval (AST.BinOp name lhs rhs) cls = eval (AST.Call (AST.Var name) [lhs, rhs]) cls
 eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
+
+-- Table constructor in form { k = v, ... }
+eval (AST.TableCons entries) cls = do
+    tr <- makeNewTable
+    forM_ entries (addEntry tr)
+    return [Table tr]
+    where
+        -- The map-like entry
+        addEntry tr (Just ek, ev) = do
+            k <- head <$> eval ek cls
+            v <- head <$> eval ev cls
+            setTableField tr (k,v)
+
+        -- The numeric, array-like entry
+        addEntry tr (Nothing, ev) = do
+            v <- head <$> eval ev cls
+            -- TEMP TODO should not be 1, but find the next available index
+            setTableField tr (Number 1, v)
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
 evalExpressionList :: [AST.Expr] -> Closure -> LuaM [Value]
@@ -314,7 +331,12 @@ assignLValue cls (AST.LVar name) v = do
     target <- assignmentTarget cls (AST.LVar name)
     setTableField target (Str name, v)
 
-assignLValue ref (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
+assignLValue cls (AST.LFieldRef t k) v = do
+    tv <- head <$> eval t cls
+    kv <- head <$> eval k cls
+    case tv of
+        Table tr -> setTableField tr (kv,v)
+        _ -> throwError "Trying to assign to a field of non-table"
 
 {-
 executionStmt (AST.Assignment lvals exprs) = do

@@ -12,6 +12,7 @@ import Eval.Util
 
 import Control.Lens
 import Control.Monad.Except
+import Control.Monad.State
 import Debug.Trace
 
 -- This function fills in the Nil for the missing Value
@@ -117,20 +118,28 @@ eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
 -- Table constructor in form { k = v, ... }
 eval (AST.TableCons entries) cls = do
     tr <- makeNewTable
-    forM_ entries (addEntry tr)
+
+    flip evalStateT 1 $
+        forM_ entries (addEntry tr)
+
     return [Table tr]
     where
+        --addEntry :: TableRef -> (Maybe AST.Expr, AST.Expr) -> StateT Int _ _
         -- The map-like entry
-        addEntry tr (Just ek, ev) = do
+        -- I need to 'lift' here to separate the LuaM rankntype from the StateT
+        addEntry tr (Just ek, ev) = lift $ do
             k <- head <$> eval ek cls
             v <- head <$> eval ev cls
             setTableField tr (k,v)
 
         -- The numeric, array-like entry
         addEntry tr (Nothing, ev) = do
-            v <- head <$> eval ev cls
-            -- TEMP TODO should not be 1, but find the next available index
-            setTableField tr (Number 1, v)
+            ix <- get
+            put $ ix + 1
+
+            lift $ do
+                v <- head <$> eval ev cls
+                setTableField tr (Number (fromIntegral ix), v)            
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
 evalExpressionList :: [AST.Expr] -> Closure -> LuaM [Value]

@@ -99,7 +99,7 @@ spec = do
             it "should handle table assignments" $ do
                 runParse "t = {}; t[1] = 4; return t[1]" `shouldBe` [Number 4.0]
             it "should handle consecutive arrays" $ do
-                runParse "t = { 4, 5, 6 }; return t[0], t[1], t[2]" 
+                runParse "t = { 4, 5, 6 }; return t[0], t[1], t[2], t[3]" 
                     `shouldBe` [Nil, Number 4.0, Number 5.0, Number 6.0]
 
         describe "while loop" $ do

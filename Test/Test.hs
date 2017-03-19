@@ -54,10 +54,19 @@ spec = do
             parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] (Block [])]])
             parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [Return [Number 1]])]])
 
-        it "should parse function calls" $ do
-            parse "f()" `shouldBe` (Block [CallStmt (Var "f") []])
-            parse "f(1)" `shouldBe` (Block [CallStmt (Var "f") [Number 1.0]])
-            parse "f(x,y)" `shouldBe` (Block [CallStmt (Var "f") [Var "x", Var "y"]])
+        describe "should parse function calls" $ do
+            it "as a statement" $ do
+                parse "f()" `shouldBe` (Block [CallStmt (Var "f") []])
+                parse "f(1)" `shouldBe` (Block [CallStmt (Var "f") [Number 1.0]])
+                parse "f(x,y)" `shouldBe` (Block [CallStmt (Var "f") [Var "x", Var "y"]])
+            it "as an expression" $ do
+                parse "return f()" `shouldBe` (Block [Return [Call (Var "f") []]])
+
+        describe "should parse member calls" $ do
+            it "as a statement" $ do
+                parse "t:f()" `shouldBe` (Block [MemberCallStmt (Var "t") "f" []])
+            it "as an expression" $ do
+                parse "return t:f()" `shouldBe` (Block [Return [MemberCall (Var "t") "f" []]])
 
         it "should parse if statements" $ do
             parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])

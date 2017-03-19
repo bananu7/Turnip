@@ -36,6 +36,11 @@ closureLookup v _ = do
     let mVal = Map.lookup v _G
     return $ extractVal mVal
 
+callRef :: FunctionRef -> [Value] -> LuaM [Value]
+callRef f args = do
+    fd <- getFunctionData f
+    call fd args
+
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction fn) args = do
     -- ensure args match signature
@@ -61,7 +66,6 @@ call (FunctionData cls block names) args = do
     case res of
         ReturnBubble vs -> return vs
         _ -> return [Nil]
-
 
 eval :: AST.Expr -> Closure -> LuaM [Value]
 -- Literals don't use the closure parameter
@@ -89,17 +93,26 @@ eval (AST.Call fn args) cls = do
     fnV <- eval fn cls
 
     case fnV of 
-        (Function ref:_) -> do
-            fData <- getFunctionData ref
-            call fData argVs
+        (Function ref:_) -> callRef ref argVs
         x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
+eval (AST.MemberCall obj fName args) cls = do
+    argVs <- map head <$> mapM (\a -> eval a cls) args
+    objV <- head <$> eval obj cls
+    case objV of
+        Table tr -> do
+            fV <- getTableField tr (Str fName)
+            case fV of
+                Function ref -> callRef ref argVs
+                x -> throwError $ "Attempt to call method '" ++ fName ++ "' (" ++ show x ++ ")"
+        _ -> throwError $ "Attempt to index a non-table (" ++ show objV ++ ")"
+
 eval (AST.FieldRef t k) cls = do
-    tv <- eval t cls
+    tv <- head <$> eval t cls
 
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
-    case head tv of
+    case tv of
         (Table tRef) -> do
             -- similarly here
             kV <- head <$> eval k cls
@@ -108,7 +121,7 @@ eval (AST.FieldRef t k) cls = do
             let mVal :: Maybe Value = t ^. at kV
             return $ [extractVal mVal]
 
-        _ -> throwError "Trying to index a non-table"
+        _ -> throwError $ "Attempt to index a non-table (" ++ show tv ++ ")"
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
@@ -279,6 +292,10 @@ execStmt AST.Break _ = return BreakBubble
 -- call statement is a naked call expression with result ignored
 execStmt (AST.CallStmt f ps) cls = do
     _ <- eval (AST.Call f ps) cls
+    return EmptyBubble
+
+execStmt (AST.MemberCallStmt obj f ps) cls = do
+    _ <- eval (AST.MemberCall obj f ps) cls
     return EmptyBubble
 
 -- this is a special case of an unpacking assignment

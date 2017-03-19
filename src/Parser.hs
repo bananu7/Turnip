@@ -207,7 +207,7 @@ assignOrCallStmt = do
     case ex of 
         --Function
         (Call fn params) -> return $ CallStmt fn params
-        (MemberCall _ _ _) -> return $ Assignment [] [ex]
+        (MemberCall obj fn params) -> return $ MemberCallStmt obj fn params
         -- Assignment
         (Var n) -> assignStmt [LVar n]
         (FieldRef t f) -> assignStmt [LFieldRef t f]

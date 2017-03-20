@@ -178,11 +178,7 @@ runUntil (h:t) f = do
 runUntil [] _ = return EmptyBubble
 
 execBlock :: AST.Block -> Closure -> LuaM Bubble
-execBlock (AST.Block stmts) cls = runUntil stmts $ \stmt -> do
-    case stmt of
-        -- the only statement that return values is Return
-        AST.Return exprs -> execReturnStatement exprs cls
-        _ -> execStmt stmt cls
+execBlock (AST.Block stmts) cls = runUntil stmts $ \stmt -> execStmt stmt cls
 
 execStmt :: AST.Stmt -> Closure -> LuaM Bubble
 
@@ -325,6 +321,10 @@ execStmt (AST.LocalDecl names) cls = do
 
     return EmptyBubble
 
+execStmt (AST.Return exprs) cls = do
+    vals <- map head <$> mapM (\e -> eval e cls) exprs
+    return $ ReturnBubble vals
+
 -- this is a simple helper that picks either top level closure or global table
 assignmentTarget :: Closure -> AST.LValue -> LuaM TableRef
 assignmentTarget [] _ = use gRef
@@ -364,8 +364,3 @@ assignLValue cls (AST.LFieldRef t k) v = do
     case tv of
         Table tr -> setTableField tr (kv,v)
         _ -> throwError "Trying to assign to a field of non-table"
-
-execReturnStatement :: [AST.Expr] -> Closure -> LuaM Bubble
-execReturnStatement exprs cls = do
-    vals <- map head <$> mapM (\e -> eval e cls) exprs
-    return $ ReturnBubble vals

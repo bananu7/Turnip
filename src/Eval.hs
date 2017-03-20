@@ -34,7 +34,7 @@ defaultCtx = Context {
     _gRef = gRef,
     _functions = Map.fromList [],
     _tables = Map.fromList [(gRef, Map.fromList [])],
-    _lastId = 1
+    _lastId = 10
     }
   where
-    gRef = TableRef 999
+    gRef = TableRef 1

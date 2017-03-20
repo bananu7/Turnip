@@ -42,7 +42,7 @@ entry sig luaName origName = do
         toSafeSuffix = concat . map (show . ord)
         
 genDecls :: [Entry] -> Q [Dec]
-genDecls = mapM (\(sig, _, tempName, origName) -> genDec sig tempName origName)
+genDecls es = concat <$> mapM (\(sig, _, tempName, origName) -> genDec sig tempName origName) es
 
 genLibLoadFunction :: [Entry] -> Q [Dec]
 genLibLoadFunction xs = do
@@ -58,11 +58,9 @@ genLibLoadFunction xs = do
         toAddFunctionStatement (_, luaName, tempName, _) = noBindS $ [e| addNativeFunction $(litE $ stringL luaName) (Eval.BuiltinFunction $(varE tempName)) |]
 
 -- |Generates a declaration of a function compatible with Lua interface
--- @param n - the new name
-genDec :: Sig -> Name -> Name -> Q Dec
+-- @param tempName - the new name
+genDec :: Sig -> Name -> Name -> Q [Dec]
 genDec (Sig paramTs returnT) tempName origName = do
-    xn <- newName "xs"
-
     matches <- mapM typeToMatch paramTs
 
     let
@@ -83,4 +81,8 @@ genDec (Sig paramTs returnT) tempName origName = do
     -- return type
     let body = normalB $ [| return $ [ $(appE (conE $ typeToName returnT) app) ] |]
 
-    funD tempName [clause match body []]
+    -- Generate the function body and a signature for it
+    sigQ <- sigD tempName [t| [Eval.Value] -> Eval.LuaM [Eval.Value] |]
+    bodyQ <- funD tempName [clause match body []]
+
+    return [sigQ, bodyQ]

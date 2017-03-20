@@ -330,18 +330,18 @@ execStmt (AST.Return exprs) cls = do
     return $ ReturnBubble vals
 
 -- this is a simple helper that picks either top level closure or global table
-assignmentTarget :: Closure -> AST.LValue -> LuaM TableRef
+assignmentTarget :: Closure -> AST.Name -> LuaM TableRef
 assignmentTarget [] _ = use gRef
 -- before choosing local closure for assignment, we should first check
 -- whether the value doesn't exist in the closure
 -- this is essentially the core of lexical scoping, I suppose
-assignmentTarget (topCls:cls) (AST.LVar name) = do
+assignmentTarget (topCls:cls) name = do
     t <- getTableData topCls
     case Map.lookup (Str name) t of
         -- if the name appears in the closure, we assign to this one
         (Just _) -> return topCls
         -- otherwise we try going down the stack
-        Nothing -> assignmentTarget cls (AST.LVar name)
+        Nothing -> assignmentTarget cls name
 
 execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
 execAssignment cls lvals vals = do
@@ -359,7 +359,7 @@ execAssignment cls lvals vals = do
 
 assignLValue :: Closure -> AST.LValue -> Value -> LuaM ()
 assignLValue cls (AST.LVar name) v = do
-    target <- assignmentTarget cls (AST.LVar name)
+    target <- assignmentTarget cls name
     setTableField target (Str name, v)
 
 assignLValue cls (AST.LFieldRef t k) v = do

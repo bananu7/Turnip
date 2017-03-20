@@ -82,7 +82,7 @@ genDec (Sig paramTs returnT) tempName origName = do
     let body = normalB $ [| return $ [ $(appE (conE $ typeToName returnT) app) ] |]
 
     -- Generate the function body and a signature for it
-    sigQ <- sigD tempName [t| [Eval.Value] -> Eval.LuaM [Eval.Value] |]
+    sigQ <- sigD tempName [t| Eval.NativeFunction |]
     bodyQ <- funD tempName [clause match body []]
 
     return [sigQ, bodyQ]

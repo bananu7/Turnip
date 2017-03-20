@@ -42,6 +42,7 @@ $(do
  )
 
 -- Polymorphic comparison operators
+luaCmpEQ :: NativeFunction
 luaCmpEQ (Number a : Number b : _) = return [Boolean $ a == b]
 luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
 luaCmpEQ (Boolean a : Boolean b : _) = return [Boolean $ a == b]
@@ -49,18 +50,22 @@ luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
 luaCmpEQ (Nil : Nil : _) = return [Boolean True]
 luaCmpEQ _ = return [Boolean False]
 
+luaCmpGT :: NativeFunction
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
 luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
 luaCmpGT xs = throwError "Can't compare those values"
 
+luaCmpLT :: NativeFunction
 luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
 luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
 luaCmpLT _ = throwError "Can't compare those values"
 
+luaerror :: NativeFunction
 luaerror [Str err] = throwError err
 luaerror _ = throwError ""
 
 --unary negate
+luaMinusHelper :: NativeFunction
 luaMinusHelper (Number a : []) = return $ [Number (-a)]
 luaMinusHelper (Number a : Number b : _) = return $ [Number (a - b)]
 luaMinusHelper _ = throwError "Can't subtract those things"

@@ -37,54 +37,64 @@ spec = do
             runParse "if false then elseif true then return 3 end" `shouldBe` [Number 3.0]
             runParse "if false then elseif false then else return 2 end" `shouldBe` [Number 2.0]
 
-        it "should eval functions" $ do
-            runParse "function f() end; return f()" `shouldBe` [Nil]
-            runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
-            runParse "function f(x) return x end; return f(6)" `shouldBe` [Number 6.0]
+        describe "functions" $ do
+            it "should eval functions" $ do
+                runParse "function f() end; return f()" `shouldBe` [Nil]
+                runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
+                runParse "function f(x) return x end; return f(6)" `shouldBe` [Number 6.0]
 
-        it "should eval more complex functions" $ do
-            runParse "function add(a,b) return a+b end; return add(3,4)" `shouldBe` [Number 7.0]
-            runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
-            runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
+            it "should eval more complex functions" $ do
+                runParse "function add(a,b) return a+b end; return add(3,4)" `shouldBe` [Number 7.0]
+                runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
+                runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
 
-        it "should properly scope locals" $ do
-            runParse "x = 1; function f() local x = 2; return x end; return f()" `shouldBe` [Number 2.0]
-            runParse "function f() local x = 2; local function g() return x end; return g; end; return f()()" `shouldBe` [Number 2.0]
-            runParse (unlines [
-                 "function f()"
-                ,"  local x = 2;"
-                ,"  local function g()"
-                ,"    x = 3"
-                ,"  end"
-                ,"  local function h()"
-                ,"    return x"
-                ,"  end"
-                ,"  return g, h"
-                ,"end"
-                ,"g,h = f();"
-                ,"g();"
-                ,"return h();"])
-                 `shouldBe` [Number 3.0]
+            it "should properly scope locals" $ do
+                runParse "x = 1; function f() local x = 2; return x end; return f()" `shouldBe` [Number 2.0]
+                runParse "function f() local x = 2; local function g() return x end; return g; end; return f()()" `shouldBe` [Number 2.0]
+                runParse (unlines [
+                     "function f()"
+                    ,"  local x = 2;"
+                    ,"  local function g()"
+                    ,"    x = 3"
+                    ,"  end"
+                    ,"  local function h()"
+                    ,"    return x"
+                    ,"  end"
+                    ,"  return g, h"
+                    ,"end"
+                    ,"g,h = f();"
+                    ,"g();"
+                    ,"return h();"])
+                     `shouldBe` [Number 3.0]
 
-        it "should properly prefer local assignment" $ do
-            runParse (unlines [
-                 "x = 1"
-                ,"function f()"
-                ,"  local x = 2"
-                ,"end"
-                ,"f()"
-                ,"return x"
-                ]) `shouldBe` [Number 1.0]
+            it "should properly prefer local assignment" $ do
+                runParse (unlines [
+                     "x = 1"
+                    ,"function f()"
+                    ,"  local x = 2"
+                    ,"end"
+                    ,"f()"
+                    ,"return x"
+                    ]) `shouldBe` [Number 1.0]
 
-        it "should properly declare local missing multiple assignments" $ do
-            runParse (unlines [
-                 "x, y = 1,2"
-                ,"function f()"
-                ,"  local x,y = 3" -- y doesn't receive a value
-                ,"  y = 5"         -- but should still be declared as a local
-                ,"end"
-                ,"return y"
-                ]) `shouldBe` [Number 2.0]
+            it "should properly declare local missing multiple assignments" $ do
+                runParse (unlines [
+                     "x, y = 1,2"
+                    ,"function f()"
+                    ,"  local x,y = 3" -- y doesn't receive a value
+                    ,"  y = 5"         -- but should still be declared as a local
+                    ,"end"
+                    ,"return y"
+                    ]) `shouldBe` [Number 2.0]
+
+            it "should properly fill in nils for missing argument values" $ do
+                runParse (unlines [
+                     "x = 5"
+                    ,"function f(x)"
+                    ,"  return x"
+                    ,"end"
+                    ,"return f()"
+                    ]) `shouldBe` [Nil]
 
         describe "assignments" $ do
             it "should handle trivial assignments" $ do

@@ -55,8 +55,12 @@ call (FunctionData cls block names) args = do
     -- TODO: in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
 
+    -- If not enough parameters were passed, the missing ones must still appear as nils
+    -- otherwise they wouldn't appear in the closure
+    let argsWithNils = padWithNils (length names - length args) args
     -- this is table data containing arguments
-    let argsTableData = Map.fromList $ zip (map Str names) args
+    let argsTableData = Map.fromList $ zip (map Str names) argsWithNils
+
     -- we turn it into a regular, registered table
     newCls <- makeNewTableWith argsTableData
     -- and append it to the closure stack

@@ -95,6 +95,27 @@ spec = do
                 runParse "x, y = 1; return x, y" `shouldBe` [Number 1.0, Nil]
                 runParse "x, y = 1, 2, 3; return x, y" `shouldBe` [Number 1.0, Number 2.0]
 
+        describe "tables" $ do
+            it "should handle table assignments" $ do
+                runParse "t = {}; t[1] = 4; return t[1]" `shouldBe` [Number 4.0]
+            it "should handle consecutive array constructors" $ do
+                runParse "t = { 4, 5, 6 }; return t[0], t[1], t[2], t[3]" 
+                    `shouldBe` [Nil, Number 4.0, Number 5.0, Number 6.0]
+            it "should handle mixed array constructors" $ do
+                runParse "t = { 1, x = 2 }; return t[1], t[\"x\"]"
+                    `shouldBe` [Number 1.0, Number 2.0]
+                runParse "t = { 1, x = 2, 3 }; return t[1], t[\"x\"], t[2]"
+                    `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
+            it "should handle table access syntax sugar" $ do
+                runParse "t = { x = 1 }; return t.x" `shouldBe` [Number 1.0]
+                runParse "t = {}; t.x = 2; return t[\"x\"]" `shouldBe` [Number 2.0]
+            it "should handle method call (:) syntax sugar" $ do
+                runParse "t = { f = function() return 1 end }; return t:f()"
+                    `shouldBe` [Number 1.0]
+            it "should properly pass self to method calls" $ do
+                runParse "t = { x = 5, f = function(self) return self.x end }; return t:f()"
+                    `shouldBe` [Number 5.0]
+
         describe "while loop" $ do
             it "should properly skip a loop with a false clause" $ do
                 runParse "while false do return 3 end return 1" `shouldBe` [Number 1.0]

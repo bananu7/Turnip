@@ -12,6 +12,7 @@ import Eval.Util
 
 import Control.Lens
 import Control.Monad.Except
+import Control.Monad.State
 import Debug.Trace
 
 -- This function fills in the Nil for the missing Value
@@ -34,6 +35,11 @@ closureLookup v _ = do
     _G <- getGlobalTable
     let mVal = Map.lookup v _G
     return $ extractVal mVal
+
+callRef :: FunctionRef -> [Value] -> LuaM [Value]
+callRef f args = do
+    fd <- getFunctionData f
+    call fd args
 
 call :: FunctionData -> [Value] -> LuaM [Value]
 call (BuiltinFunction fn) args = do
@@ -61,7 +67,6 @@ call (FunctionData cls block names) args = do
         ReturnBubble vs -> return vs
         _ -> return [Nil]
 
-
 eval :: AST.Expr -> Closure -> LuaM [Value]
 -- Literals don't use the closure parameter
 eval (AST.Number n) _ = return [Number n]
@@ -85,20 +90,30 @@ eval (AST.Call fn args) cls = do
     -- theoretically always a Nil should be returned, but
     -- it's not in the type system yet. (wrt head)
     argVs <- map head <$> mapM (\a -> eval a cls) args
-    fnV <- eval fn cls
+    fnV <- head <$> eval fn cls
 
     case fnV of 
-        (Function ref:_) -> do
-            fData <- getFunctionData ref
-            call fData argVs
+        Function ref -> callRef ref argVs
         x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
+eval (AST.MemberCall obj fName args) cls = do
+    argVs <- map head <$> mapM (\a -> eval a cls) args
+    objV <- head <$> eval obj cls
+    case objV of
+        Table tr -> do
+            fV <- getTableField tr (Str fName)
+            case fV of
+                -- objV is prepended to the argument list as the 'self' parameter
+                Function ref -> callRef ref (objV : argVs)
+                x -> throwError $ "Attempt to call method '" ++ fName ++ "' (" ++ show x ++ ")"
+        _ -> throwError $ "Attempt to index a non-table (" ++ show objV ++ ")"
+
 eval (AST.FieldRef t k) cls = do
-    tv <- eval t cls
+    tv <- head <$> eval t cls
 
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
-    case head tv of
+    case tv of
         (Table tRef) -> do
             -- similarly here
             kV <- head <$> eval k cls
@@ -107,13 +122,38 @@ eval (AST.FieldRef t k) cls = do
             let mVal :: Maybe Value = t ^. at kV
             return $ [extractVal mVal]
 
-        _ -> throwError "Trying to index a non-table"
-
+        _ -> throwError $ "Attempt to index a non-table (" ++ show tv ++ ")"
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
 eval (AST.BinOp name lhs rhs) cls = eval (AST.Call (AST.Var name) [lhs, rhs]) cls
 eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
+
+-- Table constructor in form { k = v, ... }
+eval (AST.TableCons entries) cls = do
+    tr <- makeNewTable
+
+    flip evalStateT (1 :: Int) $
+        forM_ entries (addEntry tr)
+
+    return [Table tr]
+    where
+        --addEntry :: TableRef -> (Maybe AST.Expr, AST.Expr) -> StateT Int _ _
+        -- The map-like entry
+        -- I need to 'lift' here to separate the LuaM rankntype from the StateT
+        addEntry tr (Just ek, ev) = lift $ do
+            k <- head <$> eval ek cls
+            v <- head <$> eval ev cls
+            setTableField tr (k,v)
+
+        -- The numeric, array-like entry
+        addEntry tr (Nothing, ev) = do
+            ix <- get
+            put $ ix + 1
+
+            lift $ do
+                v <- head <$> eval ev cls
+                setTableField tr (Number (fromIntegral ix), v)            
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
 evalExpressionList :: [AST.Expr] -> Closure -> LuaM [Value]
@@ -255,6 +295,10 @@ execStmt (AST.CallStmt f ps) cls = do
     _ <- eval (AST.Call f ps) cls
     return EmptyBubble
 
+execStmt (AST.MemberCallStmt obj f ps) cls = do
+    _ <- eval (AST.MemberCall obj f ps) cls
+    return EmptyBubble
+
 -- this is a special case of an unpacking assignment
 execStmt (AST.Assignment lvals [expr]) cls = do
     vals <- eval expr cls
@@ -314,14 +358,12 @@ assignLValue cls (AST.LVar name) v = do
     target <- assignmentTarget cls (AST.LVar name)
     setTableField target (Str name, v)
 
-assignLValue ref (AST.LFieldRef {}) v = error "Assignment of fieldrefs not implemented"
-
-{-
-executionStmt (AST.Assignment lvals exprs) = do
-    sequence_ $ zipWith assigner lvals exprs
-  where
-    assigner (LVar lval val = do
--}
+assignLValue cls (AST.LFieldRef t k) v = do
+    tv <- head <$> eval t cls
+    kv <- head <$> eval k cls
+    case tv of
+        Table tr -> setTableField tr (kv,v)
+        _ -> throwError "Trying to assign to a field of non-table"
 
 execReturnStatement :: [AST.Expr] -> Closure -> LuaM Bubble
 execReturnStatement exprs cls = do

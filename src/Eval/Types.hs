@@ -1,6 +1,8 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Eval.Types where
 
@@ -17,6 +19,16 @@ newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 -- Applicative is here just for 7.8 (I know, right)
 type LuaM a = forall m . (MonadState Context m, Applicative m, MonadError String m) => m a
+
+data NewLuaM m a = NewLuaM { runNewLuaM :: StateT (Context, Closure) m a } deriving Functor
+
+instance Monad m => Applicative (NewLuaM m) where
+    pure = NewLuaM . pure
+    (NewLuaM a) <*> (NewLuaM b) = NewLuaM (a <*> b)
+
+instance Monad m => Monad (NewLuaM m) where
+    return = NewLuaM . return
+    a >>= f = a >>= f
 
 data Value where {
     Table :: TableRef -> Value;

@@ -3,6 +3,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Eval.Types where
 
@@ -18,17 +21,27 @@ newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 -- Applicative is here just for 7.8 (I know, right)
-type LuaM a = forall m . (MonadState Context m, Applicative m, MonadError String m) => m a
+type OldLuaM a = forall m . (MonadState Context m, Applicative m, MonadError String m) => m a
 
-data NewLuaM m a = NewLuaM { runNewLuaM :: StateT (Context, Closure) m a } deriving Functor
+data LuaMT m a = LuaMT { runLuaMT :: StateT (Context, Closure) m a }
 
-instance Monad m => Applicative (NewLuaM m) where
-    pure = NewLuaM . pure
-    (NewLuaM a) <*> (NewLuaM b) = NewLuaM (a <*> b)
+deriving instance Functor m => Functor (LuaMT m)
 
-instance Monad m => Monad (NewLuaM m) where
-    return = NewLuaM . return
+instance MonadTrans LuaMT where
+    lift c = LuaMT . lift $ c
+
+instance MonadError String m => MonadError String (LuaMT m) where
+    throwError = lift . throwError
+
+instance Monad m => Applicative (LuaMT m) where
+    pure = LuaMT . pure
+    (LuaMT a) <*> (LuaMT b) = LuaMT (a <*> b)
+
+instance Monad m => Monad (LuaMT m) where
+    return = LuaMT . return
     a >>= f = a >>= f
+
+type LuaM a = forall m. MonadError String m => LuaMT m a
 
 data Value where {
     Table :: TableRef -> Value;

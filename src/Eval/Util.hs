@@ -9,26 +9,26 @@ import Control.Applicative ((<$>))
 import Data.Map
 
 getFunctionData :: FunctionRef -> LuaM FunctionData
-getFunctionData ref = do
+getFunctionData ref = LuaMT . zoom _1 $ do
     fns <- use functions
     case Map.lookup ref fns of
         Just fdata -> return fdata
         Nothing -> error "Function ref dead" -- should never really happen
 
 getTableData :: TableRef -> LuaM TableData
-getTableData ref = do
+getTableData ref = LuaMT . zoom _1 $ do
     ts <- use tables
     case Map.lookup ref ts of
         Just tdata -> return tdata
         Nothing -> error "Function ref dead" -- should never really happen
 
 uniqueFunctionRef :: LuaM FunctionRef
-uniqueFunctionRef = do
+uniqueFunctionRef = LuaMT . zoom _1 $ do
     lastId += 1
     FunctionRef <$> use lastId
 
 uniqueTableRef :: LuaM TableRef
-uniqueTableRef = do
+uniqueTableRef = LuaMT . zoom _1 $ do
     lastId += 1
     TableRef <$> use lastId
 
@@ -38,8 +38,12 @@ coerceToBool (Nil:_) = False
 coerceToBool (h:_) = True
 coerceToBool _ = False
 
+-- This was needed to shield Eval from seeing into the LuaM insides
+getGlobalTableRef :: LuaM TableRef
+getGlobalTableRef = LuaMT . zoom _1 $ use gRef
+
 getGlobalTable :: LuaM TableData
-getGlobalTable = do
+getGlobalTable = LuaMT . zoom _1 $ do
     gref <- use gRef
     -- assume that _G is always present (as it should)
     (Just _G) <- Map.lookup gref <$> use tables
@@ -48,22 +52,32 @@ getGlobalTable = do
 addNativeFunction :: String -> FunctionData -> LuaM ()
 addNativeFunction name fdata = do
     newRef <- uniqueFunctionRef
-    functions . at newRef .= Just fdata
+    LuaMT . zoom _1 $ do
+        functions . at newRef .= Just fdata
 
-    gTabRef <- use gRef
-    tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)
+        gTabRef <- use gRef
+        tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)
 
 makeNewTableWith :: TableData -> LuaM TableRef
 makeNewTableWith initial = do
     newRef <- uniqueTableRef
-    tables . at newRef .= Just initial
-    return newRef
+    LuaMT . zoom _1 $ do
+        tables . at newRef .= Just initial
+        return newRef
 
 makeNewTable :: LuaM TableRef
 makeNewTable = makeNewTableWith Map.empty
 
+-- this is very similar to makeNewTable, just operates on functions
+makeNewLambda :: FunctionData -> LuaM FunctionRef
+makeNewLambda f = do
+    newRef <- uniqueFunctionRef
+    LuaMT . zoom _1 $ do
+        functions . at newRef .= Just f
+        return newRef
+
 setTableField :: TableRef -> (Value, Value) -> LuaM ()
-setTableField tRef (k,v) = tables . at tRef . traversed %= insert k v
+setTableField tRef (k,v) = LuaMT . zoom _1 $ tables . at tRef . traversed %= insert k v
 
 getTableField :: TableRef -> Value -> LuaM Value
 getTableField tRef k = getTableData tRef >>= \t -> case t ^. at k of

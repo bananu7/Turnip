@@ -84,8 +84,7 @@ eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames b) cls = do
-    newRef <- uniqueFunctionRef
-    functions . at newRef .= (Just $ FunctionData cls b parNames)
+    newRef <- makeNewLambda $ FunctionData cls b parNames
     return [Function newRef]
 
 eval (AST.Var name) cls = (:[]) <$> closureLookup (Str name) cls
@@ -317,7 +316,7 @@ execStmt (AST.Assignment lvals exprs) cls = do
 execStmt (AST.LocalDecl names) cls = do
     declTarget :: TableRef <- case cls of
         (topCls:_) -> pure topCls
-        _ -> use gRef
+        _ -> getGlobalTableRef
 
     -- we have to force using this target here to create new names
     -- in the top level closure; assignmentTarget only uses existing ones
@@ -331,7 +330,7 @@ execStmt (AST.Return exprs) cls = do
 
 -- this is a simple helper that picks either top level closure or global table
 assignmentTarget :: Closure -> AST.Name -> LuaM TableRef
-assignmentTarget [] _ = use gRef
+assignmentTarget [] _ = getGlobalTableRef
 -- before choosing local closure for assignment, we should first check
 -- whether the value doesn't exist in the closure
 -- this is essentially the core of lexical scoping, I suppose

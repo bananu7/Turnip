@@ -20,18 +20,17 @@ import Control.Monad.Except
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
--- Applicative is here just for 7.8 (I know, right)
-type OldLuaM a = forall m . (MonadState Context m, Applicative m, MonadError String m) => m a
+type EvalContext = (Context, Closure)
 
-data LuaMT m a = LuaMT { runLuaMT :: StateT (Context, Closure) m a }
+data LuaMT m a = LuaMT (StateT EvalContext (ExceptT String m) a)
 
 deriving instance Functor m => Functor (LuaMT m)
 
 instance MonadTrans LuaMT where
-    lift c = LuaMT . lift $ c
+    lift c = LuaMT . lift . lift $ c
 
-instance MonadError String m => MonadError String (LuaMT m) where
-    throwError = lift . throwError
+instance Monad m => MonadError String (LuaMT m) where
+    throwError = LuaMT . lift . throwError
 
 instance Monad m => Applicative (LuaMT m) where
     pure = LuaMT . pure
@@ -41,7 +40,7 @@ instance Monad m => Monad (LuaMT m) where
     return = LuaMT . return
     a >>= f = a >>= f
 
-type LuaM a = forall m. MonadError String m => LuaMT m a
+type LuaM a = forall m. Monad m => LuaMT m a
 
 data Value where {
     Table :: TableRef -> Value;

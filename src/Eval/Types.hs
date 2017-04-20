@@ -22,7 +22,7 @@ newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 type EvalContext = (Context, Closure)
 
-data LuaMT m a = LuaMT (StateT EvalContext (ExceptT String m) a)
+data LuaMT m a = LuaMT (ExceptT String (StateT EvalContext m) a)
 
 deriving instance Functor m => Functor (LuaMT m)
 
@@ -30,7 +30,7 @@ instance MonadTrans LuaMT where
     lift c = LuaMT . lift . lift $ c
 
 instance Monad m => MonadError String (LuaMT m) where
-    throwError = LuaMT . lift . throwError
+    throwError = LuaMT . throwError
 
 instance Monad m => Applicative (LuaMT m) where
     pure = LuaMT . pure

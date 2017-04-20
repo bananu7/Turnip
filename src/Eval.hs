@@ -8,26 +8,39 @@ import qualified LuaAS as AST
 import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Lens hiding (Context)
-import Control.Monad.Trans.Either
+import Control.Monad.Except
 
 import Eval.Types
 import Eval.Eval
 import Eval.Lib (loadBaseLibrary)
 
+runLuaMTWith :: EvalContext -> LuaMT m a -> m (Either String a, EvalContext)
+runLuaMTWith s (LuaMT f) = runStateT (runExceptT f) s
+
+-- This is for when you don't care about the closure (want to run code globally)
+runLuaMT :: forall a m. Monad m => Context -> LuaMT m a -> m (Either String a, Context)
+runLuaMT ctx f = do 
+        -- This destructures EvalContext assuming that it's a simple tuple
+    (x, (ctx', _)) <- runLuaMTWith (ctx, []) f
+    return (x, ctx')
+
 -- Context isn't under Either because it's always modified up to
 -- the point where the error happened.
-runWith :: AST.Block -> Context -> (Either String [Value], Context)
-runWith b ctx = runState code ctx
-    where
-        code = runEitherT $ do
-            loadBaseLibrary
-            result <- execBlock b []
-            case result of
-                ReturnBubble vs -> right vs
-                _ -> right [Nil]
+runWith :: forall m. Monad m => Context -> AST.Block -> m (Either String [Value], Context)
+runWith ctx b = runLuaMT ctx (blockRunner b)
 
-run :: AST.Block -> Either String [Value]
-run b = fst $ runWith b defaultCtx
+-- In this case Either is used both explicitely (with lift)
+-- and implicitly (with its MonadError instance)
+blockRunner :: forall m. Monad m => AST.Block -> LuaMT m [Value]
+blockRunner b = do
+    loadBaseLibrary
+    result <- execBlock b []
+    case result of
+        ReturnBubble vs -> return vs
+        _ -> throwError "The block didn't result in a returned result"
+
+run :: forall m. Monad m => AST.Block -> m (Either String [Value])
+run b = fst <$> runWith defaultCtx b
 
 defaultCtx :: Context
 defaultCtx = Context {

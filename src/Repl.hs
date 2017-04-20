@@ -27,7 +27,7 @@ repl = do
         case maybeAST of
             Right ast -> do
                 ctx <- get
-                maybeResult <- state $ runWith ast
+                maybeResult <- state $ \s -> runWith s ast
                 case maybeResult of 
                     Right result -> liftIO $ print result
                     Left error -> liftIO . putStrLn $ "Lua error " ++ show error

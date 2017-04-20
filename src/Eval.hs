@@ -26,8 +26,12 @@ runLuaMT ctx f = do
 
 -- Context isn't under Either because it's always modified up to
 -- the point where the error happened.
-runWith :: forall m. Monad m => Context -> AST.Block -> m (Either String [Value], Context)
-runWith ctx b = runLuaMT ctx (blockRunner b)
+runWithM :: forall m. Monad m => Context -> AST.Block -> m (Either String [Value], Context)
+runWithM ctx b = runLuaMT ctx (blockRunner b)
+
+-- helper for pure usage
+runWith :: Context -> AST.Block -> (Either String [Value], Context)
+runWith ctx b = runIdentity $ runWithM ctx b
 
 -- In this case Either is used both explicitely (with lift)
 -- and implicitly (with its MonadError instance)
@@ -39,8 +43,12 @@ blockRunner b = do
         ReturnBubble vs -> return vs
         _ -> throwError "The block didn't result in a returned result"
 
-run :: forall m. Monad m => AST.Block -> m (Either String [Value])
-run b = fst <$> runWith defaultCtx b
+runM :: forall m. Monad m => AST.Block -> m (Either String [Value])
+runM b = fst <$> runWithM defaultCtx b
+
+-- helper for pure usage
+run :: AST.Block -> Either String [Value]
+run b = runIdentity $ runM b
 
 defaultCtx :: Context
 defaultCtx = Context {

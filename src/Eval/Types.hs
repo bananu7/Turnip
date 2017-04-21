@@ -6,6 +6,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Eval.Types where
 
@@ -22,23 +23,16 @@ newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 type EvalContext = (Context, Closure)
 
-data LuaMT m a = LuaMT (ExceptT String (StateT EvalContext m) a)
+newtype LuaMT m a = LuaMT (ExceptT String (StateT EvalContext m) a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadError String)
 
-deriving instance Functor m => Functor (LuaMT m)
+-- MonadState EvalContext is not provided on purpose
+
+-- potentially I could provide those, but the user can also add them himself
+-- MonadCont, MonadReader r, MonadWriter w
 
 instance MonadTrans LuaMT where
-    lift c = LuaMT . lift . lift $ c
-
-instance Monad m => MonadError String (LuaMT m) where
-    throwError = LuaMT . throwError
-
-instance Monad m => Applicative (LuaMT m) where
-    pure = LuaMT . pure
-    (LuaMT a) <*> (LuaMT b) = LuaMT (a <*> b)
-
-instance Monad m => Monad (LuaMT m) where
-    return = LuaMT . return
-    a >>= f = a >>= f
+    lift = LuaMT . lift . lift
 
 type LuaM a = forall m. Monad m => LuaMT m a
 

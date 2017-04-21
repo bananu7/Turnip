@@ -334,8 +334,9 @@ exp_exp = choice [
 expr :: Parser Expr
 expr = buildExpressionParser optable exp_exp
 
-optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
-             , [Prefix (reservedOp "-"   >> return (UnOp "-")) ]
+optable    = [ [Prefix (reservedOp "-"   >> return (UnOp "-")) ]
+             , [Prefix (reservedOp "not" >> return (UnOp "not")) ]
+             , [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Infix  (reservedOp "*"   >> return (BinOp "*")) AssocLeft]
              , [Infix  (reservedOp "/"   >> return (BinOp "/"  )) AssocLeft]
              , [Infix  (reservedOp "%"   >> return (BinOp "%" )) AssocLeft]

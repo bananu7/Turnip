@@ -26,10 +26,19 @@ spec = do
     describe "Eval" $ do
         it "should eval return blocks" $
             runParse "return 1" `shouldBe` [Number 1.0]
-        it "should eval operator calls" $ do
+
+        it "should eval mathematical operators" $ do
             runParse "return 1 + 1" `shouldBe` [Number 2.0]
             runParse "return 3 - 2" `shouldBe` [Number 1.0]
             runParse "return 3 * 8" `shouldBe` [Number 24.0]
+
+        it "should eval logical operators" $ do
+            runParse "return not true" `shouldBe` [Boolean False]
+            runParse "return not false" `shouldBe` [Boolean True]
+            runParse "return not not false" `shouldBe` [Boolean False]
+            runParse "return true or false" `shouldBe` [Boolean True]
+            runParse "return false or true" `shouldBe` [Boolean True]
+
         it "should eval if statements" $ do
             runParse "if true then return 5 end" `shouldBe` [Number 5.0]
             runParse "if false then return 0 end; return 1" `shouldBe` [Number 1.0]

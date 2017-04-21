@@ -9,6 +9,7 @@ import System.IO
 
 import Paths_Turnip (version)
 import Data.Version (showVersion)
+import System.Environment (getArgs)
 
 disableBuffering = hSetBuffering stdout NoBuffering
 
@@ -35,3 +36,23 @@ repl = do
             Left error ->
                 liftIO . putStrLn $ "Parse error " ++ show error
 
+runFileFromCommandline :: IO ()
+runFileFromCommandline = do
+    args <- getArgs
+
+    case args of
+        (path:_) -> do 
+            source <- readFile path
+            flip evalStateT defaultCtx $ do
+                let maybeAST = parseLua source
+
+                case maybeAST of
+                    Right ast -> do
+                        ctx <- get
+                        maybeResult <- state $ runWith ast
+                        case maybeResult of 
+                            Right result -> liftIO $ print result
+                            Left error -> liftIO . putStrLn $ "Lua error " ++ show error
+
+                    Left error ->
+                        liftIO . putStrLn $ "Parse error " ++ show error

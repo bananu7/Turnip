@@ -60,6 +60,9 @@ luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
 luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
 luaCmpLT _ = throwError "Can't compare those values"
 
+luaNot :: NativeFunction
+luaNot (a:_) = return [Boolean . not . coerceToBool $ a]
+
 luaerror :: NativeFunction
 luaerror [Str err] = throwError err
 luaerror _ = throwError ""

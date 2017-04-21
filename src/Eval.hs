@@ -38,10 +38,10 @@ runWith ctx b = runIdentity $ runWithM ctx b
 blockRunner :: forall m. Monad m => AST.Block -> LuaMT m [Value]
 blockRunner b = do
     loadBaseLibrary
-    result <- execBlock b []
+    result <- execBlock b
     case result of
         ReturnBubble vs -> return vs
-        _ -> throwError "The block didn't result in a returned result"
+        _ -> throwError "The block didn't end with a returned result"
 
 runM :: forall m. Monad m => AST.Block -> m (Either String [Value])
 runM b = fst <$> runWithM defaultCtx b

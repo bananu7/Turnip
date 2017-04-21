@@ -35,8 +35,13 @@ uniqueTableRef = LuaMT . zoom _1 $ do
 coerceToBool :: [Value] -> Bool
 coerceToBool (Boolean x:_) = x
 coerceToBool (Nil:_) = False
-coerceToBool (h:_) = True
+coerceToBool (_h:_) = True
 coerceToBool _ = False
+
+-- This function fills in the Nil for the missing Value
+extractVal :: Maybe Value -> Value
+extractVal Nothing = Nil
+extractVal (Just v) = v
 
 -- This was needed to shield Eval from seeing into the LuaM insides
 getGlobalTableRef :: LuaM TableRef

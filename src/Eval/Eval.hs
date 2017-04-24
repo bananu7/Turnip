@@ -320,7 +320,7 @@ execStmt (AST.Return exprs) = do
 execAssignment :: [AST.LValue] -> [Value] -> LuaM ()
 execAssignment lvals vals = do
     -- fill in the missing Nil-s for zip
-    -- let valsPadded = Eval.padWithNils (length lvals) vals
+    -- let valsPadded = padWithNils (length lvals) vals
 
     -- because of how zipWith works, this isn't necessary; namely, only
     -- the assignments that have the vals are executed at all

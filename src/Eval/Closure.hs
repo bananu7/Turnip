@@ -16,10 +16,12 @@ import Control.Lens
 import qualified Data.Map as Map (lookup)
 import Control.Monad.Trans
 import qualified LuaAS as AST
+import Control.Monad.RWS
+import Control.Monad.Except
 
 -- |Get the raw closure value.
 getClosure :: LuaM Closure
-getClosure = LuaMT . lift $ use _2
+getClosure = LuaMT . lift $ ask
 
 -- |Index the current closure.
 closureLookup :: Value -> LuaM Value
@@ -40,11 +42,7 @@ closureLookupFrom v _ = do
 
 -- |Executes the code block one level deeper.
 closurePush :: forall m a. Monad m => TableRef -> LuaMT m a -> LuaMT m a
-closurePush t a = do
-    LuaMT . lift $ _2 %= (:) t
-    r <- a
-    LuaMT . lift $ _2 %= tail
-    return r
+closurePush t (LuaMT a) = LuaMT $ mapExceptT (withRWST (\cls s -> (t:cls, s))) a
 
 -- this is a simple helper that picks either top level closure or global table
 assignmentTarget :: AST.Name -> LuaM TableRef

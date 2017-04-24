@@ -6,7 +6,7 @@ import Prelude hiding (Nil)
 
 import qualified LuaAS as AST
 import qualified Data.Map as Map
-import Control.Monad.State
+import Control.Monad.RWS
 import Control.Lens hiding (Context)
 import Control.Monad.Except
 
@@ -14,19 +14,18 @@ import Eval.Types
 import Eval.Eval
 import Eval.Lib (loadBaseLibrary)
 
-runLuaMTWith :: EvalContext -> LuaMT m a -> m (Either String a, EvalContext)
-runLuaMTWith s (LuaMT f) = runStateT (runExceptT f) s
+runLuaMTWith :: Monad m => Closure -> Context -> LuaMT m a -> m (Either String a, Context)
+runLuaMTWith c s (LuaMT f) = stripWriter <$> runRWST (runExceptT f) c s
+    where
+        stripWriter (r, c', _w) = (r, c')
 
 -- This is for when you don't care about the closure (want to run code globally)
-runLuaMT :: forall a m. Monad m => Context -> LuaMT m a -> m (Either String a, Context)
-runLuaMT ctx f = do 
-        -- This destructures EvalContext assuming that it's a simple tuple
-    (x, (ctx', _)) <- runLuaMTWith (ctx, []) f
-    return (x, ctx')
+runLuaMT :: Monad m => Context -> LuaMT m a -> m (Either String a, Context)
+runLuaMT = runLuaMTWith []
 
 -- Context isn't under Either because it's always modified up to
 -- the point where the error happened.
-runWithM :: forall m. Monad m => Context -> AST.Block -> m (Either String [Value], Context)
+runWithM :: Monad m => Context -> AST.Block -> m (Either String [Value], Context)
 runWithM ctx b = runLuaMT ctx (blockRunner b)
 
 -- helper for pure usage

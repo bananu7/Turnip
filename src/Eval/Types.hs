@@ -11,11 +11,11 @@
 module Eval.Types where
 
 import qualified Data.Map as Map
-import Control.Monad.State
 import Control.Lens hiding (Context)
 import qualified LuaAS as AST (Block)
 import Control.Applicative
 import Control.Monad.Except
+import Control.Monad.RWS
 
 -- TODO - think about reference counting on those
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
@@ -23,7 +23,7 @@ newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 type EvalContext = (Context, Closure)
 
-newtype LuaMT m a = LuaMT (ExceptT String (StateT EvalContext m) a)
+newtype LuaMT m a = LuaMT (ExceptT String (RWST Closure () Context m) a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadError String)
 
 -- MonadState EvalContext is not provided on purpose

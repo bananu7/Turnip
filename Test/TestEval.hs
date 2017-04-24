@@ -52,8 +52,17 @@ spec = do
                 runParse "function f(x) if x == 0 then return x else return f(x-1) end end; return f(5)" `shouldBe` [Number 0.0]
 
             it "should properly scope locals" $ do
-                runParse "x = 1; function f() local x = 2; return x end; return f()" `shouldBe` [Number 2.0]
-                runParse "function f() local x = 2; local function g() return x end; return g; end; return f()()" `shouldBe` [Number 2.0]
+                runParse "x = 1; function f() local x = 1; return x end; return f()" `shouldBe` [Number 1.0]
+                runParse (unlines [
+                     "function f()"
+                    ,"  local x = 2;"
+                    ,"  local function g()"
+                    ,"    return x"
+                    ,"  end"
+                    ,"  return g"
+                    ,"end"
+                    ,"return f()()"])
+                     `shouldBe` [Number 2.0]
                 runParse (unlines [
                      "function f()"
                     ,"  local x = 2;"

@@ -39,7 +39,7 @@ closureLookupFrom v _ = do
     return $ extractVal mVal
 
 -- |Executes the code block one level deeper.
-closurePush :: TableRef -> LuaM a -> LuaM a
+closurePush :: forall m a. Monad m => TableRef -> LuaMT m a -> LuaMT m a
 closurePush t a = do
     LuaMT . lift $ _2 %= (:) t
     r <- a

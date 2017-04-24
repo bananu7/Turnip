@@ -1,22 +1,40 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Eval.Types where
 
 import qualified Data.Map as Map
-import Control.Monad.State
 import Control.Lens hiding (Context)
 import qualified LuaAS as AST (Block)
 import Control.Applicative
 import Control.Monad.Except
+import Control.Monad.RWS
 
 -- TODO - think about reference counting on those
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
--- Applicative is here just for 7.8 (I know, right)
-type LuaM a = forall m . (MonadState Context m, Applicative m, MonadError String m) => m a
+type EvalContext = (Context, Closure)
+
+newtype LuaMT m a = LuaMT (ExceptT String (RWST Closure () Context m) a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadError String)
+
+-- MonadState EvalContext is not provided on purpose
+
+-- potentially I could provide those, but the user can also add them himself
+-- MonadCont, MonadReader r, MonadWriter w
+
+instance MonadTrans LuaMT where
+    lift = LuaMT . lift . lift
+
+type LuaM a = forall m. Monad m => LuaMT m a
 
 data Value where {
     Table :: TableRef -> Value;

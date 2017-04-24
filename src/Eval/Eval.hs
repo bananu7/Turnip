@@ -9,32 +9,15 @@ import qualified Data.Map as Map
 import qualified LuaAS as AST
 import Eval.Types
 import Eval.Util
+import Eval.Closure
 
 import Control.Lens
 import Control.Monad.Except
 import Control.Monad.State
 import Debug.Trace
 
--- This function fills in the Nil for the missing Value
-extractVal :: Maybe Value -> Value
-extractVal Nothing = Nil
-extractVal (Just v) = v
-
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
-
-closureLookup :: Value -> Closure -> LuaM Value
--- descend recursively with lookups, picking the closest name first
-closureLookup v (topRef:cls) = do
-    topCls <- getTableData topRef
-    case Map.lookup v topCls of
-        Just val -> return val
-        Nothing -> closureLookup v cls
--- if closure lookup fails, try global lookup
-closureLookup v _ = do  
-    _G <- getGlobalTable
-    let mVal = Map.lookup v _G
-    return $ extractVal mVal
 
 callRef :: FunctionRef -> [Value] -> LuaM [Value]
 callRef f args = do
@@ -64,45 +47,48 @@ call (FunctionData cls block names) args = do
     -- we turn it into a regular, registered table
     newCls <- makeNewTableWith argsTableData
     -- and append it to the closure stack
-    let clsWithArgs = newCls : cls
+    -- together with the closure stored in the functiondata
+    foldl (flip closurePush) b (newCls:cls)
+     where
+        b = do
+            res <- execBlock block
+            case res of
+                ReturnBubble vs -> return vs
+                _ -> return [Nil]
 
-    res <- execBlock block clsWithArgs
-    case res of
-        ReturnBubble vs -> return vs
-        _ -> return [Nil]
 
-eval :: AST.Expr -> Closure -> LuaM [Value]
+eval :: AST.Expr -> LuaM [Value]
 -- Literals don't use the closure parameter
-eval (AST.Number n) _ = return [Number n]
-eval (AST.StringLiteral _ str) _ = return [Str str]
-eval (AST.Bool b) _ = return [Boolean b]
-eval AST.Nil _ = return [Nil]
+eval (AST.Number n) = return [Number n]
+eval (AST.StringLiteral _ str) = return [Str str]
+eval (AST.Bool b) = return [Boolean b]
+eval AST.Nil = return [Nil]
 
 -- In order to eval ellipsis, the closure needs to differentiate between
 -- outer local variables and parameters
-eval AST.Ellipsis _ = throwError "how do you even eval ellipsis"
+eval AST.Ellipsis = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
-eval (AST.Lambda parNames b) cls = do
-    newRef <- uniqueFunctionRef
-    functions . at newRef .= (Just $ FunctionData cls b parNames)
+eval (AST.Lambda parNames b) = do
+    cls <- getClosure
+    newRef <- makeNewLambda $ FunctionData cls b parNames
     return [Function newRef]
 
-eval (AST.Var name) cls = (:[]) <$> closureLookup (Str name) cls
+eval (AST.Var name) = (:[]) <$> closureLookup (Str name)
 
-eval (AST.Call fn args) cls = do
+eval (AST.Call fn args) = do
     -- theoretically always a Nil should be returned, but
     -- it's not in the type system yet. (wrt head)
-    argVs <- map head <$> mapM (\a -> eval a cls) args
-    fnV <- head <$> eval fn cls
+    argVs <- map head <$> mapM (\a -> eval a) args
+    fnV <- head <$> eval fn
 
     case fnV of 
         Function ref -> callRef ref argVs
         x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
-eval (AST.MemberCall obj fName args) cls = do
-    argVs <- map head <$> mapM (\a -> eval a cls) args
-    objV <- head <$> eval obj cls
+eval (AST.MemberCall obj fName args) = do
+    argVs <- map head <$> mapM eval args
+    objV <- head <$> eval obj
     case objV of
         Table tr -> do
             fV <- getTableField tr (Str fName)
@@ -112,15 +98,15 @@ eval (AST.MemberCall obj fName args) cls = do
                 x -> throwError $ "Attempt to call method '" ++ fName ++ "' (" ++ show x ++ ")"
         _ -> throwError $ "Attempt to index a non-table (" ++ show objV ++ ")"
 
-eval (AST.FieldRef t k) cls = do
-    tv <- head <$> eval t cls
+eval (AST.FieldRef t k) = do
+    tv <- head <$> eval t
 
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
     case tv of
         (Table tRef) -> do
             -- similarly here
-            kV <- head <$> eval k cls
+            kV <- head <$> eval k
 
             t <- getTableData tRef
             let mVal :: Maybe Value = t ^. at kV
@@ -130,11 +116,11 @@ eval (AST.FieldRef t k) cls = do
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
-eval (AST.BinOp name lhs rhs) cls = eval (AST.Call (AST.Var name) [lhs, rhs]) cls
-eval (AST.UnOp name expr) cls = eval (AST.Call (AST.Var name) [expr]) cls
+eval (AST.BinOp name lhs rhs) = eval (AST.Call (AST.Var name) [lhs, rhs])
+eval (AST.UnOp name expr) = eval (AST.Call (AST.Var name) [expr])
 
 -- Table constructor in form { k = v, ... }
-eval (AST.TableCons entries) cls = do
+eval (AST.TableCons entries) = do
     tr <- makeNewTable
 
     flip evalStateT (1 :: Int) $
@@ -146,8 +132,8 @@ eval (AST.TableCons entries) cls = do
         -- The map-like entry
         -- I need to 'lift' here to separate the LuaM rankntype from the StateT
         addEntry tr (Just ek, ev) = lift $ do
-            k <- head <$> eval ek cls
-            v <- head <$> eval ev cls
+            k <- head <$> eval ek
+            v <- head <$> eval ev
             setTableField tr (k,v)
 
         -- The numeric, array-like entry
@@ -156,15 +142,15 @@ eval (AST.TableCons entries) cls = do
             put $ ix + 1
 
             lift $ do
-                v <- head <$> eval ev cls
+                v <- head <$> eval ev
                 setTableField tr (Number (fromIntegral ix), v)            
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
-evalExpressionList :: [AST.Expr] -> Closure -> LuaM [Value]
-evalExpressionList xs cls = do
-    firsts <- mapM (flip eval cls) (init xs)
+evalExpressionList :: [AST.Expr] -> LuaM [Value]
+evalExpressionList xs = do
+    firsts <- mapM eval (init xs)
     let singular = map head firsts
-    pack <- eval (last xs) cls
+    pack <- eval (last xs)
 
     return $ singular ++ pack
 
@@ -181,12 +167,12 @@ runUntil (h:t) f = do
         
 runUntil [] _ = return EmptyBubble
 
-execBlock :: AST.Block -> Closure -> LuaM Bubble
-execBlock (AST.Block stmts) cls = runUntil stmts $ \stmt -> execStmt stmt cls
+execBlock :: AST.Block -> LuaM Bubble
+execBlock (AST.Block stmts) = runUntil stmts $ \stmt -> execStmt stmt
 
-execStmt :: AST.Stmt -> Closure -> LuaM Bubble
+execStmt :: AST.Stmt -> LuaM Bubble
 
-execStmt (AST.If blocks mElseB) cls = do
+execStmt (AST.If blocks mElseB) = do
     -- if an else block is present, we can append it to the list
     -- with a predicate that always evals to True.
     let blocks' = case mElseB of
@@ -194,44 +180,44 @@ execStmt (AST.If blocks mElseB) cls = do
                     Nothing -> blocks
 
     runUntil blocks' $ \(expr, b) -> do
-        result <- coerceToBool <$> eval expr cls
+        result <- coerceToBool <$> eval expr
         if result
-          then execBlock b cls
+          then execBlock b
           else return EmptyBubble
 
-execStmt (AST.For names (AST.ForNum emin emax mestep) b) cls = do
-    newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
-    let cls' = newCls : cls
-
+execStmt (AST.For names (AST.ForNum emin emax mestep) b) = do
     step <- case mestep of
-        Just estep -> head <$> eval estep cls
+        Just estep -> head <$> eval estep
         Nothing -> pure $ Number 1.0
 
-    vmin <- head <$> eval emin cls
-    vmax <- head <$> eval emax cls
+    vmin <- head <$> eval emin
+    vmax <- head <$> eval emax
 
-    case (vmin, vmax, step) of
-        (Number i, Number n, Number s) -> loopBody cls' i n s
-        _ -> throwError "'for' limits and step must be numbers"
+    newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    where
-        loopBody cls i n step = do
-            let cont = if step > 0 then i <= n else i >= n
-            if cont then do
-                -- TODO: duplication between numeric and generic for
-                execAssignment cls (map AST.LVar names) [Number i]
-                blockResult <- execBlock b cls
-                let i' = i + step
-                case blockResult of
-                    EmptyBubble -> loopBody cls i' n step
-                    BreakBubble -> return EmptyBubble
-                    x -> return x
-            else
-                return EmptyBubble
+    closurePush newCls $ do
+        case (vmin, vmax, step) of
+            (Number i, Number n, Number s) -> loopBody i n s
+            _ -> throwError "'for' limits and step must be numbers"
+
+        where
+            loopBody i n step = do
+                let cont = if step > 0 then i <= n else i >= n
+                if cont then do
+                    -- TODO: duplication between numeric and generic for
+                    execAssignment (map AST.LVar names) [Number i]
+                    blockResult <- execBlock b
+                    let i' = i + step
+                    case blockResult of
+                        EmptyBubble -> loopBody i' n step
+                        BreakBubble -> return EmptyBubble
+                        x -> return x
+                else
+                    return EmptyBubble
 
 -- The semantics for that version have been taken from PIL 7.2
 -- https://www.lua.org/pil/7.2.html
-execStmt (AST.For names (AST.ForIter explist) b) cls = do
+execStmt (AST.For names (AST.ForIter explist) b) = do
     -- Like in a multiple assignment, only the last (or the only)
     -- element of the list can result in more than one value;
     -- and the number of values is adjusted to three, extra
@@ -239,7 +225,7 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
     -- (When we use simple iterators, the factory returns
     -- only the iterator function, so the invariant state
     -- and the control variable get nil.)
-    [f, s, var] <- padWithNils 3 <$> evalExpressionList explist cls
+    [f, s, var] <- padWithNils 3 <$> evalExpressionList explist
 
     -- A function reference is (hopefully )returned after evaluating
     -- the explist
@@ -248,35 +234,36 @@ execStmt (AST.For names (AST.ForIter explist) b) cls = do
         _ -> throwError "The iterator is not a function" 
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
-    let cls' = newCls : cls
 
-    loopBody cls' fv s var
-    where
-        loopBody cls fv s var = do
-            -- the first value is the "iterator"
-            vars <- call fv [s, var]
-            -- the rest are put in the local variables
-            execAssignment cls (map AST.LVar names) vars
+    closurePush newCls $ do
 
-            let var' = head vars
-            if coerceToBool [var']
-                then do
-                    -- TODO: duplication between numeric and generic for
-                    blockResult <- execBlock b cls
-                    case blockResult of
-                        EmptyBubble -> loopBody cls fv s var'
-                        BreakBubble -> return EmptyBubble
-                        x -> return x
-                else
-                    return EmptyBubble
+        loopBody fv s var
+        where
+            loopBody fv s var = do
+                -- the first value is the "iterator"
+                vars <- call fv [s, var]
+                -- the rest are put in the local variables
+                execAssignment (map AST.LVar names) vars
 
-execStmt (AST.While e b) cls = do
-    result <- coerceToBool <$> eval e cls
+                let var' = head vars
+                if coerceToBool [var']
+                    then do
+                        -- TODO: duplication between numeric and generic for
+                        blockResult <- execBlock b
+                        case blockResult of
+                            EmptyBubble -> loopBody fv s var'
+                            BreakBubble -> return EmptyBubble
+                            x -> return x
+                    else
+                        return EmptyBubble
+
+execStmt (AST.While e b) = do
+    result <- coerceToBool <$> eval e
     if result then do
-        blockResult <- execBlock b cls
+        blockResult <- execBlock b
         case blockResult of
             -- In case the inner block didn't break, just recurse
-            EmptyBubble -> execStmt (AST.While e b) cls
+            EmptyBubble -> execStmt (AST.While e b)
             -- While 'contains' the break bubble and turns it into
             -- an empty one, closing the statement.
             BreakBubble -> return EmptyBubble
@@ -288,36 +275,37 @@ execStmt (AST.While e b) cls = do
     -- if no change has been made to lua state, it can be safely assumed that it's
     -- an infinite loop
 
-execStmt AST.Break _ = return BreakBubble
+execStmt AST.Break = return BreakBubble
 
 -- call statement is a naked call expression with result ignored
-execStmt (AST.CallStmt f ps) cls = do
-    _ <- eval (AST.Call f ps) cls
+execStmt (AST.CallStmt f ps) = do
+    _ <- eval (AST.Call f ps)
     return EmptyBubble
 
-execStmt (AST.MemberCallStmt obj f ps) cls = do
-    _ <- eval (AST.MemberCall obj f ps) cls
+execStmt (AST.MemberCallStmt obj f ps) = do
+    _ <- eval (AST.MemberCall obj f ps)
     return EmptyBubble
 
 -- this is a special case of an unpacking assignment
-execStmt (AST.Assignment lvals [expr]) cls = do
-    vals <- eval expr cls
-    execAssignment cls lvals vals
+execStmt (AST.Assignment lvals [expr]) = do
+    vals <- eval expr
+    execAssignment lvals vals
     return EmptyBubble
 
 -- this is "regular" multiple assignment
-execStmt (AST.Assignment lvals exprs) cls = do
+execStmt (AST.Assignment lvals exprs) = do
     -- this takes the first value of every expression
     -- it only happens when there are more than 1 expr on rhs
-    vals <- mapM (\e -> head <$> eval e cls) exprs
-    execAssignment cls lvals vals
+    vals <- mapM (\e -> head <$> eval e) exprs
+    execAssignment lvals vals
     return EmptyBubble
 
 -- LocalDef is very similar to regular assignment
-execStmt (AST.LocalDecl names) cls = do
+execStmt (AST.LocalDecl names) = do
+    cls <- getClosure
     declTarget :: TableRef <- case cls of
         (topCls:_) -> pure topCls
-        _ -> use gRef
+        _ -> getGlobalTableRef
 
     -- we have to force using this target here to create new names
     -- in the top level closure; assignmentTarget only uses existing ones
@@ -325,26 +313,12 @@ execStmt (AST.LocalDecl names) cls = do
 
     return EmptyBubble
 
-execStmt (AST.Return exprs) cls = do
-    vals <- map head <$> mapM (\e -> eval e cls) exprs
+execStmt (AST.Return exprs) = do
+    vals <- map head <$> mapM (\e -> eval e) exprs
     return $ ReturnBubble vals
 
--- this is a simple helper that picks either top level closure or global table
-assignmentTarget :: Closure -> AST.Name -> LuaM TableRef
-assignmentTarget [] _ = use gRef
--- before choosing local closure for assignment, we should first check
--- whether the value doesn't exist in the closure
--- this is essentially the core of lexical scoping, I suppose
-assignmentTarget (topCls:cls) name = do
-    t <- getTableData topCls
-    case Map.lookup (Str name) t of
-        -- if the name appears in the closure, we assign to this one
-        (Just _) -> return topCls
-        -- otherwise we try going down the stack
-        Nothing -> assignmentTarget cls name
-
-execAssignment :: Closure -> [AST.LValue] -> [Value] -> LuaM ()
-execAssignment cls lvals vals = do
+execAssignment :: [AST.LValue] -> [Value] -> LuaM ()
+execAssignment lvals vals = do
     -- fill in the missing Nil-s for zip
     -- let valsPadded = padWithNils (length lvals) vals
 
@@ -354,17 +328,18 @@ execAssignment cls lvals vals = do
     -- separate declarator statements NOW. Since that could change in the future,
     -- I'm keeping the above code for reference, if a need to pad the assingment
     -- with Nils appears.
+    cls <- getClosure
 
-    sequence_ $ zipWith (assignLValue cls) lvals vals
+    sequence_ $ zipWith assignLValue lvals vals
 
-assignLValue :: Closure -> AST.LValue -> Value -> LuaM ()
-assignLValue cls (AST.LVar name) v = do
-    target <- assignmentTarget cls name
+assignLValue :: AST.LValue -> Value -> LuaM ()
+assignLValue (AST.LVar name) v = do
+    target <- assignmentTarget name
     setTableField target (Str name, v)
 
-assignLValue cls (AST.LFieldRef t k) v = do
-    tv <- head <$> eval t cls
-    kv <- head <$> eval k cls
+assignLValue (AST.LFieldRef t k) v = do
+    tv <- head <$> eval t
+    kv <- head <$> eval k
     case tv of
         Table tr -> setTableField tr (kv,v)
         _ -> throwError "Trying to assign to a field of non-table"

@@ -47,11 +47,15 @@ call (FunctionData cls block names) args = do
     -- we turn it into a regular, registered table
     newCls <- makeNewTableWith argsTableData
     -- and append it to the closure stack
-    closurePush newCls $ do
-        res <- execBlock block
-        case res of
-            ReturnBubble vs -> return vs
-            _ -> return [Nil]
+    -- together with the closure stored in the functiondata
+    foldl (flip closurePush) b (newCls:cls)
+     where
+        b = do
+            res <- execBlock block
+            case res of
+                ReturnBubble vs -> return vs
+                _ -> return [Nil]
+
 
 eval :: AST.Expr -> LuaM [Value]
 -- Literals don't use the closure parameter

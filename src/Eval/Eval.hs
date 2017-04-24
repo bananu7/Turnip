@@ -288,7 +288,7 @@ execStmt (AST.MemberCallStmt obj f ps) = do
 
 -- this is a special case of an unpacking assignment
 execStmt (AST.Assignment lvals [expr]) = do
-    vals <- eval expr    
+    vals <- eval expr
     execAssignment lvals vals
     return EmptyBubble
 
@@ -296,7 +296,7 @@ execStmt (AST.Assignment lvals [expr]) = do
 execStmt (AST.Assignment lvals exprs) = do
     -- this takes the first value of every expression
     -- it only happens when there are more than 1 expr on rhs
-    vals <- mapM (\e -> head <$> eval e) exprs    
+    vals <- mapM (\e -> head <$> eval e) exprs
     execAssignment lvals vals
     return EmptyBubble
 

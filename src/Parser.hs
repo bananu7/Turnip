@@ -8,6 +8,7 @@ import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language
 import Data.List
 import Control.Monad (liftM)
+import Data.Maybe
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
 -- thus separating the IO from the AST
@@ -144,27 +145,30 @@ funcStmt :: Parser Stmt
 funcStmt = do 
     reserved "function"
     fname <- funcname
-    fparams <- paramList
+    (fparams, varargs) <- paramList
     fbody <- funcBody
 
     case fname of
-        (name, _) -> return $ Assignment [LVar name] [Lambda fparams fbody]
+        (name, _) -> return $ Assignment [LVar name] [Lambda fparams varargs fbody]
         -- TODO: proper resolution of LFieldRefs
 
 -- |this is essentially a lambda expression
 lambda :: Parser Expr
 lambda = do 
     reserved "function"
-    fparams <- paramList
+    (fparams, varargs) <- paramList
     fbody <- funcBody
-    return $ Lambda fparams fbody
+    return $ Lambda fparams varargs fbody
     
-paramList = parens (option [] namelist)
+paramList = parens $ do
+    names <- option [] namelist
+    vararg <- isJust <$> optionMaybe (comma >> reserved "...")
+    return (names, vararg)
 
 funcBody = do
     b <- block 
     reserved "end"
-    return $ (Block b) 
+    return $ (Block b)
 
 {-
 I've decided to desugar local statements to something much easier to eval. Thus:
@@ -183,12 +187,12 @@ localStmt = reserved "local" >> (localFuncStmt <|> localAssignStmt)
             -- regular function names aren't allowed here,
             -- because local functions can't be methods (with dots inside)
             fname <- identifier
-            fparams <- paramList
+            (fparams, vararg) <- paramList
             fbody <- funcBody
             optional semi
             return $ [
                 LocalDecl [fname],
-                Assignment [LVar fname] [Lambda fparams fbody]
+                Assignment [LVar fname] [Lambda fparams vararg fbody]
                 ]
 
         localAssignStmt = do

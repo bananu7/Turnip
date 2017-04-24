@@ -4,12 +4,13 @@ import Text.ParserCombinators.Parsec.Pos
 import Data.List(intercalate)
 
 type Name = String
+type HasEllipsis = Bool
 
 data LValue = LVar Name
           | LFieldRef Expr Expr
             deriving (Show, Eq)
 
-data Expr = Number Double 
+data Expr = Number Double
           | StringLiteral SourcePos String
           | Bool Bool
           | Nil
@@ -21,7 +22,7 @@ data Expr = Number Double
           | BinOp String Expr Expr
           | FieldRef Expr Expr
           | Var Name
-          | Lambda [Name] Block
+          | Lambda [Name] HasEllipsis Block
           deriving (Show, Eq)
 
 

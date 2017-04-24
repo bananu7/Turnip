@@ -69,7 +69,7 @@ eval AST.Nil = return [Nil]
 eval AST.Ellipsis = throwError "how do you even eval ellipsis"
 
 -- lambda needs to be stored in the function table
-eval (AST.Lambda parNames b) = do
+eval (AST.Lambda parNames varargs b) = do
     cls <- getClosure
     newRef <- makeNewLambda $ FunctionData cls b parNames
     return [Function newRef]

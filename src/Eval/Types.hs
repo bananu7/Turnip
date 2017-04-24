@@ -21,15 +21,13 @@ import Control.Monad.RWS
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
-type EvalContext = (Context, Closure)
-
 newtype LuaMT m a = LuaMT (ExceptT String (RWST Closure () Context m) a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadError String)
 
--- MonadState EvalContext is not provided on purpose
+-- MonadState Context is not provided on purpose
 
 -- potentially I could provide those, but the user can also add them himself
--- MonadCont, MonadReader r, MonadWriter w
+-- MonadCont, MonadReader Closure, MonadWriter (if ever)
 
 instance MonadTrans LuaMT where
     lift = LuaMT . lift . lift

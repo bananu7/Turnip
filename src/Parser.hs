@@ -162,8 +162,10 @@ lambda = do
     
 paramList = parens $ do
     names <- option [] namelist
-    vararg <- isJust <$> optionMaybe (comma >> reserved "...")
-    return (names, vararg)
+    varargs <- if length names > 0
+        then isJust <$> optionMaybe (comma >> reserved "...")
+        else isJust <$> optionMaybe (reserved "...")
+    return (names, varargs)
 
 funcBody = do
     b <- block 

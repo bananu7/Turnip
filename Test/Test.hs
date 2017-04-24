@@ -54,6 +54,12 @@ spec = do
             parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] False (Block [])]])
             parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [Return [Number 1]])]])
 
+        describe "should parse function definitions with varargs" $ do
+            it "only varargs" $
+                parse "function f(...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] True (Block [])]])
+            it "params and varargs" $
+                parse "function f(x, ...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] True (Block [])]])
+
         describe "should parse function calls" $ do
             it "as a statement" $ do
                 parse "f()" `shouldBe` (Block [CallStmt (Var "f") []])

@@ -33,7 +33,7 @@ call (BuiltinFunction fn) args = do
     -- possibly with liftIO
     return result
 
-call (FunctionData cls block names) args = do
+call (FunctionData cls block names hasVarargs) args = do
     -- for every arg set cls[names[i]] = args[i]
     -- TODO: in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
@@ -41,8 +41,21 @@ call (FunctionData cls block names) args = do
     -- If not enough parameters were passed, the missing ones must still appear as nils
     -- otherwise they wouldn't appear in the closure
     let argsWithNils = padWithNils (length names - length args) args
+    let argsWithNames = zip (map Str names) argsWithNils
+
+    varargsData <- if hasVarargs
+        then do
+            -- varargs are 'leftover' arguments, essentially
+            let vargs = drop (length names) args
+            tr <- makeNewTableWith . Map.fromList $ (zip (map Number [1..]) vargs)
+            -- return the binding to those values
+            -- note: this table can be empty, but ti
+            return [(Str "arg", Table tr)]
+        else
+            return []
+
     -- this is table data containing arguments
-    let argsTableData = Map.fromList $ zip (map Str names) argsWithNils
+    let argsTableData = Map.fromList $ (argsWithNames ++ varargsData)
 
     -- we turn it into a regular, registered table
     newCls <- makeNewTableWith argsTableData
@@ -71,7 +84,7 @@ eval AST.Ellipsis = throwError "how do you even eval ellipsis"
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames varargs b) = do
     cls <- getClosure
-    newRef <- makeNewLambda $ FunctionData cls b parNames
+    newRef <- makeNewLambda $ FunctionData cls b parNames varargs
     return [Function newRef]
 
 eval (AST.Var name) = (:[]) <$> closureLookup (Str name)

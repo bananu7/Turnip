@@ -108,6 +108,14 @@ spec = do
                     ,"return f()"
                     ]) `shouldBe` [Nil]
 
+            it "should properly forward multiple returns" $ do
+                runParse (unlines [
+                     "function f()"
+                    ,"  return 1,2,3"
+                    ,"end"
+                    ,"return f()"
+                    ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
+
             describe "vararg functions" $ do
                 it "no arguments to a vararg functions should result in an empty table" $
                     runParse "function f(...) return arg[1] end; return f()" `shouldBe` [Nil]
@@ -117,11 +125,8 @@ spec = do
                     runParse (unlines [
                          "function f(...)"
                         ,"  return arg[1], arg[2], arg[3]"
-                        ," end"
-                        ,"a,b,c = f(1,2)"
-                        -- note: it had to be done that way because multiple value forwarding
-                        -- was broken at the time
-                        ,"return a,b,c"
+                        ,"end"
+                        ,"return f(1,2)"
                         ]) `shouldBe` [Number 1.0, Number 2.0, Nil]
                 it "varargs should play nice with normal parameters" $
                     runParse (unlines [

@@ -327,7 +327,12 @@ execStmt (AST.LocalDecl names) = do
     return EmptyBubble
 
 execStmt (AST.Return exprs) = do
-    vals <- map head <$> mapM (\e -> eval e) exprs
+    -- if there's only one expression to return, and it evals into
+    -- multiple values, it needs to be forwarded
+    vals <- case exprs of
+        [singleExpr] -> eval singleExpr
+        multipleExprs -> map head <$> mapM (\e -> eval e) multipleExprs
+
     return $ ReturnBubble vals
 
 execAssignment :: [AST.LValue] -> [Value] -> LuaM ()

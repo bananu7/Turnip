@@ -164,11 +164,7 @@ paramList :: Parser ([Name], Bool)
 paramList = parens $ do
     -- this can't be simply "namelist" because it will "eat" the last comma,
     -- and then fail on the "..."
-    names <- many $ do
-        i <- identifier
-        optional comma
-        return i
-
+    names <- many $ identifier <* optional comma
     varargs <- isJust <$> optionMaybe (string "...")
     return (names, varargs)
 

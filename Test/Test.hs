@@ -59,6 +59,8 @@ spec = do
                 parse "function f(...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] True (Block [])]])
             it "params and varargs" $
                 parse "function f(x, ...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] True (Block [])]])
+            it "multiple params and varargs" $                
+                parse "function f(x, y, z, ...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x", "y", "z"] True (Block [])]])
 
         describe "should parse function calls" $ do
             it "as a statement" $ do

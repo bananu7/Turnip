@@ -159,12 +159,17 @@ lambda = do
     (fparams, varargs) <- paramList
     fbody <- funcBody
     return $ Lambda fparams varargs fbody
-    
+
+paramList :: Parser ([Name], Bool)
 paramList = parens $ do
-    names <- option [] namelist
-    varargs <- if length names > 0
-        then isJust <$> optionMaybe (comma >> reserved "...")
-        else isJust <$> optionMaybe (reserved "...")
+    -- this can't be simply "namelist" because it will "eat" the last comma,
+    -- and then fail on the "..."
+    names <- many $ do
+        i <- identifier
+        optional comma
+        return i
+
+    varargs <- isJust <$> optionMaybe (string "...")
     return (names, varargs)
 
 funcBody = do

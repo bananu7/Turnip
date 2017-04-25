@@ -25,7 +25,7 @@ spec = do
         it "should parse simple assignments" $ do
             parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
             parse "x = y" `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
-            parse "f = function() end" `shouldBe` Block [Assignment [LVar "f"] [Lambda [] $ Block []]]
+            parse "f = function() end" `shouldBe` Block [Assignment [LVar "f"] [Lambda [] False $ Block []]]
 
         it "should parse multiple assignments" $ do
             parse "x,y=1,2" `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])
@@ -50,9 +50,17 @@ spec = do
             parse "return (42);" `shouldBe` (Block [Return [Number 42]])
 
         it "should parse function definitions" $ do
-            parse "function f() end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [])]])
-            parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] (Block [])]])
-            parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] (Block [Return [Number 1]])]])
+            parse "function f() end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [])]])
+            parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] False (Block [])]])
+            parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [Return [Number 1]])]])
+
+        describe "should parse function definitions with varargs" $ do
+            it "only varargs" $
+                parse "function f(...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] True (Block [])]])
+            it "params and varargs" $
+                parse "function f(x, ...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] True (Block [])]])
+            it "multiple params and varargs" $                
+                parse "function f(x, y, z, ...) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x", "y", "z"] True (Block [])]])
 
         describe "should parse function calls" $ do
             it "as a statement" $ do
@@ -78,7 +86,7 @@ spec = do
         it "should parse local definitions" $ do
             parse "local x = 5" `shouldBe` Block [LocalDecl ["x"], Assignment [LVar "x"] [Number 5.0]]
             parse "local a,b = 1,2" `shouldBe` Block [LocalDecl ["a", "b"], Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0]]
-            parse "local function f() end" `shouldBe` Block [LocalDecl ["f"], Assignment [LVar "f"] [Lambda [] (Block [])]]
+            parse "local function f() end" `shouldBe` Block [LocalDecl ["f"], Assignment [LVar "f"] [Lambda [] False (Block [])]]
 
         describe "loops" $ do
             it "should parse while loops" $ do

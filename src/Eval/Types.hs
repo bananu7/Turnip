@@ -51,7 +51,7 @@ type NativeFunction = [Value] -> LuaM [Value]
 -- This is a stack of tables forming a stack of nested closures
 type Closure = [TableRef]
 
-data FunctionData = FunctionData { closure :: Closure, block :: AST.Block, paramNames :: [String] }
+data FunctionData = FunctionData { closure :: Closure, block :: AST.Block, paramNames :: [String], varargs :: Bool }
                   | BuiltinFunction { fn :: NativeFunction }
 
 data Context = Context {

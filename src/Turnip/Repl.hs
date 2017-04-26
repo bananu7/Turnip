@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Repl where
+module Turnip.Repl where
 
-import Parser
-import Eval
+import Turnip.Parser
+import Turnip.Eval
 import Control.Monad.State
 import System.IO
 

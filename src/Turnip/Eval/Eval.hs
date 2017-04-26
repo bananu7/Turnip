@@ -3,17 +3,17 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-module Eval.Eval where
+module Turnip.Eval.Eval where
 
-import qualified Data.Map as Map
-import qualified LuaAS as AST
-import Eval.Types
-import Eval.Util
-import Eval.Closure
+import qualified Turnip.AST as AST
+import Turnip.Eval.Types
+import Turnip.Eval.Util
+import Turnip.Eval.Closure
 
 import Control.Lens
 import Control.Monad.Except
 import Control.Monad.State
+import qualified Data.Map as Map
 import Debug.Trace
 
 padWithNils :: Int -> [Value] -> [Value]

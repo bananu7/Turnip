@@ -8,11 +8,12 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Eval.Types where
+module Turnip.Eval.Types where
+
+import qualified Turnip.AST as AST (Block)
 
 import qualified Data.Map as Map
 import Control.Lens hiding (Context)
-import qualified LuaAS as AST (Block)
 import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.RWS

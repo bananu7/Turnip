@@ -1,4 +1,4 @@
-module LuaAS where
+module Turnip.AST where
 
 import Text.ParserCombinators.Parsec.Pos
 import Data.List(intercalate)

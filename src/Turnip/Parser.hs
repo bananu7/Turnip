@@ -1,6 +1,6 @@
-module Parser( prettyLuaFromFile, loadAST, parseLua ) where
+module Turnip.Parser( prettyLuaFromFile, loadAST, parseLua ) where
 
-import LuaAS
+import Turnip.AST
 
 import Text.ParserCombinators.Parsec 
 import Text.ParserCombinators.Parsec.Expr

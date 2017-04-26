@@ -2,11 +2,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Eval.Lib (loadBaseLibrary) where
+module Turnip.Eval.Lib (loadBaseLibrary) where
 
-import Eval.Types
-import Eval.TH
-import Eval.Util
+import Turnip.Eval.Types
+import Turnip.Eval.TH
+import Turnip.Eval.Util
 import Control.Monad.Except
 
 -- math helpers

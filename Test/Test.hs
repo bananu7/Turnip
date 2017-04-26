@@ -2,8 +2,8 @@ module Main where
 
 import Test.Hspec
 
-import Parser
-import LuaAS
+import Turnip.Parser
+import Turnip.AST
 
 successful (Right x) = x
 successful (Left err) = error $ show err

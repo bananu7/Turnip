@@ -1,6 +1,6 @@
 module Main where
 
-import Parser( prettyLuaFromFile, loadAST, parseLua )
-import Repl
+import Turnip.Parser( prettyLuaFromFile, loadAST, parseLua )
+import Turnip.Repl
 
 main = repl

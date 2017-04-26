@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Eval.TH (genDecls, genLibLoadFunction, entry, TypeT(..), Sig(..)) where
+module Turnip.Eval.TH (genDecls, genLibLoadFunction, entry, TypeT(..), Sig(..)) where
 
-import qualified Eval.Types as Eval
-import Eval.Util
+import qualified Turnip.Eval.Types as Eval
+import Turnip.Eval.Util
 
 import Language.Haskell.TH
 

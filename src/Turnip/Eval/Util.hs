@@ -1,8 +1,8 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 
-module Eval.Util where
+module Turnip.Eval.Util where
 
-import Eval.Types
+import Turnip.Eval.Types
 import Control.Lens
 import qualified Data.Map as Map (lookup, empty)
 import Control.Applicative ((<$>))

@@ -2,7 +2,7 @@
 
 -- |This module contains functions that simplify (and hide) closure handling
 -- inside of the LuaM monad
-module Eval.Closure 
+module Turnip.Eval.Closure 
     (getClosure
     ,closureLookup
     ,closurePush
@@ -10,12 +10,13 @@ module Eval.Closure
     )
     where
 
-import Eval.Types
-import Eval.Util
+import Turnip.Eval.Types
+import Turnip.Eval.Util
+import qualified Turnip.AST as AST
+
 import Control.Lens
 import qualified Data.Map as Map (lookup)
 import Control.Monad.Trans
-import qualified LuaAS as AST
 import Control.Monad.RWS
 import Control.Monad.Except
 

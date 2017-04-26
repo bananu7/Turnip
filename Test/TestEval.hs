@@ -2,9 +2,9 @@ module Main where
 
 import Test.Hspec
 
-import Parser (parseLua)
-import qualified LuaAS as AST
-import Eval
+import Turnip.Parser (parseLua)
+import qualified Turnip.AST as AST
+import Turnip.Eval
 
 import Control.Monad.IO.Class
 

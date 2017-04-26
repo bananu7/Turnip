@@ -26,58 +26,76 @@ spec = do
     describe "Eval" $ do
         it "should eval return blocks" $
             runParse "return 1" `shouldBe` [Number 1.0]
-        it "should eval operator calls" $ do
-            runParse "return 1 + 1" `shouldBe` [Number 2.0]
-            runParse "return 3 - 2" `shouldBe` [Number 1.0]
-            runParse "return 3 * 8" `shouldBe` [Number 24.0]
-        it "should eval if statements" $ do
-            runParse "if true then return 5 end" `shouldBe` [Number 5.0]
-            runParse "if false then return 0 end; return 1" `shouldBe` [Number 1.0]
-            runParse "if false then else return 6 end" `shouldBe` [Number 6.0]
-            runParse "if false then elseif true then return 3 end" `shouldBe` [Number 3.0]
-            runParse "if false then elseif false then else return 2 end" `shouldBe` [Number 2.0]
+
+        describe "should eval operator calls" $ do
+            it "+" $ runParse "return 1 + 1" `shouldBe` [Number 2.0]
+            it "-" $ runParse "return 3 - 2" `shouldBe` [Number 1.0]
+            it "*" $ runParse "return 3 * 8" `shouldBe` [Number 24.0]
+
+        describe "should eval 'if' statements" $ do
+            it "trivial always-true" $
+                runParse "if true then return 5 end" `shouldBe` [Number 5.0]
+            it "trivial always false (skip)" $
+                runParse "if false then return 0 end; return 1" `shouldBe` [Number 1.0]
+            it "false with else" $
+                runParse "if false then else return 6 end" `shouldBe` [Number 6.0]
+            it "false with true elseif" $
+                runParse "if false then elseif true then return 3 end" `shouldBe` [Number 3.0]
+            it "false, with false elseif and else" $
+                runParse "if false then elseif false then else return 2 end" `shouldBe` [Number 2.0]
 
         describe "functions" $ do
-            it "should eval functions" $ do
-                runParse "function f() end; return f()" `shouldBe` [Nil]
-                runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
-                runParse "function f(x) return x end; return f(6)" `shouldBe` [Number 6.0]
+            describe "should eval functions" $ do
+                it "trivial empty" $
+                    runParse "function f() end; return f()" `shouldBe` [Nil]
+                it "simple return" $
+                    runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
+                it "return of a passed argument" $
+                    runParse "function f(x) return x end; return f(6)" `shouldBe` [Number 6.0]
 
-            it "should eval more complex functions" $ do
-                runParse "function add(a,b) return a+b end; return add(3,4)" `shouldBe` [Number 7.0]
-                runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
-                runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
+            describe "should eval more complex functions" $ do
+                it "two parameters" $
+                    runParse "function add(a,b) return a+b end; return add(3,4)" `shouldBe` [Number 7.0]
+                it "with an inner closure returning the outer parameter" $
+                    runParse "function out(x) function inner() return x end; return inner(); end; return out(3)" `shouldBe` [Number 3.0]
+                it "with an inner closure taking a parameter and combining with outer one" $
+                    runParse "function out(x) function inner(y) return x+y end; return inner(5); end; return out(3)" `shouldBe` [Number 8.0]
 
             it "should properly eval recursive functions" $ do
                 runParse "function f(x) if x == 0 then return x else return f(x-1) end end; return f(5)" `shouldBe` [Number 0.0]
 
-            it "should properly scope locals" $ do
-                runParse "x = 1; function f() local x = 1; return x end; return f()" `shouldBe` [Number 1.0]
-                runParse (unlines [
-                     "function f()"
-                    ,"  local x = 2;"
-                    ,"  local function g()"
-                    ,"    return x"
-                    ,"  end"
-                    ,"  return g"
-                    ,"end"
-                    ,"return f()()"])
-                     `shouldBe` [Number 2.0]
-                runParse (unlines [
-                     "function f()"
-                    ,"  local x = 2;"
-                    ,"  local function g()"
-                    ,"    x = 3"
-                    ,"  end"
-                    ,"  local function h()"
-                    ,"    return x"
-                    ,"  end"
-                    ,"  return g, h"
-                    ,"end"
-                    ,"g,h = f();"
-                    ,"g();"
-                    ,"return h();"])
-                     `shouldBe` [Number 3.0]
+            describe "should properly scope locals" $ do
+                it "declaring and returning a local variable that shadows a global" $
+                    runParse "x = 3; function f() local x = 1; return x end; return f()" `shouldBe` [Number 1.0]
+
+                it "returning a closure" $
+                    runParse (unlines [
+                         "function f()"
+                        ,"  local x = 2;"
+                        ,"  local function g()"
+                        ,"    return x"
+                        ,"  end"
+                        ,"  return g"
+                        ,"end"
+                        ,"return f()()"])
+                         `shouldBe` [Number 2.0]
+
+                it "returning two interacting closures" $
+                    runParse (unlines [
+                         "function f()"
+                        ,"  local x = 2;"
+                        ,"  local function g()"
+                        ,"    x = 3"
+                        ,"  end"
+                        ,"  local function h()"
+                        ,"    return x"
+                        ,"  end"
+                        ,"  return g, h"
+                        ,"end"
+                        ,"g,h = f();"
+                        ,"g();"
+                        ,"return h();"])
+                         `shouldBe` [Number 3.0]
 
             it "should properly prefer local assignment" $ do
                 runParse (unlines [

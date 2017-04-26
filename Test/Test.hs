@@ -18,9 +18,8 @@ spec = do
             it "should parse floats" $ parse "return 4.2" `shouldBe` Block [Return [Number 4.2]]
             it "should parse negative numbers" $ do
                 parse "return -3" `shouldBe` Block [Return [UnOp "-" (Number 3.0)]]
-                parse "return -2.9" `shouldBe` Block [Return [UnOp "-" (Number 2.9)]]
-            -- this one can't be easily done because of the SourcePos
-            --it "should parse strings" $ parse "\"test\"" `shouldBe` [StringLiteral 0 "test"]
+                parse "return -2.9" `shouldBe` Block [Return [UnOp "-" (Number 2.9)]]            
+            it "should parse strings" $ parse "return \"test\"" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "test")
 
         describe "should parse simple assignments" $ do
             it "a number to a variable" $

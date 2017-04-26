@@ -22,37 +22,62 @@ spec = do
             -- this one can't be easily done because of the SourcePos
             --it "should parse strings" $ parse "\"test\"" `shouldBe` [StringLiteral 0 "test"]
 
-        it "should parse simple assignments" $ do
-            parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
-            parse "x = y" `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
-            parse "f = function() end" `shouldBe` Block [Assignment [LVar "f"] [Lambda [] False $ Block []]]
+        describe "should parse simple assignments" $ do
+            it "a number to a variable" $
+                parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
 
-        it "should parse multiple assignments" $ do
-            parse "x,y=1,2" `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])
-            parse "a,b,c = 1,2" `shouldBe` (Block [Assignment [LVar "a", LVar "b", LVar "c"] [Number 1.0, Number 2.0]])
-            parse "a,b = 1,2,3" `shouldBe` (Block [Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0, Number 3.0]])
+            it "a variable to another variable" $
+                parse "x = y" `shouldBe` (Block [Assignment [LVar "x"] [Var "y"]])
 
-        it "should parse assignments using tables" $ do
-            parse "t[i] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (Var "i")] [Var "v"]])
-            parse "t[u[i]] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (FieldRef (Var "u") (Var "i"))] [Var "v"]])
-            parse "t[i][u] = v" `shouldBe` Block [Assignment [LFieldRef (FieldRef (Var "t") (Var "i")) (Var "u")] [Var "v"]]
+            it "a lambda function to a variable" $
+                parse "f = function() end" `shouldBe` Block [Assignment [LVar "f"] [Lambda [] False $ Block []]]
 
-        it "should parse simple comparisons" $ do
-            mapM_ (\op -> (parse $ "return 1 " ++ op ++ " 2") 
+        describe "should parse multiple assignments" $ do
+            it "equal arity of lhs and rhs" $
+                parse "x,y=1,2" `shouldBe` (Block [Assignment [LVar "x", LVar "y"] [Number 1.0, Number 2.0]])
+
+            it "larger lhs (not enough values)" $
+                parse "a,b,c = 1,2" `shouldBe` (Block [Assignment [LVar "a", LVar "b", LVar "c"] [Number 1.0, Number 2.0]])
+
+            it "larger rhs (too many values)" $
+                parse "a,b = 1,2,3" `shouldBe` (Block [Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0, Number 3.0]])
+
+        describe "should parse assignments using tables" $ do
+            it "simple (t[i] = v)" $
+                parse "t[i] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (Var "i")] [Var "v"]])
+
+            it "with key that's table access (t[u[i]] = v)" $
+                parse "t[u[i]] = v" `shouldBe` (Block [Assignment [LFieldRef (Var "t") (FieldRef (Var "u") (Var "i"))] [Var "v"]])
+
+            it "nested table (t[i][u] = v)" $
+                parse "t[i][u] = v" `shouldBe` Block [Assignment [LFieldRef (FieldRef (Var "t") (Var "i")) (Var "u")] [Var "v"]]
+
+        describe "should parse simple comparisons" $ do
+            mapM_ (\op -> it op $ (parse $ "return 1 " ++ op ++ " 2") 
                             `shouldBe`
                           (Block [Return [BinOp op (Number 1) (Number 2)]])
                   )
                   ["==", "~=", ">", "<", ">=", "<="]
                   
-        it "should parse return statements" $ do
-            parse "return false" `shouldBe` (Block [Return [Bool False]])
-            parse "return 1, 2, 3" `shouldBe` (Block [Return [Number 1, Number 2, Number 3]])
-            parse "return (42);" `shouldBe` (Block [Return [Number 42]])
+        describe "should parse return statements" $ do
+            it "boolean" $ 
+                parse "return false" `shouldBe` (Block [Return [Bool False]])
 
-        it "should parse function definitions" $ do
-            parse "function f() end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [])]])
-            parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] False (Block [])]])
-            parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [Return [Number 1]])]])
+            it "a couple of numbers" $
+                parse "return 1, 2, 3" `shouldBe` (Block [Return [Number 1, Number 2, Number 3]])
+
+            it "some syntax noise" $
+                parse "return (42);" `shouldBe` (Block [Return [Number 42]])
+
+        describe "should parse function definitions" $ do
+            it "empty named function" $
+                parse "function f() end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [])]])
+
+            it "empty function with a parameter" $
+                parse "function f(x) end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda ["x"] False (Block [])]])
+
+            it "a function with a trivial return" $
+                parse "function f() return 1 end" `shouldBe` (Block [Assignment [LVar "f"] [Lambda [] False (Block [Return [Number 1]])]])
 
         describe "should parse function definitions with varargs" $ do
             it "only varargs" $
@@ -76,17 +101,25 @@ spec = do
             it "as an expression" $ do
                 parse "return t:f()" `shouldBe` (Block [Return [MemberCall (Var "t") "f" []]])
 
-        it "should parse if statements" $ do
-            parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
-            parse "if true then return true else return false end"
-                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
-            parse "if true then return true elseif false then return false end"
-                `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
+        describe "should parse if statements" $ do
+            it "without else" $
+                parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
+            it "with else" $
+                parse "if true then return true else return false end"
+                    `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
+            it "with elseif" $
+                parse "if true then return true elseif false then return false end"
+                    `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
 
-        it "should parse local definitions" $ do
-            parse "local x = 5" `shouldBe` Block [LocalDecl ["x"], Assignment [LVar "x"] [Number 5.0]]
-            parse "local a,b = 1,2" `shouldBe` Block [LocalDecl ["a", "b"], Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0]]
-            parse "local function f() end" `shouldBe` Block [LocalDecl ["f"], Assignment [LVar "f"] [Lambda [] False (Block [])]]
+        describe "should parse local definitions" $ do
+            it "simple local variable" $
+                parse "local x = 5" `shouldBe` Block [LocalDecl ["x"], Assignment [LVar "x"] [Number 5.0]]
+
+            it "multiple variables at the same time" $
+                parse "local a,b = 1,2" `shouldBe` Block [LocalDecl ["a", "b"], Assignment [LVar "a", LVar "b"] [Number 1.0, Number 2.0]]
+
+            it "local function syntax sugar" $
+                parse "local function f() end" `shouldBe` Block [LocalDecl ["f"], Assignment [LVar "f"] [Lambda [] False (Block [])]]
 
         describe "loops" $ do
             it "should parse while loops" $ do

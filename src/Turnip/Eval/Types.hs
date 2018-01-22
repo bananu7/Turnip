@@ -50,7 +50,7 @@ type TableData = Map.Map Value Value
 type NativeFunction = [Value] -> LuaM [Value]
 
 -- This is a stack of tables forming a stack of nested closures
-type Closure = [TableRef]
+type Closure = [(TableRef, Maybe [Value])]
 
 data FunctionData = FunctionData { closure :: Closure, block :: AST.Block, paramNames :: [String], varargs :: Bool }
                   | BuiltinFunction { fn :: NativeFunction }

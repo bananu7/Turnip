@@ -61,7 +61,7 @@ call (FunctionData cls block names hasVarargs) args = do
     newCls <- makeNewTableWith argsTableData
     -- and append it to the closure stack
     -- together with the closure stored in the functiondata
-    foldl (flip closurePush) b (newCls:cls)
+    foldl (flip closurePush) b ((newCls, Just args):cls)
      where
         b = do
             res <- execBlock block
@@ -78,8 +78,13 @@ eval (AST.Bool b) = return [Boolean b]
 eval AST.Nil = return [Nil]
 
 -- In order to eval ellipsis, the closure needs to differentiate between
--- outer local variables and parameters
-eval AST.Ellipsis = throwError "how do you even eval ellipsis"
+-- outer local variables and parameters. It's basically the contents of "args".
+-- Perhaps it could just be a hidden args reference?
+eval AST.Ellipsis = do
+    e <- closureLookupEllipsis
+    case e of
+        Just v -> return v
+        Nothing -> throwError "Ellipsis eval'd outside of a varargs function"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames varargs b) = do
@@ -208,7 +213,7 @@ execStmt (AST.For names (AST.ForNum emin emax mestep) b) = do
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    closurePush newCls $ do
+    closurePush (newCls, Nothing) $ do
         case (vmin, vmax, step) of
             (Number i, Number n, Number s) -> loopBody i n s
             _ -> throwError "'for' limits and step must be numbers"
@@ -248,7 +253,7 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    closurePush newCls $ do
+    closurePush (newCls, Nothing) $ do
 
         loopBody fv s var
         where
@@ -317,7 +322,7 @@ execStmt (AST.Assignment lvals exprs) = do
 execStmt (AST.LocalDecl names) = do
     cls <- getClosure
     declTarget :: TableRef <- case cls of
-        (topCls:_) -> pure topCls
+        (topCls:_) -> pure . fst $ topCls
         _ -> getGlobalTableRef
 
     -- we have to force using this target here to create new names

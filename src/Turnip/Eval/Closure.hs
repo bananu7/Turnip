@@ -5,6 +5,7 @@
 module Turnip.Eval.Closure 
     (getClosure
     ,closureLookup
+    ,closureLookupEllipsis
     ,closurePush
     ,assignmentTarget
     )
@@ -28,10 +29,13 @@ getClosure = LuaMT . lift $ ask
 closureLookup :: Value -> LuaM Value
 closureLookup v = getClosure >>= closureLookupFrom v
 
+closureLookupEllipsis :: LuaM (Maybe [Value])
+closureLookupEllipsis = getClosure >>= closureLookupEllipsisFrom
+
 closureLookupFrom :: Value -> Closure -> LuaM Value
 -- descend recursively with lookups, picking the closest name first
-closureLookupFrom v (topRef:cls) = do
-    topCls <- getTableData topRef
+closureLookupFrom v (top:cls) = do
+    topCls <- getTableData (fst top)
     case Map.lookup v topCls of
         Just val -> return val
         Nothing -> closureLookupFrom v cls
@@ -41,8 +45,15 @@ closureLookupFrom v _ = do
     let mVal = Map.lookup v _G
     return $ extractVal mVal
 
+closureLookupEllipsisFrom :: Closure -> LuaM (Maybe [Value])
+closureLookupEllipsisFrom (top:cls) = do
+    case (snd top) of
+        Just val -> return $ Just val
+        Nothing -> closureLookupEllipsisFrom cls
+closureLookupEllipsisFrom [] = return Nothing
+
 -- |Executes the code block one level deeper.
-closurePush :: forall m a. Monad m => TableRef -> LuaMT m a -> LuaMT m a
+closurePush :: forall m a. Monad m => (TableRef, Maybe [Value]) -> LuaMT m a -> LuaMT m a
 closurePush t (LuaMT a) = LuaMT $ mapExceptT (withRWST (\cls s -> (t:cls, s))) a
 
 -- this is a simple helper that picks either top level closure or global table
@@ -57,9 +68,9 @@ assignmentTarget name = do
 assignmentTargetHelper :: Closure -> AST.Name -> LuaM TableRef
 assignmentTargetHelper [] _ = getGlobalTableRef
 assignmentTargetHelper (headCls:restCls) name = do
-    t <- getTableData headCls
+    t <- getTableData $ fst headCls
     case Map.lookup (Str name) t of
         -- if the name appears in the closure, we assign to this one
-        (Just _) -> return headCls
+        (Just _) -> return $ fst headCls
         -- otherwise we try going down the stack
         Nothing -> assignmentTargetHelper restCls name

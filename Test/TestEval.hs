@@ -154,6 +154,14 @@ spec = do
                         ,"a,b,c = f(2,3)"
                         ,"return a,b,c"
                         ]) `shouldBe` [Number 2.0, Number 3.0, Nil]
+                describe "ellipsis" $
+                    it "should eval ellipsis to a vararg value pack" $
+                        runParse (unlines [
+                             "function f(...)"
+                            ,"  return(...)"
+                            ,"end"
+                            ,"return f(1,2)"
+                            ]) `shouldBe` [Number 1.0, Number 2.0]
 
         describe "assignments" $ do
             it "should handle trivial assignments" $ do
@@ -262,6 +270,7 @@ spec = do
             it "should correctly handle for loops that shouldn't run even once" $ do
                 runParse "for x = 2,1 do return false end return true" `shouldBe` [Boolean True]
                 runParse "for x = 1,2,-1 do return false end return true" `shouldBe` [Boolean True]
+
 
 
 main = hspec spec

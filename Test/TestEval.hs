@@ -154,7 +154,7 @@ spec = do
                         ,"a,b,c = f(2,3)"
                         ,"return a,b,c"
                         ]) `shouldBe` [Number 2.0, Number 3.0, Nil]
-                describe "ellipsis" $
+                describe "ellipsis" $ do
                     it "should eval ellipsis to a vararg value pack" $
                         runParse (unlines [
                              "function f(...)"
@@ -162,6 +162,17 @@ spec = do
                             ,"end"
                             ,"return f(1,2)"
                             ]) `shouldBe` [Number 1.0, Number 2.0]
+
+                    it "should properly scope nested ellipsis" $
+                        runParse (unlines [
+                             "function f(...)"
+                            ,"  function g(...)"
+                            ,"     return(...)"
+                            ,"  end"
+                            ,"  return g(...), g(3,4)" -- returns first of each pack
+                            ,"end"
+                            ,"return f(1,2)"
+                            ]) `shouldBe` [Number 1.0, Number 3.0]
 
         describe "assignments" $ do
             it "should handle trivial assignments" $ do

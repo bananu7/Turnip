@@ -78,8 +78,8 @@ eval (AST.Bool b) = return [Boolean b]
 eval AST.Nil = return [Nil]
 
 -- In order to eval ellipsis, the closure needs to differentiate between
--- outer local variables and parameters. It's basically the contents of "args".
--- Perhaps it could just be a hidden args reference?
+-- outer local variables and parameters. It's basically the same as args, but
+-- not packed in a table.
 eval AST.Ellipsis = do
     e <- closureLookupEllipsis
     case e of

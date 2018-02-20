@@ -61,7 +61,7 @@ call (FunctionData cls block names hasVarargs) args = do
     newCls <- makeNewTableWith argsTableData
     -- and append it to the closure stack
     -- together with the closure stored in the functiondata
-    foldl (flip closurePush) b ((newCls, Just args):cls)
+    foldl (flip closurePush) b ((ClosureLevel newCls (Just args)):cls)
      where
         b = do
             res <- execBlock block
@@ -213,7 +213,7 @@ execStmt (AST.For names (AST.ForNum emin emax mestep) b) = do
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    closurePush (newCls, Nothing) $ do
+    closurePush (ClosureLevel newCls Nothing) $ do
         case (vmin, vmax, step) of
             (Number i, Number n, Number s) -> loopBody i n s
             _ -> throwError "'for' limits and step must be numbers"
@@ -253,7 +253,7 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    closurePush (newCls, Nothing) $ do
+    closurePush (ClosureLevel newCls Nothing) $ do
 
         loopBody fv s var
         where
@@ -322,7 +322,7 @@ execStmt (AST.Assignment lvals exprs) = do
 execStmt (AST.LocalDecl names) = do
     cls <- getClosure
     declTarget :: TableRef <- case cls of
-        (topCls:_) -> pure . fst $ topCls
+        (topCls:_) -> pure . closureTableRef $ topCls
         _ -> getGlobalTableRef
 
     -- we have to force using this target here to create new names
@@ -351,7 +351,6 @@ execAssignment lvals vals = do
     -- separate declarator statements NOW. Since that could change in the future,
     -- I'm keeping the above code for reference, if a need to pad the assingment
     -- with Nils appears.
-    cls <- getClosure
 
     sequence_ $ zipWith assignLValue lvals vals
 

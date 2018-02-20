@@ -181,7 +181,7 @@ spec = do
                             ,"  return ..."
                             ,"end"
                             ,"a,b,c,d = f(1,2,3,4)"
-                            ,"return a,b,c"
+                            ,"return a,b,c,d"
                             ]) `shouldBe` [Number 3.0, Number 4.0, Nil, Nil]
 
         describe "assignments" $ do

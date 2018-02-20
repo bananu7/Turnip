@@ -43,25 +43,31 @@ call (FunctionData cls block names hasVarargs) args = do
     let argsWithNils = padWithNils (length names - length args) args
     let argsWithNames = zip (map Str names) argsWithNils
 
-    varargsData <- if hasVarargs
-        then do
-            -- varargs are 'leftover' arguments, essentially
-            let vargs = drop (length names) args
-            tr <- makeNewTableWith . Map.fromList $ (zip (map Number [1..]) vargs)
-            -- return the binding to those values
-            -- note: this table can be empty, but ti
-            return [(Str "arg", Table tr)]
-        else
-            return []
+    newClosureLevel <- do
+        -- varargs are 'leftover' arguments, essentially
+        let varargs = drop (length names) args
 
-    -- this is table data containing arguments
-    let argsTableData = Map.fromList $ (argsWithNames ++ varargsData)
+        varargsData <- if hasVarargs
+            then do
+                -- 'arg' value
+                tr <- makeNewTableWith . Map.fromList $ (zip (map Number [1..]) varargs)
+                return [(Str "arg", Table tr)]
+            else
+                return []
 
-    -- we turn it into a regular, registered table
-    newCls <- makeNewTableWith argsTableData
+        let ellipsisData = if hasVarargs
+            then Just varargs
+            else Nothing
+
+        let argsTableData = Map.fromList $ (argsWithNames ++ varargsData)
+        -- we turn arguments into a regular, registered tableś
+        newCls <- makeNewTableWith argsTableData
+
+        return $ ClosureLevel newCls ellipsisData
+
     -- and append it to the closure stack
     -- together with the closure stored in the functiondata
-    foldl (flip closurePush) b ((ClosureLevel newCls (Just args)):cls)
+    foldl (flip closurePush) b (newClosureLevel:cls)
      where
         b = do
             res <- execBlock block

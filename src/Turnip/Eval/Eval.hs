@@ -43,25 +43,31 @@ call (FunctionData cls block names hasVarargs) args = do
     let argsWithNils = padWithNils (length names - length args) args
     let argsWithNames = zip (map Str names) argsWithNils
 
-    varargsData <- if hasVarargs
-        then do
-            -- varargs are 'leftover' arguments, essentially
-            let vargs = drop (length names) args
-            tr <- makeNewTableWith . Map.fromList $ (zip (map Number [1..]) vargs)
-            -- return the binding to those values
-            -- note: this table can be empty, but ti
-            return [(Str "arg", Table tr)]
-        else
-            return []
+    newClosureLevel <- do
+        -- varargs are 'leftover' arguments, essentially
+        let varargs = drop (length names) args
 
-    -- this is table data containing arguments
-    let argsTableData = Map.fromList $ (argsWithNames ++ varargsData)
+        varargsData <- if hasVarargs
+            then do
+                -- 'arg' value
+                tr <- makeNewTableWith . Map.fromList $ (zip (map Number [1..]) varargs)
+                return [(Str "arg", Table tr)]
+            else
+                return []
 
-    -- we turn it into a regular, registered table
-    newCls <- makeNewTableWith argsTableData
+        let ellipsisData = if hasVarargs
+            then Just varargs
+            else Nothing
+
+        let argsTableData = Map.fromList $ (argsWithNames ++ varargsData)
+        -- we turn arguments into a regular, registered tableś
+        newCls <- makeNewTableWith argsTableData
+
+        return $ ClosureLevel newCls ellipsisData
+
     -- and append it to the closure stack
     -- together with the closure stored in the functiondata
-    foldl (flip closurePush) b (newCls:cls)
+    foldl (flip closurePush) b (newClosureLevel:cls)
      where
         b = do
             res <- execBlock block
@@ -78,8 +84,13 @@ eval (AST.Bool b) = return [Boolean b]
 eval AST.Nil = return [Nil]
 
 -- In order to eval ellipsis, the closure needs to differentiate between
--- outer local variables and parameters
-eval AST.Ellipsis = throwError "how do you even eval ellipsis"
+-- outer local variables and parameters. It's basically the same as args, but
+-- not packed in a table.
+eval AST.Ellipsis = do
+    e <- closureLookupEllipsis
+    case e of
+        Just v -> return v
+        Nothing -> throwError "Ellipsis eval'd outside of a varargs function"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames varargs b) = do
@@ -208,7 +219,7 @@ execStmt (AST.For names (AST.ForNum emin emax mestep) b) = do
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    closurePush newCls $ do
+    closurePush (ClosureLevel newCls Nothing) $ do
         case (vmin, vmax, step) of
             (Number i, Number n, Number s) -> loopBody i n s
             _ -> throwError "'for' limits and step must be numbers"
@@ -248,7 +259,7 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
-    closurePush newCls $ do
+    closurePush (ClosureLevel newCls Nothing) $ do
 
         loopBody fv s var
         where
@@ -317,7 +328,7 @@ execStmt (AST.Assignment lvals exprs) = do
 execStmt (AST.LocalDecl names) = do
     cls <- getClosure
     declTarget :: TableRef <- case cls of
-        (topCls:_) -> pure topCls
+        (topCls:_) -> pure . closureTableRef $ topCls
         _ -> getGlobalTableRef
 
     -- we have to force using this target here to create new names
@@ -346,7 +357,6 @@ execAssignment lvals vals = do
     -- separate declarator statements NOW. Since that could change in the future,
     -- I'm keeping the above code for reference, if a need to pad the assingment
     -- with Nils appears.
-    cls <- getClosure
 
     sequence_ $ zipWith assignLValue lvals vals
 

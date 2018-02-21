@@ -135,25 +135,54 @@ spec = do
                     ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
 
             describe "vararg functions" $ do
-                it "no arguments to a vararg functions should result in an empty table" $
-                    runParse "function f(...) return arg[1] end; return f()" `shouldBe` [Nil]
-                it "trying to access 'arg' in a non-vararg function should produce nil" $
-                    runParse "function f() return arg end; return f()" `shouldBe` [Nil]
-                it "just varargs" $ do
-                    runParse (unlines [
-                         "function f(...)"
-                        ,"  return arg[1], arg[2], arg[3]"
-                        ,"end"
-                        ,"return f(1,2)"
-                        ]) `shouldBe` [Number 1.0, Number 2.0, Nil]
-                it "varargs should play nice with normal parameters" $
-                    runParse (unlines [
-                         "function f(x, ...)"
-                        ,"  return x, arg[1], arg[2]"
-                        ,"end"
-                        ,"a,b,c = f(2,3)"
-                        ,"return a,b,c"
-                        ]) `shouldBe` [Number 2.0, Number 3.0, Nil]
+                describe "arg" $ do
+                    it "no arguments to a vararg functions should result in an empty table" $
+                        runParse "function f(...) return arg[1] end; return f()" `shouldBe` [Nil]
+                    it "trying to access 'arg' in a non-vararg function should produce nil" $
+                        runParse "function f() return arg end; return f()" `shouldBe` [Nil]
+                    it "just varargs" $ do
+                        runParse (unlines [
+                             "function f(...)"
+                            ,"  return arg[1], arg[2], arg[3]"
+                            ,"end"
+                            ,"return f(1,2)"
+                            ]) `shouldBe` [Number 1.0, Number 2.0, Nil]
+                    it "varargs should play nice with normal parameters" $
+                        runParse (unlines [
+                             "function f(x, ...)"
+                            ,"  return x, arg[1], arg[2]"
+                            ,"end"
+                            ,"a,b,c = f(2,3)"
+                            ,"return a,b,c"
+                            ]) `shouldBe` [Number 2.0, Number 3.0, Nil]
+                describe "ellipsis" $ do
+                    it "should eval ellipsis to a vararg value pack" $
+                        runParse (unlines [
+                             "function f(...)"
+                            ,"  return(...)"
+                            ,"end"
+                            ,"return f(1,2)"
+                            ]) `shouldBe` [Number 1.0, Number 2.0]
+
+                    it "should properly scope nested ellipsis" $
+                        runParse (unlines [
+                             "function f(...)"
+                            ,"  function g(...)"
+                            ,"     return(...)"
+                            ,"  end"
+                            ,"  return g(...), g(3,4)" -- returns first of each pack
+                            ,"end"
+                            ,"return f(1,2)"
+                            ]) `shouldBe` [Number 1.0, Number 3.0]
+
+                    it "should properly eval ellipsis together with normal parameters" $
+                        runParse (unlines [
+                             "function f(x, y, ...)"
+                            ,"  return ..."
+                            ,"end"
+                            ,"a,b,c,d = f(1,2,3,4)"
+                            ,"return a,b,c,d"
+                            ]) `shouldBe` [Number 3.0, Number 4.0, Nil, Nil]
 
         describe "assignments" $ do
             it "should handle trivial assignments" $ do
@@ -262,6 +291,7 @@ spec = do
             it "should correctly handle for loops that shouldn't run even once" $ do
                 runParse "for x = 2,1 do return false end return true" `shouldBe` [Boolean True]
                 runParse "for x = 1,2,-1 do return false end return true" `shouldBe` [Boolean True]
+
 
 
 main = hspec spec

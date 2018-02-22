@@ -46,7 +46,6 @@ luaCmpEQ :: NativeFunction
 luaCmpEQ (Number a : Number b : _) = return [Boolean $ a == b]
 luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
 luaCmpEQ (Boolean a : Boolean b : _) = return [Boolean $ a == b]
-luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
 luaCmpEQ (Nil : Nil : _) = return [Boolean True]
 luaCmpEQ _ = return [Boolean False]
 
@@ -59,6 +58,19 @@ luaCmpLT :: NativeFunction
 luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
 luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
 luaCmpLT _ = throwError "Can't compare those values"
+
+-- Bool-coercing logical operators
+luaNot, luaOr, luaAnd :: NativeFunction
+
+-- Not is an unary operator
+luaNot [a] = return [Boolean . not . coerceToBool $ [a]]
+luaNot _ = throwError "Lua not operator must be called on one value!"
+
+luaOr [a,b] = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
+luaOr _ = throwError "'or' must be called on two values"
+
+luaAnd [a,b] = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
+luaAnd _ = throwError "'and' must be called on two values"
 
 luaerror :: NativeFunction
 luaerror [Str err] = throwError err
@@ -77,4 +89,9 @@ loadBaseLibrary = do
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
     addNativeFunction "-" (BuiltinFunction luaMinusHelper)
+
+    addNativeFunction "not" (BuiltinFunction luaNot)
+    addNativeFunction "or" (BuiltinFunction luaOr)
+    addNativeFunction "and" (BuiltinFunction luaAnd)
+
     addNativeFunction "error" (BuiltinFunction luaerror)

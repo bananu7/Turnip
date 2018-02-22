@@ -58,6 +58,14 @@ spec = do
                   )
                   ["==", "~=", ">", "<", ">=", "<="]
                   
+        describe "should parse logical operators" $ do
+            it "not" $
+                parse "return not x" `shouldBe` (Block [Return [UnOp "not" (Var "x")]])
+            it "or" $
+                parse "return a or b" `shouldBe` (Block [Return [BinOp "or" (Var "a") (Var "b")]])
+            it "and" $
+                parse "return a and b" `shouldBe` (Block [Return [BinOp "and" (Var "a") (Var "b")]])
+
         describe "should parse return statements" $ do
             it "boolean" $ 
                 parse "return false" `shouldBe` (Block [Return [Bool False]])

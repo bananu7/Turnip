@@ -168,6 +168,7 @@ paramList = parens $ do
     varargs <- isJust <$> optionMaybe (string "...")
     return (names, varargs)
 
+funcBody :: Parser Block
 funcBody = do
     b <- block 
     reserved "end"
@@ -344,7 +345,7 @@ expr = buildExpressionParser optable exp_exp
 optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Prefix (reservedOp "-"   >> return (UnOp "-")) ]
              , [Infix  (reservedOp "*"   >> return (BinOp "*")) AssocLeft]
-             , [Infix  (reservedOp "/"   >> return (BinOp "/"  )) AssocLeft]
+             , [Infix  (reservedOp "/"   >> return (BinOp "/")) AssocLeft]
              , [Infix  (reservedOp "%"   >> return (BinOp "%" )) AssocLeft]
              , [Infix  (reservedOp "+"   >> return (BinOp "+")) AssocLeft]
              , [Infix  (reservedOp "-"   >> return (BinOp "-")) AssocLeft]
@@ -357,6 +358,7 @@ optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Infix  (reservedOp "=="  >> return (BinOp "==")) AssocLeft]
              , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft]
              , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft] 
+             , [Prefix (reservedOp "not" >> return (UnOp "not"))] 
              ]
 --------------------------------------------
 -- The Lexer

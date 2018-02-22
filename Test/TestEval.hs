@@ -31,6 +31,15 @@ spec = do
             it "+" $ runParse "return 1 + 1" `shouldBe` [Number 2.0]
             it "-" $ runParse "return 3 - 2" `shouldBe` [Number 1.0]
             it "*" $ runParse "return 3 * 8" `shouldBe` [Number 24.0]
+            it "/" $ runParse "return 9 / 3" `shouldBe` [Number 3.0]
+
+        describe "logical operators" $ do
+            it "not" $ runParse "return not nil, not true, not false, not 5, not \"\"" `shouldBe`
+                (map Boolean [True, False, True, False, False])
+            it "or" $ runParse "return true and true, true and false, false and true, false and false" `shouldBe`
+                (map Boolean [True, False, False, False])
+            it "and" $ runParse "return true or true, true or false, false or true, false or false" `shouldBe`
+                (map Boolean [True, True, True, False])
 
         describe "should eval 'if' statements" $ do
             it "trivial always-true" $

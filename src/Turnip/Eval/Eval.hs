@@ -299,6 +299,22 @@ execStmt (AST.While e b) = do
     -- if no change has been made to lua state, it can be safely assumed that it's
     -- an infinite loop
 
+-- The only thing "do..end" does is introduce an empty closure level
+-- where local vals are stored
+execStmt (AST.Do b) = do
+    newCls <- makeNewTableWith Map.empty
+    closurePush (ClosureLevel newCls Nothing) $ execBlock b
+
+execStmt (AST.Until e b) = do
+    blockResult <- execBlock b
+    case blockResult of
+        EmptyBubble -> do
+            result <- coerceToBool <$> eval e
+            if not result then execStmt (AST.Until e b)
+                          else return EmptyBubble
+        BreakBubble -> return EmptyBubble
+        x -> return x
+
 execStmt AST.Break = return BreakBubble
 
 -- call statement is a naked call expression with result ignored

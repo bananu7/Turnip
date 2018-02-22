@@ -292,6 +292,38 @@ spec = do
                 runParse "for x = 2,1 do return false end return true" `shouldBe` [Boolean True]
                 runParse "for x = 1,2,-1 do return false end return true" `shouldBe` [Boolean True]
 
+        describe "repeat..until loop" $ do
+            it "should correctly handle a one-run loop" $ do
+                runParse (unlines[
+                     "x = 2"
+                    ,"repeat"
+                    ,"  x = x + 1"
+                    ,"until true"
+                    ,"return x"
+                    ]) `shouldBe` [Number 3.0]
 
+            it "should correctly handle a multiple-run loop" $ do
+                runParse (unlines[
+                     "x = 2"
+                    ,"r = 3"
+                    ,"repeat"
+                    ,"  x = x + 1"
+                    ,"  r = r - 1"
+                    ,"until r == 0"
+                    ,"return x, r"
+                    ]) `shouldBe` [Number 5.0, Number 0.0]
+
+
+        describe "do..end" $ do
+            it "should properly scope do-blocks" $ do
+                runParse (unlines[
+                     "x = 5"
+                    ,"y = 3"
+                    ,"do"
+                    ,"  local x = 4"
+                    ,"  y = x"         -- check if x will resolve to local
+                    ,"end"
+                    ,"return x, y"
+                    ]) `shouldBe` [Number 5.0, Number 4.0]
 
 main = hspec spec

@@ -357,4 +357,8 @@ spec = do
                 runParse ("return pcall(function() error(\"test\") end)")
                     `shouldBe` [Boolean False, Str "test"]
 
+            it "should work with non-string errors" $ do
+                runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
+                runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+
 main = hspec spec

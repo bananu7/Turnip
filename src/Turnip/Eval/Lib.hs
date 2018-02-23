@@ -53,43 +53,43 @@ luaCmpEQ _ = return [Boolean False]
 luaCmpGT :: NativeFunction
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
 luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
-luaCmpGT xs = throwError "Can't compare those values"
+luaCmpGT xs = throwErrorStr "Can't compare those values"
 
 luaCmpLT :: NativeFunction
 luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
 luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
-luaCmpLT _ = throwError "Can't compare those values"
+luaCmpLT _ = throwErrorStr "Can't compare those values"
 
 -- Bool-coercing logical operators
 luaNot, luaOr, luaAnd :: NativeFunction
 
 -- Not is an unary operator
 luaNot [a] = return [Boolean . not . coerceToBool $ [a]]
-luaNot _ = throwError "Lua not operator must be called on one value!"
+luaNot _ = throwErrorStr "Lua not operator must be called on one value!"
 
 luaOr [a,b] = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
-luaOr _ = throwError "'or' must be called on two values"
+luaOr _ = throwErrorStr "'or' must be called on two values"
 
 luaAnd [a,b] = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
-luaAnd _ = throwError "'and' must be called on two values"
+luaAnd _ = throwErrorStr "'and' must be called on two values"
 
 luaerror :: NativeFunction
-luaerror [Str err] = throwError err
-luaerror _ = throwError ""
+luaerror (a:_) = throwError a
+luaerror _ = throwError Nil
 
 luapcall :: NativeFunction
 luapcall (Function fref : _) = ((callRef fref []) >>= prependTrue) `catchError` pcallHandler
     where
         prependTrue result = return $ Boolean True : result
-        pcallHandler e = return [Boolean False, Str e]
+        pcallHandler e = return [Boolean False, e]
 luapcall (_a : _) = return [Boolean False, Str "Attempt to call something that isn't a function"]
-luapcall _ = throwError "Bad argument to 'pcall': value expected"
+luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 
 --unary negate
 luaMinusHelper :: NativeFunction
 luaMinusHelper (Number a : []) = return $ [Number (-a)]
 luaMinusHelper (Number a : Number b : _) = return $ [Number (a - b)]
-luaMinusHelper _ = throwError "Can't subtract those things"
+luaMinusHelper _ = throwErrorStr "Can't subtract those things"
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do

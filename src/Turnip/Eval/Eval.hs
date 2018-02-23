@@ -90,7 +90,7 @@ eval AST.Ellipsis = do
     e <- closureLookupEllipsis
     case e of
         Just v -> return v
-        Nothing -> throwError "Ellipsis eval'd outside of a varargs function"
+        Nothing -> throwErrorStr "Ellipsis eval'd outside of a varargs function"
 
 -- lambda needs to be stored in the function table
 eval (AST.Lambda parNames varargs b) = do
@@ -108,7 +108,7 @@ eval (AST.Call fn args) = do
 
     case fnV of 
         Function ref -> callRef ref argVs
-        x -> throwError $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
+        x -> throwErrorStr $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.MemberCall obj fName args) = do
     argVs <- map head <$> mapM eval args
@@ -119,8 +119,8 @@ eval (AST.MemberCall obj fName args) = do
             case fV of
                 -- objV is prepended to the argument list as the 'self' parameter
                 Function ref -> callRef ref (objV : argVs)
-                x -> throwError $ "Attempt to call method '" ++ fName ++ "' (" ++ show x ++ ")"
-        _ -> throwError $ "Attempt to index a non-table (" ++ show objV ++ ")"
+                x -> throwErrorStr $ "Attempt to call method '" ++ fName ++ "' (" ++ show x ++ ")"
+        _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show objV ++ ")"
 
 eval (AST.FieldRef t k) = do
     tv <- head <$> eval t
@@ -136,7 +136,7 @@ eval (AST.FieldRef t k) = do
             let mVal :: Maybe Value = t ^. at kV
             return $ [extractVal mVal]
 
-        _ -> throwError $ "Attempt to index a non-table (" ++ show tv ++ ")"
+        _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
@@ -222,7 +222,7 @@ execStmt (AST.For names (AST.ForNum emin emax mestep) b) = do
     closurePush (ClosureLevel newCls Nothing) $ do
         case (vmin, vmax, step) of
             (Number i, Number n, Number s) -> loopBody i n s
-            _ -> throwError "'for' limits and step must be numbers"
+            _ -> throwErrorStr "'for' limits and step must be numbers"
 
         where
             loopBody i n step = do
@@ -255,7 +255,7 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
     -- the explist
     fv <- case f of
         Function fref -> getFunctionData fref 
-        _ -> throwError "The iterator is not a function" 
+        _ -> throwErrorStr "The iterator is not a function" 
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
@@ -386,4 +386,4 @@ assignLValue (AST.LFieldRef t k) v = do
     kv <- head <$> eval k
     case tv of
         Table tr -> setTableField tr (kv,v)
-        _ -> throwError "Trying to assign to a field of non-table"
+        _ -> throwErrorStr "Trying to assign to a field of non-table"

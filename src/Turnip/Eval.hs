@@ -13,23 +13,24 @@ import Control.Monad.Except
 import Turnip.Eval.Types
 import Turnip.Eval.Eval
 import Turnip.Eval.Lib (loadBaseLibrary)
+import Turnip.Eval.Util (throwErrorStr)
 
-runLuaMTWith :: Monad m => Closure -> Context -> LuaMT m a -> m (Either String a, Context)
+runLuaMTWith :: Monad m => Closure -> Context -> LuaMT m a -> m (Either Value a, Context)
 runLuaMTWith c s (LuaMT f) = stripWriter <$> runRWST (runExceptT f) c s
     where
         stripWriter (r, c', _w) = (r, c')
 
 -- This is for when you don't care about the closure (want to run code globally)
-runLuaMT :: Monad m => Context -> LuaMT m a -> m (Either String a, Context)
+runLuaMT :: Monad m => Context -> LuaMT m a -> m (Either Value a, Context)
 runLuaMT = runLuaMTWith []
 
 -- Context isn't under Either because it's always modified up to
 -- the point where the error happened.
-runWithM :: Monad m => Context -> AST.Block -> m (Either String [Value], Context)
+runWithM :: Monad m => Context -> AST.Block -> m (Either Value [Value], Context)
 runWithM ctx b = runLuaMT ctx (blockRunner b)
 
 -- helper for pure usage
-runWith :: Context -> AST.Block -> (Either String [Value], Context)
+runWith :: Context -> AST.Block -> (Either Value [Value], Context)
 runWith ctx b = runIdentity $ runWithM ctx b
 
 -- In this case Either is used both explicitely (with lift)
@@ -40,13 +41,13 @@ blockRunner b = do
     result <- execBlock b
     case result of
         ReturnBubble vs -> return vs
-        _ -> throwError "The block didn't end with a returned result"
+        _ -> throwErrorStr "The block didn't end with a returned result"
 
-runM :: forall m. Monad m => AST.Block -> m (Either String [Value])
+runM :: forall m. Monad m => AST.Block -> m (Either Value [Value])
 runM b = fst <$> runWithM defaultCtx b
 
 -- helper for pure usage
-run :: AST.Block -> Either String [Value]
+run :: AST.Block -> Either Value [Value]
 run b = runIdentity $ runM b
 
 defaultCtx :: Context

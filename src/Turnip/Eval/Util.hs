@@ -7,6 +7,7 @@ import Control.Lens
 import qualified Data.Map as Map (lookup, empty)
 import Control.Applicative ((<$>))
 import Data.Map
+import Control.Monad.Except (throwError)
 
 getFunctionData :: FunctionRef -> LuaM FunctionData
 getFunctionData ref = LuaMT $ do
@@ -88,3 +89,6 @@ getTableField :: TableRef -> Value -> LuaM Value
 getTableField tRef k = getTableData tRef >>= \t -> case t ^. at k of
     Just v -> return v
     Nothing -> return Nil
+
+throwErrorStr :: String -> LuaM a
+throwErrorStr = throwError . Str

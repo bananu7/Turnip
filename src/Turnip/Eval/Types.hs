@@ -22,8 +22,8 @@ import Control.Monad.RWS
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
-newtype LuaMT m a = LuaMT (ExceptT String (RWST Closure () Context m) a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadError String)
+newtype LuaMT m a = LuaMT (ExceptT Value (RWST Closure () Context m) a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadError Value)
 
 -- MonadState Context is not provided on purpose
 

@@ -335,4 +335,30 @@ spec = do
                     ,"return x, y"
                     ]) `shouldBe` [Number 5.0, Number 4.0]
 
+        describe "pcall" $ do
+            it "should properly contain simple errors" $ do
+                runParse (unlines[
+                     "function f()"
+                    ,"  error(\"test\")"
+                    ,"end"
+                    ,"pcall(f)"
+                    ,"return 1"
+                    ]) `shouldBe` [Number 1.0]
+
+            it "should properly forward on success" $ do
+                runParse (unlines[
+                     "function f()"
+                    ,"  return 1,2,3"
+                    ,"end"
+                    ,"return pcall(f)"
+                    ]) `shouldBe` [Boolean True, Number 1.0, Number 2.0, Number 3.0]
+
+            it "should return false and the error in case of errors" $ do
+                runParse ("return pcall(function() error(\"test\") end)")
+                    `shouldBe` [Boolean False, Str "test"]
+
+            it "should work with non-string errors" $ do
+                runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
+                runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+
 main = hspec spec

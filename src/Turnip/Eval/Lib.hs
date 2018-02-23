@@ -78,9 +78,12 @@ luaerror [Str err] = throwError err
 luaerror _ = throwError ""
 
 luapcall :: NativeFunction
-luapcall (Function fref : _) = (callRef fref []) `catchError` pcallHandler
+luapcall (Function fref : _) = ((callRef fref []) >>= prependTrue) `catchError` pcallHandler
     where
-        pcallHandler e = return [Str e]
+        prependTrue result = return $ Boolean True : result
+        pcallHandler e = return [Boolean False, Str e]
+luapcall (_a : _) = return [Boolean False, Str "Attempt to call something that isn't a function"]
+luapcall _ = throwError "Bad argument to 'pcall': value expected"
 
 --unary negate
 luaMinusHelper :: NativeFunction

@@ -336,7 +336,7 @@ spec = do
                     ]) `shouldBe` [Number 5.0, Number 4.0]
 
         describe "pcall" $ do
-            it "should properly catch simple errors" $ do
+            it "should properly contain simple errors" $ do
                 runParse (unlines[
                      "function f()"
                     ,"  error(\"test\")"
@@ -344,5 +344,17 @@ spec = do
                     ,"pcall(f)"
                     ,"return 1"
                     ]) `shouldBe` [Number 1.0]
+
+            it "should properly forward on success" $ do
+                runParse (unlines[
+                     "function f()"
+                    ,"  return 1,2,3"
+                    ,"end"
+                    ,"return pcall(f)"
+                    ]) `shouldBe` [Boolean True, Number 1.0, Number 2.0, Number 3.0]
+
+            it "should return false and the error in case of errors" $ do
+                runParse ("return pcall(function() error(\"test\") end)")
+                    `shouldBe` [Boolean False, Str "test"]
 
 main = hspec spec

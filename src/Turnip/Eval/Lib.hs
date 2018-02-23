@@ -7,6 +7,7 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
+import Turnip.Eval.Eval (callRef)
 import Control.Monad.Except
 
 -- math helpers
@@ -76,6 +77,11 @@ luaerror :: NativeFunction
 luaerror [Str err] = throwError err
 luaerror _ = throwError ""
 
+luapcall :: NativeFunction
+luapcall (Function fref : _) = (callRef fref []) `catchError` pcallHandler
+    where
+        pcallHandler e = return [Str e]
+
 --unary negate
 luaMinusHelper :: NativeFunction
 luaMinusHelper (Number a : []) = return $ [Number (-a)]
@@ -95,3 +101,4 @@ loadBaseLibrary = do
     addNativeFunction "and" (BuiltinFunction luaAnd)
 
     addNativeFunction "error" (BuiltinFunction luaerror)
+    addNativeFunction "pcall" (BuiltinFunction luapcall)

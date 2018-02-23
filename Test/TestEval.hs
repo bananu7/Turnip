@@ -335,4 +335,14 @@ spec = do
                     ,"return x, y"
                     ]) `shouldBe` [Number 5.0, Number 4.0]
 
+        describe "pcall" $ do
+            it "should properly catch simple errors" $ do
+                runParse (unlines[
+                     "function f()"
+                    ,"  error(\"test\")"
+                    ,"end"
+                    ,"pcall(f)"
+                    ,"return 1"
+                    ]) `shouldBe` [Number 1.0]
+
 main = hspec spec

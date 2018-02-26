@@ -133,7 +133,7 @@ eval (AST.FieldRef t k) = do
             kV <- head <$> eval k
 
             t <- getTableData tRef
-            let mVal :: Maybe Value = t ^. at kV
+            let mVal :: Maybe Value = t ^. mapData . at kV
             return $ [extractVal mVal]
 
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"

@@ -9,6 +9,7 @@ import Turnip.Eval.TH
 import Turnip.Eval.Util
 import Turnip.Eval.Eval (callRef)
 import Control.Monad.Except
+import Control.Lens ((^.))
 
 -- math helpers
 deg x = x / pi * 180
@@ -85,6 +86,19 @@ luapcall (Function fref : _) = ((callRef fref []) >>= prependTrue) `catchError` 
 luapcall (_a : _) = return [Boolean False, Str "Attempt to call something that isn't a function"]
 luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 
+luasetmetatable :: NativeFunction
+luasetmetatable (Table tr : Nil : _) = undefined -- reset to nil
+luasetmetatable (Table tr : Table mtr : _) = undefined
+luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
+
+luagetmetatable :: NativeFunction
+luagetmetatable (Table tr : _) = do
+    mt <- (^. metatable) <$> getTableData tr
+    case mt of
+        Nothing -> return [Nil]
+        Just tr -> return [Table tr]
+luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expected"
+
 --unary negate
 luaMinusHelper :: NativeFunction
 luaMinusHelper (Number a : []) = return $ [Number (-a)]
@@ -105,3 +119,6 @@ loadBaseLibrary = do
 
     addNativeFunction "error" (BuiltinFunction luaerror)
     addNativeFunction "pcall" (BuiltinFunction luapcall)
+
+    addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
+    addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)

@@ -53,9 +53,10 @@ run b = runIdentity $ runM b
 defaultCtx :: Context
 defaultCtx = Context {
     _gRef = gRef,
-    _functions = Map.fromList [],
-    _tables = Map.fromList [(gRef, Map.fromList [])],
+    _functions = Map.empty,
+    _tables = Map.fromList [(gRef, gTable)],
     _lastId = 10
     }
   where
     gRef = TableRef 1
+    gTable = TableData Map.empty Nothing

@@ -361,4 +361,13 @@ spec = do
                 runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
                 runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
 
+        describe "metatables" $ do
+            it "should allow setting and getting the metatable" $
+                runParse (unlines [
+                     "a = { x = 7 }"
+                    ,"b = {}"
+                    ,"setmetatable(a, b)"
+                    ,"return getmetatable(b).x"
+                    ]) `shouldBe` [Number 7.0]
+
 main = hspec spec

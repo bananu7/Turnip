@@ -87,8 +87,8 @@ luapcall (_a : _) = return [Boolean False, Str "Attempt to call something that i
 luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 
 luasetmetatable :: NativeFunction
-luasetmetatable (Table tr : Nil : _) = undefined -- reset to nil
-luasetmetatable (Table tr : Table mtr : _) = undefined
+luasetmetatable (Table tr : Nil : _) = setMetatable tr Nothing >> return [Nil] -- reset to nil
+luasetmetatable (Table tr : Table mtr : _) = setMetatable tr (Just mtr) >> return [Nil]
 luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
 
 luagetmetatable :: NativeFunction

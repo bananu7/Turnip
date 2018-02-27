@@ -90,5 +90,11 @@ getTableField tRef k = getTableData tRef >>= \t -> case t ^. mapData . at k of
     Just v -> return v
     Nothing -> return Nil
 
+getMetatable :: TableRef -> LuaM (Maybe TableRef)
+getMetatable tr = (^. metatable) <$> getTableData tr
+
+setMetatable :: TableRef -> Maybe TableRef -> LuaM ()
+setMetatable tr mtr = LuaMT $ tables . at tr . traversed . metatable .= mtr
+
 throwErrorStr :: String -> LuaM a
 throwErrorStr = throwError . Str

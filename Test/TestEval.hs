@@ -365,9 +365,9 @@ spec = do
             it "should allow setting and getting the metatable" $
                 runParse (unlines [
                      "a = { x = 7 }"
-                    ,"b = {}"
+                    ,"b = { x = 8 }"
                     ,"setmetatable(a, b)"
-                    ,"return getmetatable(b).x"
-                    ]) `shouldBe` [Number 7.0]
+                    ,"return getmetatable(a).x"
+                    ]) `shouldBe` [Number 8.0]
 
 main = hspec spec

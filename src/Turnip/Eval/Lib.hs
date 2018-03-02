@@ -9,16 +9,14 @@ import Turnip.Eval.TH
 import Turnip.Eval.Util
 import Turnip.Eval.Eval (callRef)
 import Control.Monad.Except
-import Control.Lens ((^.))
+import Control.Lens ((^.), at)
 
 -- math helpers
 deg x = x / pi * 180
 
 $(do
     entries <- sequence [
-        entry (Sig [NumberT, NumberT] NumberT) "+" '(+)
-        -- minus sign needs a helper, see below
-        ,entry (Sig [NumberT, NumberT] NumberT) "*" '(*)
+        entry (Sig [NumberT, NumberT] NumberT) "*" '(*)
         ,entry (Sig [NumberT, NumberT] NumberT) "/" '(/)
 
         -- math
@@ -99,10 +97,46 @@ luagetmetatable (Table tr : _) = do
         Just tr -> return [Table tr]
 luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expected"
 
---unary negate
+{-
+  https://www.lua.org/pil/13.1.html
+  To choose a metamethod, Lua does the following:
+    (1) If the first value has a metatable with an __add field, Lua uses this value as the metamethod,
+        independently of the second value;
+    (2) otherwise, if the second value has a metatable with an __add field, Lua uses this value as the metamethod;
+    (3) otherwise, Lua raises an error.
+-}
+
+getMetaFunction :: String -> Value -> LuaM (Maybe FunctionRef)
+getMetaFunction fstr v = do
+    mtr <- getMetatable v
+    case mtr of
+        Just tr -> do
+            f <- (^. mapData . at (Str fstr)) <$> getTableData tr
+            case f of
+                Just (Function fr) -> return $ Just fr
+                _                  -> return Nothing
+        Nothing -> return Nothing
+
+luametaop :: String -> NativeFunction
+luametaop fstr (a : b : _) = do
+    maybeFn <- getMetaFunction fstr a
+    case maybeFn of
+        Just fra -> callRef fra [a,b]
+        _ -> do
+            maybeFnB <- getMetaFunction fstr b
+            case maybeFnB of
+                Just frb -> callRef frb [a,b]
+                _ -> throwErrorStr "No way to subtract those two values"
+
+luaplus :: NativeFunction
+luaplus (Number a : Number b : _) = return $ [Number (a + b)]
+luaplus (a : b : _) = luametaop "__add" [a,b]
+luaplus _ = throwErrorStr "Plus operator needs at least two values"
+
 luaMinusHelper :: NativeFunction
-luaMinusHelper (Number a : []) = return $ [Number (-a)]
+luaMinusHelper (Number a : []) = return $ [Number (-a)] --unary negate
 luaMinusHelper (Number a : Number b : _) = return $ [Number (a - b)]
+luaMinusHelper (a : b : _) = luametaop "__subtract" [a,b]
 luaMinusHelper _ = throwErrorStr "Can't subtract those things"
 
 loadBaseLibrary :: LuaM ()
@@ -111,7 +145,9 @@ loadBaseLibrary = do
     addNativeFunction "==" (BuiltinFunction luaCmpEQ)
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
+
     addNativeFunction "-" (BuiltinFunction luaMinusHelper)
+    addNativeFunction "+" (BuiltinFunction luaplus)
 
     addNativeFunction "not" (BuiltinFunction luaNot)
     addNativeFunction "or" (BuiltinFunction luaOr)

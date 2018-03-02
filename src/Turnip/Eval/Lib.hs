@@ -133,11 +133,11 @@ luaplus (Number a : Number b : _) = return $ [Number (a + b)]
 luaplus (a : b : _) = luametaop "__add" [a,b]
 luaplus _ = throwErrorStr "Plus operator needs at least two values"
 
-luaMinusHelper :: NativeFunction
-luaMinusHelper (Number a : []) = return $ [Number (-a)] --unary negate
-luaMinusHelper (Number a : Number b : _) = return $ [Number (a - b)]
-luaMinusHelper (a : b : _) = luametaop "__subtract" [a,b]
-luaMinusHelper _ = throwErrorStr "Can't subtract those things"
+luaminus :: NativeFunction
+luaminus (Number a : []) = return $ [Number (-a)] --unary negate
+luaminus (Number a : Number b : _) = return $ [Number (a - b)]
+luaminus (a : b : _) = luametaop "__subtract" [a,b]
+luaminus _ = throwErrorStr "Can't subtract those things"
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
@@ -146,7 +146,7 @@ loadBaseLibrary = do
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
 
-    addNativeFunction "-" (BuiltinFunction luaMinusHelper)
+    addNativeFunction "-" (BuiltinFunction luaminus)
     addNativeFunction "+" (BuiltinFunction luaplus)
 
     addNativeFunction "not" (BuiltinFunction luaNot)

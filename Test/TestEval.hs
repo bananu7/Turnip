@@ -377,6 +377,13 @@ spec = do
                     ,"return 123 + t"
                     ]) `shouldBe` [Number 165.0]
 
+            it "should allow setting the __mult metafunction" $
+                runParse (unlines [
+                     "t = { x = 42 }"
+                    ,"setmetatable(t, { __mult = function(a,b) return a * b.x end })"
+                    ,"return 2 * t"
+                    ]) `shouldBe` [Number 84.0]
+
             it "should allow setting the __call metafunction" $
                 runParse (unlines [
                      "t = { x = 5 }"

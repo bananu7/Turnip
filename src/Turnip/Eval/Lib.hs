@@ -16,8 +16,7 @@ deg x = x / pi * 180
 
 $(do
     entries <- sequence [
-        entry (Sig [NumberT, NumberT] NumberT) "*" '(*)
-        ,entry (Sig [NumberT, NumberT] NumberT) "/" '(/)
+        entry (Sig [NumberT, NumberT] NumberT) "/" '(/)
 
         -- math
         ,entry (Sig [NumberT] NumberT) "math.abs" 'abs
@@ -104,6 +103,9 @@ luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expe
         independently of the second value;
     (2) otherwise, if the second value has a metatable with an __add field, Lua uses this value as the metamethod;
     (3) otherwise, Lua raises an error.
+
+    __add, __mul, __sub (for subtraction), __div (for division),
+    __unm (for negation), and __pow
 -}
 
 getMetaFunction :: String -> Value -> LuaM (Maybe FunctionRef)
@@ -133,10 +135,17 @@ luaplus (Number a : Number b : _) = return $ [Number (a + b)]
 luaplus (a : b : _) = luametaop "__add" [a,b]
 luaplus _ = throwErrorStr "Plus operator needs at least two values"
 
+luamult :: NativeFunction
+luamult (Number a : Number b : _) = return $ [Number (a * b)]
+luamult (a : b : _) = luametaop "__mult" [a,b]
+luamult _ = throwErrorStr "Mult operator needs at least two values"
+
 luaminus :: NativeFunction
 luaminus (Number a : []) = return $ [Number (-a)] --unary negate
+luaminus (a : []) = return $ undefined -- todo: __unm
+
 luaminus (Number a : Number b : _) = return $ [Number (a - b)]
-luaminus (a : b : _) = luametaop "__subtract" [a,b]
+luaminus (a : b : _) = luametaop "__sub" [a,b]
 luaminus _ = throwErrorStr "Can't subtract those things"
 
 loadBaseLibrary :: LuaM ()
@@ -148,6 +157,7 @@ loadBaseLibrary = do
 
     addNativeFunction "-" (BuiltinFunction luaminus)
     addNativeFunction "+" (BuiltinFunction luaplus)
+    addNativeFunction "*" (BuiltinFunction luamult)
 
     addNativeFunction "not" (BuiltinFunction luaNot)
     addNativeFunction "or" (BuiltinFunction luaOr)

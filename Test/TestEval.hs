@@ -370,4 +370,34 @@ spec = do
                     ,"return getmetatable(a).x"
                     ]) `shouldBe` [Number 8.0]
 
+            it "should allow setting the __add metafunction" $
+                runParse (unlines [
+                     "t = { x = 42 }"
+                    ,"setmetatable(t, { __add = function(a,b) return a + b.x end })"
+                    ,"return 123 + t"
+                    ]) `shouldBe` [Number 165.0]
+
+            it "should allow setting the __call metafunction" $
+                runParse (unlines [
+                     "t = { x = 5 }"
+                    ,"setmetatable(t, { __call = function(a, x) return a.x + x end })"
+                    ,"return t(42)"
+                    ]) `shouldBe` [Number 47.0]
+
+            it "should allow setting the __index metafunction" $
+                runParse (unlines [
+                     "t = { inner = { 32, x = 5 } }"
+                    ,"setmetatable(t, { __index = function(t, i) return t.inner[i] end })"
+                    ,"return t[1], t.x"
+                    ]) `shouldBe` [Number 32.0, Number 5.0]
+
+            {-
+            it "should allow setting __concat metafunction" $
+                runParse (unlines [
+                     "t = { x = \"456\" }"
+                    ,"setmetatable(t, { __concat = function(a,b) return a .. b.x })"
+                    ,"return \"123\" .. t"
+                    ]) `shouldBe` [Boolean True]
+            -}
+
 main = hspec spec

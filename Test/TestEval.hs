@@ -393,10 +393,10 @@ spec = do
 
             it "should allow setting the __index metafunction" $
                 runParse (unlines [
-                     "t = { inner = { 32, x = 5 } }"
-                    ,"setmetatable(t, { __index = function(t, i) return t.inner[i] end })"
+                     "t = { }"
+                    ,"setmetatable(t, { __index = function(t, i) return i end })"
                     ,"return t[1], t.x"
-                    ]) `shouldBe` [Number 32.0, Number 5.0]
+                    ]) `shouldBe` [Number 1.0, Str "x"]
 
             it "should allow setting the __unm metafunction" $
                 runParse (unlines [

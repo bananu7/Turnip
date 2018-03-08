@@ -134,18 +134,21 @@ eval (AST.MemberCall obj fName args) = do
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show objV ++ ")"
 
 eval (AST.FieldRef t k) = do
-    tv <- head <$> eval t
-
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
-    case tv of
-        (Table tRef) -> do
-            -- similarly here
-            kV <- head <$> eval k
+    tv <- head <$> eval t
+    -- similarly the composite index keys just don't work and the first value is used
+    kv <- head <$> eval k
 
-            t <- getTableData tRef
-            let mVal :: Maybe Value = t ^. mapData . at kV
-            return $ [extractVal mVal]
+    case tv of
+        self @ (Table tRef) -> do
+            maybeIndexFn <- getMetaFunction "__index" self
+            case maybeIndexFn of
+                Just fr -> callRef fr [self, kv]
+                Nothing -> do
+                    t <- getTableData tRef
+                    let mVal :: Maybe Value = t ^. mapData . at kv
+                    return $ [extractVal mVal]
 
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
 

@@ -8,6 +8,7 @@ import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
 import Turnip.Eval.Eval (callRef)
+import Turnip.Eval.Metatables
 import Control.Monad.Except
 import Control.Lens ((^.), at)
 
@@ -108,17 +109,6 @@ luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expe
     __unm (for negation), and __pow
 -}
 
-getMetaFunction :: String -> Value -> LuaM (Maybe FunctionRef)
-getMetaFunction fstr v = do
-    mtr <- getMetatable v
-    case mtr of
-        Just tr -> do
-            f <- (^. mapData . at (Str fstr)) <$> getTableData tr
-            case f of
-                Just (Function fr) -> return $ Just fr
-                _                  -> return Nothing
-        Nothing -> return Nothing
-
 luametaop :: String -> NativeFunction
 luametaop fstr (a : b : _) = do
     maybeFn <- getMetaFunction fstr a
@@ -137,7 +127,6 @@ luametaop fstr [a] = do
         _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on this value"
 
 luametaop _ _ = throwErrorStr $ "Invalid metaop call" -- should really never happen
-
 
 luaplus :: NativeFunction
 luaplus (Number a : Number b : _) = return $ [Number (a + b)]

@@ -8,6 +8,7 @@ module Turnip.Eval.Eval where
 import qualified Turnip.AST as AST
 import Turnip.Eval.Types
 import Turnip.Eval.Util
+import Turnip.Eval.Metatables
 import Turnip.Eval.Closure
 
 import Control.Lens
@@ -18,6 +19,15 @@ import Debug.Trace
 
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
+
+callMeta :: TableRef -> [Value] -> LuaM [Value]
+callMeta tr args = do
+    let self = Table tr
+    maybeFn <- getMetaFunction "__call" self
+
+    case maybeFn of
+        Just fr -> callRef fr (self:args)
+        _ -> throwErrorStr "Attempt to call a table without a __call metafunction"
 
 callRef :: FunctionRef -> [Value] -> LuaM [Value]
 callRef f args = do
@@ -108,6 +118,7 @@ eval (AST.Call fn args) = do
 
     case fnV of 
         Function ref -> callRef ref argVs
+        Table tref -> callMeta tref argVs
         x -> throwErrorStr $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.MemberCall obj fName args) = do

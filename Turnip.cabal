@@ -57,7 +57,8 @@ library
                        Turnip.Eval.Util,
                        Turnip.Eval.Types,
                        Turnip.Eval.TH,
-                       Turnip.Eval.Lib
+                       Turnip.Eval.Lib,
+                       Turnip.Eval.Metatables
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    

@@ -145,10 +145,7 @@ eval (AST.FieldRef t k) = do
             maybeIndexFn <- getMetaFunction "__index" self
             case maybeIndexFn of
                 Just fr -> callRef fr [self, kv]
-                Nothing -> do
-                    t <- getTableData tRef
-                    let mVal :: Maybe Value = t ^. mapData . at kv
-                    return $ [extractVal mVal]
+                Nothing -> (:[]) <$> getTableField tRef kv
 
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
 

@@ -40,10 +40,9 @@ closureLookupFrom v (top:cls) = do
         Just val -> return val
         Nothing -> closureLookupFrom v cls
 -- if closure lookup fails, try global lookup
-closureLookupFrom v _ = do  
-    _G <- (^. mapData) <$> getGlobalTable
-    let mVal = Map.lookup v _G
-    return $ extractVal mVal
+closureLookupFrom v _ = do
+    _Gr <- getGlobalTableRef
+    getTableField _Gr v
 
 closureLookupEllipsisFrom :: Closure -> LuaM (Maybe [Value])
 closureLookupEllipsisFrom (top:cls) = do

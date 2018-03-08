@@ -48,13 +48,6 @@ extractVal (Just v) = v
 getGlobalTableRef :: LuaM TableRef
 getGlobalTableRef = LuaMT $ use gRef
 
-getGlobalTable :: LuaM TableData
-getGlobalTable = LuaMT $ do
-    gref <- use gRef
-    -- assume that _G is always present (as it should)
-    (Just _G) <- Map.lookup gref <$> use tables
-    return _G
-
 addNativeFunction :: String -> FunctionData -> LuaM ()
 addNativeFunction name fdata = do
     newRef <- uniqueFunctionRef

@@ -128,7 +128,16 @@ luametaop fstr (a : b : _) = do
             maybeFnB <- getMetaFunction fstr b
             case maybeFnB of
                 Just frb -> callRef frb [a,b]
-                _ -> throwErrorStr "No way to subtract those two values"
+                _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on those two values"
+
+luametaop fstr [a] = do
+    maybeFn <- getMetaFunction fstr a
+    case maybeFn of
+        Just fr -> callRef fr [a]
+        _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on this value"
+
+luametaop _ _ = throwErrorStr $ "Invalid metaop call" -- should really never happen
+
 
 luaplus :: NativeFunction
 luaplus (Number a : Number b : _) = return $ [Number (a + b)]
@@ -142,7 +151,7 @@ luamult _ = throwErrorStr "Mult operator needs at least two values"
 
 luaminus :: NativeFunction
 luaminus (Number a : []) = return $ [Number (-a)] --unary negate
-luaminus (a : []) = return $ undefined -- todo: __unm
+luaminus (a : []) = luametaop "__unm" [a]
 
 luaminus (Number a : Number b : _) = return $ [Number (a - b)]
 luaminus (a : b : _) = luametaop "__sub" [a,b]

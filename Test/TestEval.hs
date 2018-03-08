@@ -398,6 +398,13 @@ spec = do
                     ,"return t[1], t.x"
                     ]) `shouldBe` [Number 32.0, Number 5.0]
 
+            it "should allow setting the __unm metafunction" $
+                runParse (unlines [
+                     "t = { x = 5 }"
+                    ,"setmetatable(t, { __unm = function(t) return -t.x end })"
+                    ,"return -t"
+                    ]) `shouldBe` [Number (-5.0)]
+
             {-
             it "should allow setting __concat metafunction" $
                 runParse (unlines [

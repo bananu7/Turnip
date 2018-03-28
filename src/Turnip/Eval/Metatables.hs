@@ -24,3 +24,15 @@ getMetaFunction fstr v = do
                 _                  -> return Nothing
         Nothing -> return Nothing
 
+-- |This is a special function designed to extract the special case where
+-- 
+getMetaIndexTable :: Value -> LuaM (Maybe TableRef)
+getMetaIndexTable v = do
+    mtr <- getMetatable v
+    case mtr of
+        Just tr -> do
+            f <- (^. mapData . at (Str "__index")) <$> getTableData tr
+            case f of
+                Just (Table mitr) -> return $ Just mitr
+                _                 -> return Nothing
+        Nothing -> return Nothing

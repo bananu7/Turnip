@@ -398,6 +398,14 @@ spec = do
                     ,"return t[1], t.x"
                     ]) `shouldBe` [Number 1.0, Str "x"]
 
+            it "should allow setting the table as __index metafield" $
+                runParse (unlines [
+                     "t = { }"
+                    ,"u = { x = 33 }"
+                    ,"setmetatable(t, { __index = u })"
+                    ,"return t.x"
+                    ]) `shouldBe` [Number 33.0]
+
             it "should allow setting the __unm metafunction" $
                 runParse (unlines [
                      "t = { x = 5 }"

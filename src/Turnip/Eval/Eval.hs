@@ -145,7 +145,11 @@ eval (AST.FieldRef t k) = do
             maybeIndexFn <- getMetaFunction "__index" self
             case maybeIndexFn of
                 Just fr -> callRef fr [self, kv]
-                Nothing -> (:[]) <$> getTableField tRef kv
+                Nothing -> do
+                    mmtref <- getMetaIndexTable self
+                    case mmtref of
+                        Just mTRef -> (:[]) <$> getTableField mTRef kv
+                        Nothing -> (:[]) <$> getTableField tRef kv
 
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
 

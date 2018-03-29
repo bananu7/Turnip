@@ -442,4 +442,20 @@ spec = do
                         ,"return t.x"
                         ]) `shouldBe` [Number 33.0]
 
+                it "should prefer local key to the __index function" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"setmetatable(t, { __index = function(t, i) return i end })"
+                        ,"return t.x"
+                        ]) `shouldBe` [Number 4.0]
+
+                it "should prefer local key to the __index metatable" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"u = { x = 5 }"
+                        ,"setmetatable(t, { __index = u })"
+                        ,"return t.x"
+                        ]) `shouldBe` [Number 4.0]
+
+
 main = hspec spec

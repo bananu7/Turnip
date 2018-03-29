@@ -370,56 +370,72 @@ spec = do
                     ,"return getmetatable(a).x"
                     ]) `shouldBe` [Number 8.0]
 
-            it "should allow setting the __add metafunction" $
-                runParse (unlines [
-                     "t = { x = 42 }"
-                    ,"setmetatable(t, { __add = function(a,b) return a + b.x end })"
-                    ,"return 123 + t"
-                    ]) `shouldBe` [Number 165.0]
+            describe "metatable operators" $ do
+                it "should allow setting the __unm metafunction" $
+                    runParse (unlines [
+                         "t = { x = 5 }"
+                        ,"setmetatable(t, { __unm = function(t) return -t.x end })"
+                        ,"return -t"
+                        ]) `shouldBe` [Number (-5.0)]
 
-            it "should allow setting the __mult metafunction" $
-                runParse (unlines [
-                     "t = { x = 42 }"
-                    ,"setmetatable(t, { __mult = function(a,b) return a * b.x end })"
-                    ,"return 2 * t"
-                    ]) `shouldBe` [Number 84.0]
+                it "should allow setting the __add metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __add = function(a,b) return a + b.x end })"
+                        ,"return 123 + t"
+                        ]) `shouldBe` [Number 165.0]
 
-            it "should allow setting the __call metafunction" $
-                runParse (unlines [
-                     "t = { x = 5 }"
-                    ,"setmetatable(t, { __call = function(a, x) return a.x + x end })"
-                    ,"return t(42)"
-                    ]) `shouldBe` [Number 47.0]
+                it "should allow setting the __mult metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __mult = function(a,b) return a * b.x end })"
+                        ,"return 2 * t"
+                        ]) `shouldBe` [Number 84.0]
 
-            it "should allow setting the __index metafunction" $
-                runParse (unlines [
-                     "t = { }"
-                    ,"setmetatable(t, { __index = function(t, i) return i end })"
-                    ,"return t[1], t.x"
-                    ]) `shouldBe` [Number 1.0, Str "x"]
+                it "should allow setting the __sub metafunction" $
+                    runParse (unlines [
+                         "t = { x = 10 }"
+                        ,"setmetatable(t, { __sub = function(a,b) return a - b.x end })"
+                        ,"return 42 - t"
+                        ]) `shouldBe` [Number 32.0]
 
-            it "should allow setting the table as __index metafield" $
-                runParse (unlines [
-                     "t = { }"
-                    ,"u = { x = 33 }"
-                    ,"setmetatable(t, { __index = u })"
-                    ,"return t.x"
-                    ]) `shouldBe` [Number 33.0]
+                it "should allow setting the __div metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __div = function(a,b) return a.x / b end })"
+                        ,"return t / 2"
+                        ]) `shouldBe` [Number 21.0]
 
-            it "should allow setting the __unm metafunction" $
-                runParse (unlines [
-                     "t = { x = 5 }"
-                    ,"setmetatable(t, { __unm = function(t) return -t.x end })"
-                    ,"return -t"
-                    ]) `shouldBe` [Number (-5.0)]
+                {-
+                it "should allow setting __concat metafunction" $
+                    runParse (unlines [
+                         "t = { x = \"456\" }"
+                        ,"setmetatable(t, { __concat = function(a,b) return a .. b.x })"
+                        ,"return \"123\" .. t"
+                        ]) `shouldBe` [Boolean True]
+                -}
 
-            {-
-            it "should allow setting __concat metafunction" $
-                runParse (unlines [
-                     "t = { x = \"456\" }"
-                    ,"setmetatable(t, { __concat = function(a,b) return a .. b.x })"
-                    ,"return \"123\" .. t"
-                    ]) `shouldBe` [Boolean True]
-            -}
+            describe "special table metafunctions" $ do
+                it "should allow setting the __call metafunction" $
+                    runParse (unlines [
+                         "t = { x = 5 }"
+                        ,"setmetatable(t, { __call = function(a, x) return a.x + x end })"
+                        ,"return t(42)"
+                        ]) `shouldBe` [Number 47.0]
+
+                it "should allow setting the __index metafunction" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"setmetatable(t, { __index = function(t, i) return i end })"
+                        ,"return t[1], t.x"
+                        ]) `shouldBe` [Number 1.0, Str "x"]
+
+                it "should allow setting the table as __index metafield" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"u = { x = 33 }"
+                        ,"setmetatable(t, { __index = u })"
+                        ,"return t.x"
+                        ]) `shouldBe` [Number 33.0]
 
 main = hspec spec

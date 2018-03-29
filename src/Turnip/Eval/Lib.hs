@@ -17,10 +17,8 @@ deg x = x / pi * 180
 
 $(do
     entries <- sequence [
-        entry (Sig [NumberT, NumberT] NumberT) "/" '(/)
-
         -- math
-        ,entry (Sig [NumberT] NumberT) "math.abs" 'abs
+         entry (Sig [NumberT] NumberT) "math.abs" 'abs
         ,entry (Sig [NumberT] NumberT) "math.acos" 'acos
         ,entry (Sig [NumberT] NumberT) "math.asin" 'asin
         ,entry (Sig [NumberT] NumberT) "math.atan" 'asin
@@ -138,6 +136,11 @@ luamult (Number a : Number b : _) = return $ [Number (a * b)]
 luamult (a : b : _) = luametaop "__mult" [a,b]
 luamult _ = throwErrorStr "Mult operator needs at least two values"
 
+luadiv :: NativeFunction
+luadiv (Number a : Number b : _) = return $ [Number (a / b)]
+luadiv (a : b : _) = luametaop "__div" [a,b]
+luadiv _ = throwErrorStr "Div operator needs at least two values"
+
 luaminus :: NativeFunction
 luaminus (Number a : []) = return $ [Number (-a)] --unary negate
 luaminus (a : []) = luametaop "__unm" [a]
@@ -156,6 +159,7 @@ loadBaseLibrary = do
     addNativeFunction "-" (BuiltinFunction luaminus)
     addNativeFunction "+" (BuiltinFunction luaplus)
     addNativeFunction "*" (BuiltinFunction luamult)
+    addNativeFunction "/" (BuiltinFunction luadiv)
 
     addNativeFunction "not" (BuiltinFunction luaNot)
     addNativeFunction "or" (BuiltinFunction luaOr)

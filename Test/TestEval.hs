@@ -37,6 +37,18 @@ spec = do
                 it ">" $ runParse "return 1 > 2, 2 > 1, 1 > 1" `shouldBe` (map Boolean [False, True, False])
                 it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])
 
+        describe "equality" $ do
+            it "numbers" $ runParse "return 1 == 1, 1 == -1, 1 == 2, 2 == 1" 
+                `shouldBe` (map Boolean [True, False, False, False])
+            it "strings" $ runParse "return \"a\" == \"a\",\"a\" == \"\", \"a\" == \"ab\", \"b\" == \"a\", \"\" == false"
+                `shouldBe` (map Boolean [True, False, False, False, False])
+            it "booleans" $ runParse "return true == true, false == false, true == false, false == true"
+                `shouldBe` (map Boolean [True, True, False, False])
+            it "nil" $ runParse "return nil == nil, nil == 1, nil == \"a\", nil == {}"
+                `shouldBe` (map Boolean [False, False, False, False])
+            it "tables" $ runParse "return {} == {}, {\"a\"} == \"a\", {42} == 42, {} == false"
+                `shouldBe` (map Boolean [False, False, False, False])
+
         describe "logical operators" $ do
             it "not" $ runParse "return not nil, not true, not false, not 5, not \"\"" `shouldBe`
                 (map Boolean [True, False, True, False, False])

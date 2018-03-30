@@ -88,11 +88,15 @@ luasetmetatable (Table tr : Table mtr : _) = setMetatable tr (Just mtr) >> retur
 luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
 
 luagetmetatable :: NativeFunction
-luagetmetatable (Table tr : _) = do
-    mt <- (^. metatable) <$> getTableData tr
+luagetmetatable (t : _) = do
+    mt <- getMetatable t
     case mt of
+        Just mtr -> do
+            metatableHider <- rawGetTableField mtr (Str "__metatable")
+            case metatableHider of
+                Just mth -> return [mth]
+                Nothing -> return [Table mtr]
         Nothing -> return [Nil]
-        Just tr -> return [Table tr]
 luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expected"
 
 {-

@@ -474,5 +474,12 @@ spec = do
                         ,"return t.x, t.y"
                     ]) `shouldBe` [Number 11.0, Number 13.0]
 
+                it "should allow setting the __metatable hider" $
+                    runParse (unlines [
+                         "t = {}"
+                        ,"setmetatable(t, { x = 3, __metatable = { x = 4 }})"
+                        ,"return getmetatable(t).x"
+                    ]) `shouldBe` [Number 4.0]
+
 
 main = hspec spec

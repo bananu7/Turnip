@@ -141,17 +141,24 @@ eval (AST.FieldRef t k) = do
     kv <- head <$> eval k
 
     case tv of
-        self @ (Table tRef) -> do
-            maybeIndexFn <- getMetaFunction "__index" self
-            case maybeIndexFn of
-                Just fr -> callRef fr [self, kv]
-                Nothing -> do
-                    mmtref <- getMetaIndexTable self
-                    case mmtref of
-                        Just mTRef -> (:[]) <$> getTableField mTRef kv
-                        Nothing -> (:[]) <$> getTableField tRef kv
-
+        self @ (Table tRef) -> getTableFieldWithMetatable tRef kv
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
+
+    where
+        getTableFieldWithMetatable :: TableRef -> Value -> LuaM [Value]
+        getTableFieldWithMetatable tr k = 
+            getTableData tr >>= \t -> case t ^. mapData . at k of
+                Just v -> return [v]
+                Nothing -> do
+                    mtr <- getMetatable (Table tr)
+                    case mtr of
+                        Just tr -> do
+                            maybeMetaIndex <- (^. mapData . at (Str "__index")) <$> getTableData tr
+                            case maybeMetaIndex of
+                                Just (Table metaTabRef) -> getTableFieldWithMetatable metaTabRef k
+                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k]
+                                _ -> return [Nil]
+                        Nothing -> return [Nil]
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?

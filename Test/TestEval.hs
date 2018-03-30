@@ -457,13 +457,22 @@ spec = do
                         ,"return t.x"
                         ]) `shouldBe` [Number 4.0]
 
-                it "should allow setting the __metaindex function" $
+                it "should allow setting the __newindex function" $
                     runParse (unlines [
                          "t = { }"
                         ,"setmetatable(t, { __newindex = function(t, k, v) rawset(t, k+1, v) end })"
                         ,"t[1] = 2.0"
                         ,"return t[1], t[2]"
                     ]) `shouldBe` [Nil, Number 2.0]
+
+                it "shouldn't call __newindex if the key is already present" $
+                    runParse (unlines [
+                         "t = { x = Nil, y = 3.0}"
+                        ,"setmetatable(t, { __newindex = function(t, k, v) rawset(t, k, v+1) end })"
+                        ,"t.x = 11"
+                        ,"t.y = 13"
+                        ,"return t.x, t.y"
+                    ]) `shouldBe` [Number 11.0, Number 13.0]
 
 
 main = hspec spec

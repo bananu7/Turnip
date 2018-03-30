@@ -78,10 +78,13 @@ makeNewLambda f = do
 setTableField :: TableRef -> (Value, Value) -> LuaM ()
 setTableField tRef (k,v) = LuaMT $ tables . at tRef . traversed . mapData %= insert k v
 
+rawGetTableField :: TableRef -> Value -> LuaM (Maybe Value)
+rawGetTableField tRef k = (^. mapData . at k) <$> getTableData tRef
+
 getTableField :: TableRef -> Value -> LuaM Value
-getTableField tRef k = getTableData tRef >>= \t -> case t ^. mapData . at k of
-    Just v -> return v
-    Nothing -> return Nil
+getTableField tr k = rawGetTableField tr k >>= \v -> return $ case v of
+    Just vv -> vv
+    Nothing -> Nil
 
 throwErrorStr :: String -> LuaM a
 throwErrorStr = throwError . Str

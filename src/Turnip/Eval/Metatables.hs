@@ -3,7 +3,7 @@
 module Turnip.Eval.Metatables where
 
 import Turnip.Eval.Types
-import Turnip.Eval.Util (getTableData)
+import Turnip.Eval.Util (getTableData, rawGetTableField)
 import Control.Lens
 
 getMetatable :: Value -> LuaM (Maybe TableRef)
@@ -18,8 +18,7 @@ getMetaFunction fstr v = do
     mtr <- getMetatable v
     case mtr of
         Just tr -> do
-            f <- (^. mapData . at (Str fstr)) <$> getTableData tr
-            case f of
+            rawGetTableField tr (Str fstr) >>= \f -> case f of
                 Just (Function fr) -> return $ Just fr
                 _                  -> return Nothing
         Nothing -> return Nothing

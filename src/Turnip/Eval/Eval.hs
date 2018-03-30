@@ -147,13 +147,13 @@ eval (AST.FieldRef t k) = do
     where
         getTableFieldWithMetatable :: TableRef -> Value -> LuaM [Value]
         getTableFieldWithMetatable tr k = 
-            getTableData tr >>= \t -> case t ^. mapData . at k of
+            rawGetTableField tr k >>= \mv -> case mv of
                 Just v -> return [v]
                 Nothing -> do
                     mtr <- getMetatable (Table tr)
                     case mtr of
                         Just tr -> do
-                            maybeMetaIndex <- (^. mapData . at (Str "__index")) <$> getTableData tr
+                            maybeMetaIndex <- rawGetTableField tr (Str "__index")
                             case maybeMetaIndex of
                                 Just (Table metaTabRef) -> getTableFieldWithMetatable metaTabRef k
                                 Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k]
@@ -412,7 +412,7 @@ assignLValue (AST.LFieldRef t k) v = do
     where
         setTableFieldWithNewindex :: TableRef -> (Value,Value) -> LuaM ()
         setTableFieldWithNewindex tr (k,v) = 
-            getTableData tr >>= \t -> case t ^. mapData . at k of
+            rawGetTableField tr k >>= \mv -> case mv of
                 -- if key is already present, do regular insert
                 Just v -> regularSet
                 -- if not, try the metatable
@@ -421,7 +421,7 @@ assignLValue (AST.LFieldRef t k) v = do
                     case mtr of
                         Just mtr -> do
                             -- see if it has metaindex
-                            maybeNewIndex <- (^. mapData . at (Str "__newindex")) <$> getTableData mtr
+                            maybeNewIndex <- rawGetTableField mtr (Str "__newindex")
                             case maybeNewIndex of
                                 Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k, v] >> return ()
                                 _ -> regularSet

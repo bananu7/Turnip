@@ -457,5 +457,13 @@ spec = do
                         ,"return t.x"
                         ]) `shouldBe` [Number 4.0]
 
+                it "should allow setting the __metaindex function" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"setmetatable(t, { __newindex = function(t, k, v) rawset(t, k+1, v) end })"
+                        ,"t[1] = 2.0"
+                        ,"return t[1], t[2]"
+                    ]) `shouldBe` [Nil, Number 2.0]
+
 
 main = hspec spec

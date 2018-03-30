@@ -407,5 +407,24 @@ assignLValue (AST.LFieldRef t k) v = do
     tv <- head <$> eval t
     kv <- head <$> eval k
     case tv of
-        Table tr -> setTableField tr (kv,v)
+        Table tr -> setTableFieldWithNewindex tr (kv,v)
         _ -> throwErrorStr "Trying to assign to a field of non-table"
+    where
+        setTableFieldWithNewindex :: TableRef -> (Value,Value) -> LuaM ()
+        setTableFieldWithNewindex tr (k,v) = 
+            getTableData tr >>= \t -> case t ^. mapData . at k of
+                -- if key is already present, do regular insert
+                Just v -> regularSet
+                -- if not, try the metatable
+                Nothing -> do
+                    mtr <- getMetatable (Table tr)
+                    case mtr of
+                        Just mtr -> do
+                            -- see if it has metaindex
+                            maybeNewIndex <- (^. mapData . at (Str "__newindex")) <$> getTableData mtr
+                            case maybeNewIndex of
+                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k, v] >> return ()
+                                _ -> regularSet
+                        Nothing -> regularSet
+            where
+                regularSet = setTableField tr (k,v)

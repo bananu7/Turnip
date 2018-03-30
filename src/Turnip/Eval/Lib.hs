@@ -126,6 +126,10 @@ luametaop fstr [a] = do
 
 luametaop _ _ = throwErrorStr $ "Invalid metaop call" -- should really never happen
 
+luarawset :: NativeFunction
+luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
+luarawset _ = throwErrorStr "Invalid rawset parameters"
+
 luaplus :: NativeFunction
 luaplus (Number a : Number b : _) = return $ [Number (a + b)]
 luaplus (a : b : _) = luametaop "__add" [a,b]
@@ -170,3 +174,4 @@ loadBaseLibrary = do
 
     addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
+    addNativeFunction "rawset" (BuiltinFunction luarawset)

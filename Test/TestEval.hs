@@ -419,6 +419,20 @@ spec = do
                         ]) `shouldBe` [Boolean True]
                 -}
 
+            describe "metatable comparators" $ do
+                it "should allow setting the __lt metafunction" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"setmetatable(t, { __lt = function(a,b) return a.x < b end })"
+                        ,"return t < 3, t < 4, t < 5"
+                    ]) `shouldBe` [Boolean False, Boolean False, Boolean True]
+                it "should make __lt work for (>) as well" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"setmetatable(t, { __lt = function(a,b) return b.x > a end })"
+                        ,"return t > 3, t > 4, t > 5"
+                    ]) `shouldBe` [Boolean True, Boolean False, Boolean False]
+
             describe "special table metafunctions" $ do
                 it "should allow setting the __call metafunction" $
                     runParse (unlines [

@@ -50,11 +50,13 @@ luaCmpEQ _ = return [Boolean False]
 luaCmpGT :: NativeFunction
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
 luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
+luaCmpGT (a : b : _) = luametaop "__lt" [b,a] -- order reversed
 luaCmpGT xs = throwErrorStr "Can't compare those values"
 
 luaCmpLT :: NativeFunction
 luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
 luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
+luaCmpLT (a : b : _) = luametaop "__lt" [a,b]
 luaCmpLT _ = throwErrorStr "Can't compare those values"
 
 -- Bool-coercing logical operators

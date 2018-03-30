@@ -41,11 +41,20 @@ $(do
 
 -- Polymorphic comparison operators
 luaCmpEQ :: NativeFunction
-luaCmpEQ (Number a : Number b : _) = return [Boolean $ a == b]
-luaCmpEQ (Str a : Str b : _) = return [Boolean $ a == b]
-luaCmpEQ (Boolean a : Boolean b : _) = return [Boolean $ a == b]
-luaCmpEQ (Nil : Nil : _) = return [Boolean True]
-luaCmpEQ _ = return [Boolean False]
+luaCmpEQ (Nil : Nil : _) = return [Boolean False]
+luaCmpEQ (a : b : _)
+    | a == b = return [Boolean True]
+    | otherwise = luaEQHelper a b
+luaCmpEQ _ = throwErrorStr "Comparison requires at least two values"
+
+luaEQHelper a b = do
+    maybeEqA <- getMetaFunction "__eq" a
+    maybeEqB <- getMetaFunction "__eq" b
+
+    case (maybeEqA, maybeEqB) of
+        -- meta-equality is only used if both eq functions are the same
+        (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
+        _ -> return [Boolean False]
 
 luaCmpGT :: NativeFunction
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]

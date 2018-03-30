@@ -445,6 +445,28 @@ spec = do
                         ,"return t > 3, t > 4, t > 5"
                     ]) `shouldBe` [Boolean True, Boolean False, Boolean False]
 
+            describe "metatable equality" $ do
+                it "should allow setting the __eq metafunction" $
+                    runParse (unlines [
+                         "t,u,v = {x=5}, {x=5}, {x=6}"
+                        ,"e = function(t,u) return t.x == u.x end"
+                        ,"mt = { __eq = e }"
+                        ,"setmetatable(t, mt)"
+                        ,"setmetatable(u, mt)"
+                        ,"setmetatable(v, mt)"
+                        ,"return t == t, t == u, t == v, t == {}, t == 42"
+                    ]) `shouldBe` (map Boolean [True, True, False, False, False])
+
+                it "should only call __eq if both are the same" $
+                    runParse (unlines [
+                         "t,u = {x=5}, {x=5}"
+                        ,"e = function(t,u) return t.x == u.x end"
+                        ,"f = function(t,u) return t.x == u.x end"
+                        ,"setmetatable(t, { __eq = e })"
+                        ,"setmetatable(u, { __eq = f })"
+                        ,"return t == u"
+                    ]) `shouldBe` ([Boolean False])
+
             describe "special table metafunctions" $ do
                 it "should allow setting the __call metafunction" $
                     runParse (unlines [

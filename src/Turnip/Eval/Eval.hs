@@ -8,6 +8,7 @@ module Turnip.Eval.Eval where
 import qualified Turnip.AST as AST
 import Turnip.Eval.Types
 import Turnip.Eval.Util
+import Turnip.Eval.Metatables
 import Turnip.Eval.Closure
 
 import Control.Lens
@@ -18,6 +19,15 @@ import Debug.Trace
 
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
+
+callMeta :: TableRef -> [Value] -> LuaM [Value]
+callMeta tr args = do
+    let self = Table tr
+    maybeFn <- getMetaFunction "__call" self
+
+    case maybeFn of
+        Just fr -> callRef fr (self:args)
+        _ -> throwErrorStr "Attempt to call a table without a __call metafunction"
 
 callRef :: FunctionRef -> [Value] -> LuaM [Value]
 callRef f args = do
@@ -108,6 +118,7 @@ eval (AST.Call fn args) = do
 
     case fnV of 
         Function ref -> callRef ref argVs
+        Table tref -> callMeta tref argVs
         x -> throwErrorStr $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.MemberCall obj fName args) = do
@@ -123,20 +134,31 @@ eval (AST.MemberCall obj fName args) = do
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show objV ++ ")"
 
 eval (AST.FieldRef t k) = do
-    tv <- head <$> eval t
-
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
+    tv <- head <$> eval t
+    -- similarly the composite index keys just don't work and the first value is used
+    kv <- head <$> eval k
+
     case tv of
-        (Table tRef) -> do
-            -- similarly here
-            kV <- head <$> eval k
-
-            t <- getTableData tRef
-            let mVal :: Maybe Value = t ^. at kV
-            return $ [extractVal mVal]
-
+        self @ (Table tRef) -> getTableFieldWithMetatable tRef kv
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
+
+    where
+        getTableFieldWithMetatable :: TableRef -> Value -> LuaM [Value]
+        getTableFieldWithMetatable tr k = 
+            rawGetTableField tr k >>= \mv -> case mv of
+                Just v -> return [v]
+                Nothing -> do
+                    mtr <- getMetatable (Table tr)
+                    case mtr of
+                        Just tr -> do
+                            maybeMetaIndex <- rawGetTableField tr (Str "__index")
+                            case maybeMetaIndex of
+                                Just (Table metaTabRef) -> getTableFieldWithMetatable metaTabRef k
+                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k]
+                                _ -> return [Nil]
+                        Nothing -> return [Nil]
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
@@ -385,5 +407,24 @@ assignLValue (AST.LFieldRef t k) v = do
     tv <- head <$> eval t
     kv <- head <$> eval k
     case tv of
-        Table tr -> setTableField tr (kv,v)
+        Table tr -> setTableFieldWithNewindex tr (kv,v)
         _ -> throwErrorStr "Trying to assign to a field of non-table"
+    where
+        setTableFieldWithNewindex :: TableRef -> (Value,Value) -> LuaM ()
+        setTableFieldWithNewindex tr (k,v) = 
+            rawGetTableField tr k >>= \mv -> case mv of
+                -- if key is already present, do regular insert
+                Just v -> regularSet
+                -- if not, try the metatable
+                Nothing -> do
+                    mtr <- getMetatable (Table tr)
+                    case mtr of
+                        Just mtr -> do
+                            -- see if it has metaindex
+                            maybeNewIndex <- rawGetTableField mtr (Str "__newindex")
+                            case maybeNewIndex of
+                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k, v] >> return ()
+                                _ -> regularSet
+                        Nothing -> regularSet
+            where
+                regularSet = setTableField tr (k,v)

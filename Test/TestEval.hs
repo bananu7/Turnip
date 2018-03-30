@@ -28,10 +28,26 @@ spec = do
             runParse "return 1" `shouldBe` [Number 1.0]
 
         describe "should eval operator calls" $ do
-            it "+" $ runParse "return 1 + 1" `shouldBe` [Number 2.0]
-            it "-" $ runParse "return 3 - 2" `shouldBe` [Number 1.0]
-            it "*" $ runParse "return 3 * 8" `shouldBe` [Number 24.0]
-            it "/" $ runParse "return 9 / 3" `shouldBe` [Number 3.0]
+            describe "basic arithmetic" $ do
+                it "+" $ runParse "return 1 + 1" `shouldBe` [Number 2.0]
+                it "-" $ runParse "return 3 - 2" `shouldBe` [Number 1.0]
+                it "*" $ runParse "return 3 * 8" `shouldBe` [Number 24.0]
+                it "/" $ runParse "return 9 / 3" `shouldBe` [Number 3.0]
+            describe "comparisons" $ do
+                it ">" $ runParse "return 1 > 2, 2 > 1, 1 > 1" `shouldBe` (map Boolean [False, True, False])
+                it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])
+
+        describe "equality" $ do
+            it "numbers" $ runParse "return 1 == 1, 1 == -1, 1 == 2, 2 == 1" 
+                `shouldBe` (map Boolean [True, False, False, False])
+            it "strings" $ runParse "return \"a\" == \"a\",\"a\" == \"\", \"a\" == \"ab\", \"b\" == \"a\", \"\" == false"
+                `shouldBe` (map Boolean [True, False, False, False, False])
+            it "booleans" $ runParse "return true == true, false == false, true == false, false == true"
+                `shouldBe` (map Boolean [True, True, False, False])
+            it "nil" $ runParse "return nil == nil, nil == 1, nil == \"a\", nil == {}"
+                `shouldBe` (map Boolean [False, False, False, False])
+            it "tables" $ runParse "return {} == {}, {\"a\"} == \"a\", {42} == 42, {} == false"
+                `shouldBe` (map Boolean [False, False, False, False])
 
         describe "logical operators" $ do
             it "not" $ runParse "return not nil, not true, not false, not 5, not \"\"" `shouldBe`
@@ -360,5 +376,158 @@ spec = do
             it "should work with non-string errors" $ do
                 runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
                 runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+
+        describe "metatables" $ do
+            it "should allow setting and getting the metatable" $
+                runParse (unlines [
+                     "a = { x = 7 }"
+                    ,"b = { x = 8 }"
+                    ,"setmetatable(a, b)"
+                    ,"return getmetatable(a).x"
+                    ]) `shouldBe` [Number 8.0]
+
+            describe "metatable operators" $ do
+                it "should allow setting the __unm metafunction" $
+                    runParse (unlines [
+                         "t = { x = 5 }"
+                        ,"setmetatable(t, { __unm = function(t) return -t.x end })"
+                        ,"return -t"
+                        ]) `shouldBe` [Number (-5.0)]
+
+                it "should allow setting the __add metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __add = function(a,b) return a + b.x end })"
+                        ,"return 123 + t"
+                        ]) `shouldBe` [Number 165.0]
+
+                it "should allow setting the __mult metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __mult = function(a,b) return a * b.x end })"
+                        ,"return 2 * t"
+                        ]) `shouldBe` [Number 84.0]
+
+                it "should allow setting the __sub metafunction" $
+                    runParse (unlines [
+                         "t = { x = 10 }"
+                        ,"setmetatable(t, { __sub = function(a,b) return a - b.x end })"
+                        ,"return 42 - t"
+                        ]) `shouldBe` [Number 32.0]
+
+                it "should allow setting the __div metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __div = function(a,b) return a.x / b end })"
+                        ,"return t / 2"
+                        ]) `shouldBe` [Number 21.0]
+
+                {-
+                it "should allow setting __concat metafunction" $
+                    runParse (unlines [
+                         "t = { x = \"456\" }"
+                        ,"setmetatable(t, { __concat = function(a,b) return a .. b.x })"
+                        ,"return \"123\" .. t"
+                        ]) `shouldBe` [Boolean True]
+                -}
+
+            describe "metatable comparators" $ do
+                it "should allow setting the __lt metafunction" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"setmetatable(t, { __lt = function(a,b) return a.x < b end })"
+                        ,"return t < 3, t < 4, t < 5"
+                    ]) `shouldBe` [Boolean False, Boolean False, Boolean True]
+                it "should make __lt work for (>) as well" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"setmetatable(t, { __lt = function(a,b) return b.x > a end })"
+                        ,"return t > 3, t > 4, t > 5"
+                    ]) `shouldBe` [Boolean True, Boolean False, Boolean False]
+
+            describe "metatable equality" $ do
+                it "should allow setting the __eq metafunction" $
+                    runParse (unlines [
+                         "t,u,v = {x=5}, {x=5}, {x=6}"
+                        ,"e = function(t,u) return t.x == u.x end"
+                        ,"mt = { __eq = e }"
+                        ,"setmetatable(t, mt)"
+                        ,"setmetatable(u, mt)"
+                        ,"setmetatable(v, mt)"
+                        ,"return t == t, t == u, t == v, t == {}, t == 42"
+                    ]) `shouldBe` (map Boolean [True, True, False, False, False])
+
+                it "should only call __eq if both are the same" $
+                    runParse (unlines [
+                         "t,u = {x=5}, {x=5}"
+                        ,"e = function(t,u) return t.x == u.x end"
+                        ,"f = function(t,u) return t.x == u.x end"
+                        ,"setmetatable(t, { __eq = e })"
+                        ,"setmetatable(u, { __eq = f })"
+                        ,"return t == u"
+                    ]) `shouldBe` ([Boolean False])
+
+            describe "special table metafunctions" $ do
+                it "should allow setting the __call metafunction" $
+                    runParse (unlines [
+                         "t = { x = 5 }"
+                        ,"setmetatable(t, { __call = function(a, x) return a.x + x end })"
+                        ,"return t(42)"
+                        ]) `shouldBe` [Number 47.0]
+
+                it "should allow setting the __index metafunction" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"setmetatable(t, { __index = function(t, i) return i end })"
+                        ,"return t[1], t.x"
+                        ]) `shouldBe` [Number 1.0, Str "x"]
+
+                it "should allow setting the table as __index metafield" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"u = { x = 33 }"
+                        ,"setmetatable(t, { __index = u })"
+                        ,"return t.x"
+                        ]) `shouldBe` [Number 33.0]
+
+                it "should prefer local key to the __index function" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"setmetatable(t, { __index = function(t, i) return i end })"
+                        ,"return t.x"
+                        ]) `shouldBe` [Number 4.0]
+
+                it "should prefer local key to the __index metatable" $
+                    runParse (unlines [
+                         "t = { x = 4 }"
+                        ,"u = { x = 5 }"
+                        ,"setmetatable(t, { __index = u })"
+                        ,"return t.x"
+                        ]) `shouldBe` [Number 4.0]
+
+                it "should allow setting the __newindex function" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"setmetatable(t, { __newindex = function(t, k, v) rawset(t, k+1, v) end })"
+                        ,"t[1] = 2.0"
+                        ,"return t[1], t[2]"
+                    ]) `shouldBe` [Nil, Number 2.0]
+
+                it "shouldn't call __newindex if the key is already present" $
+                    runParse (unlines [
+                         "t = { x = Nil, y = 3.0}"
+                        ,"setmetatable(t, { __newindex = function(t, k, v) rawset(t, k, v+1) end })"
+                        ,"t.x = 11"
+                        ,"t.y = 13"
+                        ,"return t.x, t.y"
+                    ]) `shouldBe` [Number 11.0, Number 13.0]
+
+                it "should allow setting the __metatable hider" $
+                    runParse (unlines [
+                         "t = {}"
+                        ,"setmetatable(t, { x = 3, __metatable = { x = 4 }})"
+                        ,"return getmetatable(t).x"
+                    ]) `shouldBe` [Number 4.0]
+
 
 main = hspec spec

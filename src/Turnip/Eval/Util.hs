@@ -48,13 +48,6 @@ extractVal (Just v) = v
 getGlobalTableRef :: LuaM TableRef
 getGlobalTableRef = LuaMT $ use gRef
 
-getGlobalTable :: LuaM TableData
-getGlobalTable = LuaMT $ do
-    gref <- use gRef
-    -- assume that _G is always present (as it should)
-    (Just _G) <- Map.lookup gref <$> use tables
-    return _G
-
 addNativeFunction :: String -> FunctionData -> LuaM ()
 addNativeFunction name fdata = do
     newRef <- uniqueFunctionRef
@@ -62,13 +55,13 @@ addNativeFunction name fdata = do
         functions . at newRef .= Just fdata
 
         gTabRef <- use gRef
-        tables . at gTabRef . traversed . at (Str name) .= Just (Function newRef)
+        tables . at gTabRef . traversed . mapData . at (Str name) .= Just (Function newRef)
 
-makeNewTableWith :: TableData -> LuaM TableRef
+makeNewTableWith :: TableMapData -> LuaM TableRef
 makeNewTableWith initial = do
     newRef <- uniqueTableRef
     LuaMT $ do
-        tables . at newRef .= Just initial
+        tables . at newRef .= Just (TableData initial Nothing)
         return newRef
 
 makeNewTable :: LuaM TableRef
@@ -83,12 +76,15 @@ makeNewLambda f = do
         return newRef
 
 setTableField :: TableRef -> (Value, Value) -> LuaM ()
-setTableField tRef (k,v) = LuaMT $ tables . at tRef . traversed %= insert k v
+setTableField tRef (k,v) = LuaMT $ tables . at tRef . traversed . mapData %= insert k v
+
+rawGetTableField :: TableRef -> Value -> LuaM (Maybe Value)
+rawGetTableField tRef k = (^. mapData . at k) <$> getTableData tRef
 
 getTableField :: TableRef -> Value -> LuaM Value
-getTableField tRef k = getTableData tRef >>= \t -> case t ^. at k of
-    Just v -> return v
-    Nothing -> return Nil
+getTableField tr k = rawGetTableField tr k >>= \v -> return $ case v of
+    Just vv -> vv
+    Nothing -> Nil
 
 throwErrorStr :: String -> LuaM a
 throwErrorStr = throwError . Str

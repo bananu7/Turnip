@@ -35,15 +35,14 @@ closureLookupEllipsis = getClosure >>= closureLookupEllipsisFrom
 closureLookupFrom :: Value -> Closure -> LuaM Value
 -- descend recursively with lookups, picking the closest name first
 closureLookupFrom v (top:cls) = do
-    topCls <- getTableData (closureTableRef top)
+    topCls <- (^. mapData) <$> getTableData (closureTableRef top)
     case Map.lookup v topCls of
         Just val -> return val
         Nothing -> closureLookupFrom v cls
 -- if closure lookup fails, try global lookup
-closureLookupFrom v _ = do  
-    _G <- getGlobalTable
-    let mVal = Map.lookup v _G
-    return $ extractVal mVal
+closureLookupFrom v _ = do
+    _Gr <- getGlobalTableRef
+    getTableField _Gr v
 
 closureLookupEllipsisFrom :: Closure -> LuaM (Maybe [Value])
 closureLookupEllipsisFrom (top:cls) = do
@@ -68,7 +67,7 @@ assignmentTarget name = do
 assignmentTargetHelper :: Closure -> AST.Name -> LuaM TableRef
 assignmentTargetHelper [] _ = getGlobalTableRef
 assignmentTargetHelper (headCls:restCls) name = do
-    t <- getTableData $ closureTableRef headCls
+    t <- (^. mapData) <$> getTableData (closureTableRef headCls)
     case Map.lookup (Str name) t of
         -- if the name appears in the closure, we assign to this one
         (Just _) -> return $ closureTableRef headCls

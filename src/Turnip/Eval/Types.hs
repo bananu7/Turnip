@@ -44,8 +44,6 @@ data Value where {
     Nil :: Value;
     } deriving (Ord, Eq, Show)
 
-type TableData = Map.Map Value Value
-
 -- I don't think it's supposed to be an existential
 type NativeFunction = [Value] -> LuaM [Value]
 
@@ -56,6 +54,12 @@ type Closure = [ClosureLevel]
 
 data FunctionData = FunctionData { closure :: Closure, block :: AST.Block, paramNames :: [String], varargs :: Bool }
                   | BuiltinFunction { fn :: NativeFunction }
+
+type TableMapData = Map.Map Value Value
+data TableData = TableData {
+    _mapData :: TableMapData,
+    _metatable :: Maybe TableRef -- Can be either nil or some table
+    }
 
 data Context = Context {
     _gRef :: TableRef,
@@ -70,3 +74,5 @@ type LuaError = String
 -- |This type represents something that breaks the block execution
 -- and moves up the statement chain.
 data Bubble = BreakBubble | ReturnBubble [Value] | EmptyBubble deriving (Show, Eq)
+
+makeLenses ''TableData

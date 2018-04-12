@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: debian
+      - image: ubuntu
     steps:
       - checkout
       - run: wget -qO- https://get.haskellstack.org/ | sh
@@ -11,7 +11,7 @@ jobs:
 
   test:
     docker:
-      - image: debian
+      - image: ubuntu
     steps:
       - run: stack test
 

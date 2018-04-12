@@ -1,25 +1,24 @@
-machine:
-  pre:
-    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 20
-    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.6 20
-    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
-    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10
+version: 2
+jobs:
+  build:
+    docker:
+      - image: debian/wheezy
+    steps:
+      - wget -qO- https://get.haskellstack.org/ | sh
+      - stack setup
+      - stack test --no-run-tests
 
-dependencies:
-  pre:
-    - cd /tmp
-    - wget https://github.com/commercialhaskell/stack/releases/download/v1.0.4/stack-1.0.4.1-linux-x86_64.tar.gz -O stack.gz
-    - tar -xzvf stack.gz
-    - sudo mv stack-1.0.4.1-linux-x86_64/stack /usr/bin/stack
-    - chmod +x /usr/bin/stack
-    - cd ~/Turnip
-  override:
-    - stack setup
-    - stack build
-  cache_directories:
-    - .stack-work
-    - ~/.stack
+  test:
+    docker:
+      - image: debian/wheezy
+    steps:
+      - stack test
 
-test:
-  override:
-    - stack test
+workflows:
+  version: 2
+  master:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build

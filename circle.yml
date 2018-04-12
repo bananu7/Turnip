@@ -4,15 +4,16 @@ jobs:
     docker:
       - image: debian/wheezy
     steps:
-      - wget -qO- https://get.haskellstack.org/ | sh
-      - stack setup
-      - stack test --no-run-tests
+      - checkout
+      - run: wget -qO- https://get.haskellstack.org/ | sh
+      - run: stack setup
+      - run: stack test --no-run-tests
 
   test:
     docker:
       - image: debian/wheezy
     steps:
-      - stack test
+      - run: stack test
 
 workflows:
   version: 2

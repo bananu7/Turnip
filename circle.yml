@@ -5,6 +5,12 @@ jobs:
       - image: bananu7/haskell:0.0.1
     steps:
       - checkout
+      - restore_cache:
+        - key: stack-deps
       - run: stack setup
       - run: stack test --no-run-tests
       - run: stack test
+      - save_cache:
+        - key: stack-deps
+        - paths:
+          - .stack-work

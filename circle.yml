@@ -6,11 +6,11 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-        - key: stack-deps
+          key: stack-deps
       - run: stack setup
       - run: stack test --no-run-tests
       - run: stack test
       - save_cache:
-        - key: stack-deps
-        - paths:
-          - .stack-work
+          key: stack-deps
+          paths:
+            - ".stack-work"

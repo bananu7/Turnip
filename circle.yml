@@ -2,16 +2,15 @@ version: 2
 jobs:
   build:
     docker:
-      - image: ubuntu
+      - image: bananu7/haskell
     steps:
       - checkout
-      - run: wget -qO- https://get.haskellstack.org/ | sh
       - run: stack setup
       - run: stack test --no-run-tests
 
   test:
     docker:
-      - image: ubuntu
+      - image: bananu7/haskell
     steps:
       - run: stack test
 

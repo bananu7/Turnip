@@ -1,24 +1,10 @@
 version: 2
 jobs:
-  build:
+  build-and-test:
     docker:
       - image: bananu7/haskell:0.0.1
     steps:
       - checkout
       - run: stack setup
       - run: stack test --no-run-tests
-
-  test:
-    docker:
-      - image: bananu7/haskell:0.0.1
-    steps:
       - run: stack test
-
-workflows:
-  version: 2
-  master:
-    jobs:
-      - build
-      - test:
-          requires:
-            - build

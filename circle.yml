@@ -14,3 +14,4 @@ jobs:
           key: stack-deps
           paths:
             - ".stack-work"
+            - "/root/.stack"

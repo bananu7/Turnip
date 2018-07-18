@@ -7,6 +7,7 @@ jobs:
       - checkout
       - restore_cache:
           keys: 
+            - stack-deps-10.5
             - stack-deps-8.21
             - stack-deps
       - run: stack setup
@@ -14,7 +15,7 @@ jobs:
       - run: stack test --no-run-tests
       - run: stack test
       - save_cache:
-          key: stack-deps-8.21
+          key: stack-deps-10.5
           paths:
             - ".stack-work"
             - "/root/.stack"

@@ -1,6 +1,7 @@
 module Main where
 
 import Test.Hspec
+import Text.ParserCombinators.Parsec.Pos
 
 import Turnip.Parser
 import Turnip.AST
@@ -57,6 +58,16 @@ spec = do
                           (Block [Return [BinOp op (Number 1) (Number 2)]])
                   )
                   ["==", "~=", ">", "<", ">=", "<="]
+
+        describe "should parse concatenation operator (..)" $ do
+            it "simple usage" $ parse "return a .. b" `shouldBe` (Block [Return [BinOp ".." (Var "a") (Var "b")]])
+            it "mixed with other dots" $ parse "return a.x..b.y" `shouldBe`
+                (Block [Return [BinOp ".." 
+                    (FieldRef (Var "a") (StringLiteral (newPos "" 1 10) "x"))
+                    (FieldRef (Var "b") (StringLiteral (newPos "" 1 15) "y"))
+                ]])
+            it "associativity" $ parse "return a .. b .. c" `shouldBe`
+                (Block [Return [BinOp ".." (Var "a") (BinOp ".." (Var "b") (Var "c"))]])
                   
         describe "should parse logical operators" $ do
             it "not" $

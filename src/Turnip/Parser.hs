@@ -300,7 +300,7 @@ primaryexp = do
     pfx <- prefixexp
     more pfx
     where
-        more i = (dot_index i >>= more)
+        more i = (try (dot_index i >>= more))
              <|> (brace_index i >>= more)
              <|> (member_call i >>= more)
              <|> (fcall i >>= more)

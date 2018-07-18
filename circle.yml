@@ -1,25 +1,20 @@
-machine:
-  pre:
-    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 20
-    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.6 20
-    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
-    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10
-
-dependencies:
-  pre:
-    - cd /tmp
-    - wget https://github.com/commercialhaskell/stack/releases/download/v1.0.4/stack-1.0.4.1-linux-x86_64.tar.gz -O stack.gz
-    - tar -xzvf stack.gz
-    - sudo mv stack-1.0.4.1-linux-x86_64/stack /usr/bin/stack
-    - chmod +x /usr/bin/stack
-    - cd ~/Turnip
-  override:
-    - stack setup
-    - stack build
-  cache_directories:
-    - .stack-work
-    - ~/.stack
-
-test:
-  override:
-    - stack test
+version: 2
+jobs:
+  build:
+    docker:
+      - image: bananu7/haskell:0.0.1
+    steps:
+      - checkout
+      - restore_cache:
+          keys: 
+            - stack-deps-8.21
+            - stack-deps
+      - run: stack setup
+      - run: stack clean
+      - run: stack test --no-run-tests
+      - run: stack test
+      - save_cache:
+          key: stack-deps-8.21
+          paths:
+            - ".stack-work"
+            - "/root/.stack"

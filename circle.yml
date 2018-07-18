@@ -6,12 +6,13 @@ jobs:
     steps:
       - checkout
       - restore_cache:
+          key: stack-deps-8.21
           key: stack-deps
       - run: stack setup
       - run: stack test --no-run-tests
       - run: stack test
       - save_cache:
-          key: stack-deps
+          key: stack-deps-8.21
           paths:
             - ".stack-work"
             - "/root/.stack"

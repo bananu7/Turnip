@@ -10,6 +10,7 @@ jobs:
             - stack-deps-8.21
             - stack-deps
       - run: stack setup
+      - run: stack clean
       - run: stack test --no-run-tests
       - run: stack test
       - save_cache:

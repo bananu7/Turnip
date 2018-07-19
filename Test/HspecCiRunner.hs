@@ -10,7 +10,7 @@ import Test.Hspec.Formatters (specdoc)
 import Control.Exception
 
 testResultsPath :: String
-testResultsPath = "test-results/hspec/"
+testResultsPath = "test-results/"
 
 hspecCi :: String -> Spec -> IO ()
 hspecCi filename spec = do
@@ -18,7 +18,7 @@ hspecCi filename spec = do
 
     let ciConfig = defaultConfig
                  { configFormatter = Just xmlFormatter
-                 , configOutputFile = Right $ testResultsPath ++ filename
+                 , configOutputFile = Right $ testResultsPath ++ filename ++ "/results.xml"
                  }
 
     hspecWith (if isCiBuild then ciConfig else defaultConfig) spec

@@ -531,4 +531,4 @@ spec = do
                         ,"return getmetatable(t).x"
                     ]) `shouldBe` [Number 4.0]
 
-main = hspecCi "eval.xml" spec
+main = hspecCi "eval" spec

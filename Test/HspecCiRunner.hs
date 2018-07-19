@@ -14,7 +14,7 @@ testResultsPath = "test-results/"
 
 hspecCi :: String -> Spec -> IO ()
 hspecCi filename spec = do
-    isCiBuild <- (== "CI") <$> getEnv "CI" `catch` \(e :: SomeException) -> return ""
+    isCiBuild <- (== "true") <$> getEnv "CI" `catch` \(e :: SomeException) -> return ""
 
     let ciConfig = defaultConfig
                  { configFormatter = Just xmlFormatter

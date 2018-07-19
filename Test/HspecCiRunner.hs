@@ -9,13 +9,16 @@ import System.Environment (getEnv)
 import Test.Hspec.Formatters (specdoc)
 import Control.Exception
 
-hspecCi :: Spec -> IO ()
-hspecCi spec = do
+testResultsPath :: String
+testResultsPath = "test-results/hspec/"
+
+hspecCi :: String -> Spec -> IO ()
+hspecCi filename spec = do
     isCiBuild <- (== "CI") <$> getEnv "CI" `catch` \(e :: SomeException) -> return ""
 
     let ciConfig = defaultConfig
                  { configFormatter = Just xmlFormatter
-                 , configOutputFile = Right "results.xml"
+                 , configOutputFile = Right $ testResultsPath ++ filename
                  }
 
     hspecWith (if isCiBuild then ciConfig else defaultConfig) spec

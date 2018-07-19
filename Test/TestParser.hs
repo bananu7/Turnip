@@ -167,4 +167,4 @@ spec = do
                         For ["k", "v"] (ForIter [Call (Var "pairs") [Var "t"]]) (Block [])
                     ]
 
-main = hspecCi spec
+main = hspecCi "parser.xml" spec

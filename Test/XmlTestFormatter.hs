@@ -23,10 +23,10 @@ testcase (xs,x) = customParent "testcase" ! name x ! className (intercalate "." 
 -- | Format Hspec result to Jenkins-friendly XML.
 xmlFormatter :: Formatter
 xmlFormatter = silent {
-    headerFormatter = headerFormatter specdoc >> do
+    headerFormatter = do
       writeLine "<?xml version='1.0' encoding='UTF-8'?>"
       writeLine "<testsuite>"
-  , exampleSucceeded = \path -> exampleSucceeded specdoc path >> do
+  , exampleSucceeded = \path -> do
       writeLine $ renderMarkup $
         testcase path ""
   , exampleFailed = \path err -> do

@@ -19,3 +19,5 @@ jobs:
           paths:
             - ".stack-work"
             - "/root/.stack"
+      - store_test_results:
+          path: test-results

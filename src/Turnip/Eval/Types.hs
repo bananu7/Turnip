@@ -36,12 +36,12 @@ instance MonadTrans LuaMT where
 type LuaM a = forall m. Monad m => LuaMT m a
 
 data Value where {
+    Nil :: Value;
     Table :: TableRef -> Value;
     Function :: FunctionRef -> Value;
     Str :: String -> Value;
-    Number :: Double -> Value;
     Boolean :: Bool -> Value;
-    Nil :: Value;
+    Number :: Double -> Value;
     } deriving (Ord, Eq, Show)
 
 -- I don't think it's supposed to be an existential

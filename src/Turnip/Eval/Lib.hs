@@ -11,6 +11,7 @@ import Turnip.Eval.Eval (callRef)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
 import Control.Lens ((^.), at)
+import Data.Map (lookupMax)
 
 -- math helpers
 deg x = x / pi * 180
@@ -163,6 +164,7 @@ luadiv _ = throwErrorStr "Div operator needs at least two values"
 luaminus :: NativeFunction
 luaminus (Number a : []) = return $ [Number (-a)] --unary negate
 luaminus (a : []) = luametaop "__unm" [a]
+luaminus [] = throwErrorStr "Minus operator called on 0 arguments"
 
 luaminus (Number a : Number b : _) = return $ [Number (a - b)]
 luaminus (a : b : _) = luametaop "__sub" [a,b]
@@ -172,12 +174,23 @@ luaconcat (Str a : Str b : _) = return [Str $ a ++ b]
 luaconcat (a : b : _) = luametaop "__concat" [a,b]
 luaconcat _ = throwErrorStr "Concat operator needs at least two values"
 
+lualen (Str a : _) = return [Number . fromIntegral $ length a]
+lualen (Table tr : _) = do
+    (TableData td _) <- getTableData tr
+    case lookupMax td of
+        Just (Number x, _) -> return [Number x]
+        _ -> return [Number 0]
+lualen (a : _) = luametaop "__len" [a]
+lualen [] = throwErrorStr "Length operator called on 0 arguments"
+        
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
     addNativeFunction "==" (BuiltinFunction luaCmpEQ)
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
+
+    addNativeFunction "#" (BuiltinFunction lualen)
 
     addNativeFunction "-" (BuiltinFunction luaminus)
     addNativeFunction "+" (BuiltinFunction luaplus)

@@ -358,7 +358,8 @@ optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
              , [Infix  (reservedOp "=="  >> return (BinOp "==")) AssocLeft]
              , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft]
              , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft] 
-             , [Prefix (reservedOp "not" >> return (UnOp "not"))] 
+             , [Prefix (reservedOp "not" >> return (UnOp "not"))]
+             , [Prefix (reservedOp "#" >> return (UnOp "#"))]
              ]
 --------------------------------------------
 -- The Lexer

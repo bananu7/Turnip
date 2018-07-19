@@ -6,6 +6,8 @@ import Text.ParserCombinators.Parsec.Pos
 import Turnip.Parser
 import Turnip.AST
 
+import HspecCiRunner (hspecCi)
+
 successful (Right x) = x
 successful (Left err) = error $ show err
 
@@ -165,4 +167,4 @@ spec = do
                         For ["k", "v"] (ForIter [Call (Var "pairs") [Var "t"]]) (Block [])
                     ]
 
-main = hspec spec
+main = hspecCi spec

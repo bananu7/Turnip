@@ -7,6 +7,7 @@ import qualified Turnip.AST as AST
 import Turnip.Eval
 
 import Control.Monad.IO.Class
+import HspecCiRunner (hspecCi)
 
 successful (Right x) = x
 successful (Left err) = error $ show err
@@ -530,5 +531,4 @@ spec = do
                         ,"return getmetatable(t).x"
                     ]) `shouldBe` [Number 4.0]
 
-
-main = hspec spec
+main = hspecCi spec

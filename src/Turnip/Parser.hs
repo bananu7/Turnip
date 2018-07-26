@@ -342,24 +342,32 @@ exp_exp = choice [
 expr :: Parser Expr
 expr = buildExpressionParser optable exp_exp
 
-optable    = [ [Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight ]
-             , [Prefix (reservedOp "-"   >> return (UnOp "-")) ]
-             , [Infix  (reservedOp "*"   >> return (BinOp "*")) AssocLeft]
-             , [Infix  (reservedOp "/"   >> return (BinOp "/")) AssocLeft]
-             , [Infix  (reservedOp "%"   >> return (BinOp "%" )) AssocLeft]
-             , [Infix  (reservedOp "+"   >> return (BinOp "+")) AssocLeft]
-             , [Infix  (reservedOp "-"   >> return (BinOp "-")) AssocLeft]
-             , [Infix  (reservedOp ".."  >> return (BinOp "..")) AssocRight]
-             , [Infix  (reservedOp "<"   >> return (BinOp "<" )) AssocLeft]
-             , [Infix  (reservedOp ">"   >> return (BinOp ">" )) AssocLeft]
-             , [Infix  (reservedOp "<="  >> return (BinOp "<=")) AssocLeft]
-             , [Infix  (reservedOp ">="  >> return (BinOp ">=")) AssocLeft]
-             , [Infix  (reservedOp "~="  >> return (BinOp "~=")) AssocLeft]
-             , [Infix  (reservedOp "=="  >> return (BinOp "==")) AssocLeft]
-             , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft]
-             , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft] 
-             , [Prefix (reservedOp "not" >> return (UnOp "not"))]
-             , [Prefix (reservedOp "#" >> return (UnOp "#"))]
+optable    = [ [ Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight
+               ]
+             , [ Prefix (reservedOp "not" >> return (UnOp "not"))
+               , Prefix (reservedOp "#" >> return (UnOp "#"))
+               , Prefix (reservedOp "-"   >> return (UnOp "-"))
+               ]
+             , [ Infix  (reservedOp "*"   >> return (BinOp "*")) AssocLeft
+               , Infix  (reservedOp "/"   >> return (BinOp "/")) AssocLeft
+               , Infix  (reservedOp "%"   >> return (BinOp "%" )) AssocLeft
+               ]
+             , [ Infix  (reservedOp "+"   >> return (BinOp "+")) AssocLeft
+               , Infix  (reservedOp "-"   >> return (BinOp "-")) AssocLeft
+               ]
+             , [ Infix  (reservedOp ".."  >> return (BinOp "..")) AssocRight
+               ]
+             , [ Infix  (reservedOp "<="  >> return (BinOp "<=")) AssocLeft
+               , Infix  (reservedOp ">="  >> return (BinOp ">=")) AssocLeft
+               , Infix  (reservedOp "~="  >> return (BinOp "~=")) AssocLeft
+               , Infix  (reservedOp "=="  >> return (BinOp "==")) AssocLeft
+               , Infix  (reservedOp "<"   >> return (BinOp "<" )) AssocLeft
+               , Infix  (reservedOp ">"   >> return (BinOp ">" )) AssocLeft
+               ]
+             , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft
+               ]
+             , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft
+               ]
              ]
 --------------------------------------------
 -- The Lexer

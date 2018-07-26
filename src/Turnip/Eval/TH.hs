@@ -9,7 +9,6 @@ import Language.Haskell.TH
 
 import Control.Applicative
 import Control.Monad
-import Data.Typeable
 import Data.Char
 
 -- |Function signature has n params and one return value

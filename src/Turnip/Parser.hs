@@ -342,31 +342,31 @@ exp_exp = choice [
 expr :: Parser Expr
 expr = buildExpressionParser optable exp_exp
 
-optable    = [ [ Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight
+optable    = [ [ Infix  (reservedOp "^"   >> return (BinOp OpRaise)) AssocRight
                ]
-             , [ Prefix (reservedOp "not" >> return (UnOp "not"))
-               , Prefix (reservedOp "#" >> return (UnOp "#"))
-               , Prefix (reservedOp "-"   >> return (UnOp "-"))
+             , [ Prefix (reservedOp "not" >> return (UnOp OpNot))
+               , Prefix (reservedOp "#"   >> return (UnOp OpLength))
+               , Prefix (reservedOp "-"   >> return (UnOp OpUnaryMinus))
                ]
-             , [ Infix  (reservedOp "*"   >> return (BinOp "*")) AssocLeft
-               , Infix  (reservedOp "/"   >> return (BinOp "/")) AssocLeft
-               , Infix  (reservedOp "%"   >> return (BinOp "%" )) AssocLeft
+             , [ Infix  (reservedOp "*"   >> return (BinOp OpMult)) AssocLeft
+               , Infix  (reservedOp "/"   >> return (BinOp OpDivide)) AssocLeft
+               , Infix  (reservedOp "%"   >> return (BinOp OpModulo)) AssocLeft
                ]
-             , [ Infix  (reservedOp "+"   >> return (BinOp "+")) AssocLeft
-               , Infix  (reservedOp "-"   >> return (BinOp "-")) AssocLeft
+             , [ Infix  (reservedOp "+"   >> return (BinOp OpPlus)) AssocLeft
+               , Infix  (reservedOp "-"   >> return (BinOp OpMinus)) AssocLeft
                ]
-             , [ Infix  (reservedOp ".."  >> return (BinOp "..")) AssocRight
+             , [ Infix  (reservedOp ".."  >> return (BinOp OpConcat)) AssocRight
                ]
-             , [ Infix  (reservedOp "<="  >> return (BinOp "<=")) AssocLeft
-               , Infix  (reservedOp ">="  >> return (BinOp ">=")) AssocLeft
-               , Infix  (reservedOp "~="  >> return (BinOp "~=")) AssocLeft
-               , Infix  (reservedOp "=="  >> return (BinOp "==")) AssocLeft
-               , Infix  (reservedOp "<"   >> return (BinOp "<" )) AssocLeft
-               , Infix  (reservedOp ">"   >> return (BinOp ">" )) AssocLeft
+             , [ Infix  (reservedOp "<="  >> return (BinOp OpLE)) AssocLeft
+               , Infix  (reservedOp ">="  >> return (BinOp OpGE)) AssocLeft
+               , Infix  (reservedOp "~="  >> return (BinOp OpNotEqual)) AssocLeft
+               , Infix  (reservedOp "=="  >> return (BinOp OpEqual)) AssocLeft
+               , Infix  (reservedOp "<"   >> return (BinOp OpLess)) AssocLeft
+               , Infix  (reservedOp ">"   >> return (BinOp OpGreater)) AssocLeft
                ]
-             , [ Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft
+             , [ Infix  (reservedOp "and" >> return (BinOp OpAnd)) AssocLeft
                ]
-             , [ Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft
+             , [ Infix  (reservedOp "or"  >> return (BinOp OpOr)) AssocLeft
                ]
              ]
 --------------------------------------------

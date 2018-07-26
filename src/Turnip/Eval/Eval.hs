@@ -10,6 +10,7 @@ import Turnip.Eval.Types
 import Turnip.Eval.Util
 import Turnip.Eval.Metatables
 import Turnip.Eval.Closure
+import Turnip.Eval.Operators
 
 import Control.Lens
 import Control.Monad.Except
@@ -162,8 +163,8 @@ eval (AST.FieldRef t k) = do
 
 -- this is essentially the same as regular call
 -- TODO should it even be a difference in the AST?
-eval (AST.BinOp name lhs rhs) = eval (AST.Call (AST.Var name) [lhs, rhs])
-eval (AST.UnOp name expr) = eval (AST.Call (AST.Var name) [expr])
+eval (AST.BinOp op lhs rhs) = eval (AST.Call (AST.Var name) [lhs, rhs])
+eval (AST.UnOp op expr) = eval (AST.Call (AST.Var name) [expr])
 
 -- Table constructor in form { k = v, ... }
 eval (AST.TableCons entries) = do

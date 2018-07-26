@@ -43,6 +43,8 @@ spec = do
                 it "empty table literal" $ runParse "return #{}" `shouldBe` [Number 0.0]
                 it "simple table literal" $ runParse "return #{1,2,3}" `shouldBe` [Number 3.0]
                 it "table in a variable" $ runParse "x = {1,2}; return #x" `shouldBe` [Number 2.0]
+                it "table with mixed keys" $ runParse "t = {1, a=2, 3}; return #t" `shouldBe` [Number 2.0]
+                it "table with holes" $ runParse "t = {[1]=1, [3]=2, [4]=3}; return #t" `shouldSatisfy` (\[Number i] -> i `elem` [1.0, 4.0])
             describe "strings" $ do
                 it "empty string literal" $ runParse "return #\"\"" `shouldBe` [Number 0.0]
                 it "simple string literal" $ runParse "return #\"abc\"" `shouldBe` [Number 3.0]

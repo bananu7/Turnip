@@ -25,6 +25,20 @@ spec = do
                 parse "return -2.9" `shouldBe` Block [Return [UnOp "-" (Number 2.9)]]            
             it "should parse strings" $ parse "return \"test\"" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "test")
 
+            describe "tables" $ do
+                it "empty table literal" $ parse "return {}" `shouldBe` Block [Return [TableCons []]]
+                it "table literal without keys" $
+                    parse "return {1, nil, x}" `shouldBe` Block [Return [TableCons [(Nothing, Number 1.0), (Nothing, Nil), (Nothing, Var "x")]]]
+                it "table literal with keys" $
+                    parse "return {x = 42}" `shouldBe` Block [Return [TableCons [(Just $ StringLiteral (pos 9) "x", Number 42.0)]]]
+                it "table literal with expression keys" $
+                    parse "return {[1] = 1, [x] = x, [\"a space\"] = false}" `shouldBe`
+                    Block [Return [TableCons [
+                        (Just $ Number 1.0, Number 1.0),
+                        (Just $ Var "x", Var "x"),
+                        (Just $ StringLiteral (pos 28) "a space", Bool False)
+                        ]]]
+
         describe "should parse simple assignments" $ do
             it "a number to a variable" $
                 parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])

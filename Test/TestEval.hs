@@ -38,6 +38,17 @@ spec = do
                 it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])
             it "concat (..)" $ runParse "return \"abc\" .. \"def\"" `shouldBe` [Str "abcdef"]
 
+        describe "length operator" $ do
+            describe "tables" $ do
+                it "empty table literal" $ runParse "return #{}" `shouldBe` [Number 0.0]
+                it "simple table literal" $ runParse "return #{1,2,3}" `shouldBe` [Number 3.0]
+                it "table in a variable" $ runParse "x = {1,2}; return #x" `shouldBe` [Number 2.0]
+                it "table with mixed keys" $ runParse "t = {1, a=2, 3}; return #t" `shouldBe` [Number 2.0]
+                it "table with holes" $ runParse "t = {[1]=1, [3]=2, [4]=3}; return #t" `shouldSatisfy` (\[Number i] -> i `elem` [1.0, 4.0])
+            describe "strings" $ do
+                it "empty string literal" $ runParse "return #\"\"" `shouldBe` [Number 0.0]
+                it "simple string literal" $ runParse "return #\"abc\"" `shouldBe` [Number 3.0]
+
         describe "equality" $ do
             it "numbers" $ runParse "return 1 == 1, 1 == -1, 1 == 2, 2 == 1" 
                 `shouldBe` (map Boolean [True, False, False, False])
@@ -423,14 +434,19 @@ spec = do
                         ,"return t / 2"
                         ]) `shouldBe` [Number 21.0]
 
-                {-
-                it "should allow setting __concat metafunction" $
+                it "should allow setting the __concat metafunction" $
                     runParse (unlines [
                          "t = { x = \"456\" }"
-                        ,"setmetatable(t, { __concat = function(a,b) return a .. b.x })"
+                        ,"setmetatable(t, { __concat = function(a,b) return a .. b.x end })"
                         ,"return \"123\" .. t"
-                        ]) `shouldBe` [Boolean True]
-                -}
+                        ]) `shouldBe` [Str "123456"]
+
+                it "should allow setting __len metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __len = function(a) return a.x end })"
+                        ,"return #t"
+                        ]) `shouldBe` [Number 42.0]
 
             describe "metatable comparators" $ do
                 it "should allow setting the __lt metafunction" $

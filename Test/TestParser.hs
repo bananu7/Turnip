@@ -11,6 +11,9 @@ successful (Left err) = error $ show err
 
 parse = successful . parseLua
 
+-- helper for string literals, assumes 1-liners
+pos = newPos "" 1
+
 spec :: Spec
 spec = do
     describe "Parser.parseLua" $ do
@@ -22,6 +25,20 @@ spec = do
                 parse "return -2.9" `shouldBe` Block [Return [UnOp "-" (Number 2.9)]]            
             it "should parse strings" $ parse "return \"test\"" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "test")
 
+            describe "tables" $ do
+                it "empty table literal" $ parse "return {}" `shouldBe` Block [Return [TableCons []]]
+                it "table literal without keys" $
+                    parse "return {1, nil, x}" `shouldBe` Block [Return [TableCons [(Nothing, Number 1.0), (Nothing, Nil), (Nothing, Var "x")]]]
+                it "table literal with keys" $
+                    parse "return {x = 42}" `shouldBe` Block [Return [TableCons [(Just $ StringLiteral (pos 9) "x", Number 42.0)]]]
+                it "table literal with expression keys" $
+                    parse "return {[1] = 1, [x] = x, [\"a space\"] = false}" `shouldBe`
+                    Block [Return [TableCons [
+                        (Just $ Number 1.0, Number 1.0),
+                        (Just $ Var "x", Var "x"),
+                        (Just $ StringLiteral (pos 28) "a space", Bool False)
+                        ]]]
+
         describe "should parse simple assignments" $ do
             it "a number to a variable" $
                 parse "x = 5" `shouldBe` (Block [Assignment [LVar "x"] [Number 5.0]])
@@ -31,6 +48,19 @@ spec = do
 
             it "a lambda function to a variable" $
                 parse "f = function() end" `shouldBe` Block [Assignment [LVar "f"] [Lambda [] False $ Block []]]
+
+        describe "should parse length operator" $ do
+            it "on string literal (#\"abc\"" $
+                parse "return #\"abc\"" `shouldBe` Block [Return [UnOp "#" (StringLiteral (pos 9) "abc")]]
+            it "on variables" $
+                parse "return #x" `shouldBe` Block [Return [UnOp "#" (Var "x")]]
+            it "on table literals" $
+                parse "return #{1,2,3}" `shouldBe` Block [Return [UnOp "#" (TableCons [(Nothing, Number 1.0), (Nothing, Number 2.0), (Nothing, Number 3.0)])]]
+            it "on function calls" $ do
+                parse "return #f()" `shouldBe` Block [Return [UnOp "#" (Call (Var "f") [])]]
+                parse "return #f.g()" `shouldBe` Block [Return [UnOp "#" (Call (FieldRef (Var "f") (StringLiteral (pos 11) "g")) [])]]
+            it "mixed with concat" $
+                parse "return #x..y" `shouldBe` Block [Return [BinOp ".." (UnOp "#" (Var "x")) (Var "y")]]
 
         describe "should parse multiple assignments" $ do
             it "equal arity of lhs and rhs" $
@@ -63,8 +93,8 @@ spec = do
             it "simple usage" $ parse "return a .. b" `shouldBe` (Block [Return [BinOp ".." (Var "a") (Var "b")]])
             it "mixed with other dots" $ parse "return a.x..b.y" `shouldBe`
                 (Block [Return [BinOp ".." 
-                    (FieldRef (Var "a") (StringLiteral (newPos "" 1 10) "x"))
-                    (FieldRef (Var "b") (StringLiteral (newPos "" 1 15) "y"))
+                    (FieldRef (Var "a") (StringLiteral (pos 10) "x"))
+                    (FieldRef (Var "b") (StringLiteral (pos 15) "y"))
                 ]])
             it "associativity" $ parse "return a .. b .. c" `shouldBe`
                 (Block [Return [BinOp ".." (Var "a") (BinOp ".." (Var "b") (Var "c"))]])

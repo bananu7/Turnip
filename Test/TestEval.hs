@@ -38,6 +38,15 @@ spec = do
                 it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])
             it "concat (..)" $ runParse "return \"abc\" .. \"def\"" `shouldBe` [Str "abcdef"]
 
+        describe "length operator" $ do
+            describe "tables" $ do
+                it "empty table literal" $ runParse "return #{}" `shouldBe` [Number 0.0]
+                it "simple table literal" $ runParse "return #{1,2,3}" `shouldBe` [Number 3.0]
+                it "table in a variable" $ runParse "x = {1,2}; return #x" `shouldBe` [Number 2.0]
+            describe "strings" $ do
+                it "empty string literal" $ runParse "return #\"\"" `shouldBe` [Number 0.0]
+                it "simple string literal" $ runParse "return #\"abc\"" `shouldBe` [Number 3.0]
+
         describe "equality" $ do
             it "numbers" $ runParse "return 1 == 1, 1 == -1, 1 == 2, 2 == 1" 
                 `shouldBe` (map Boolean [True, False, False, False])

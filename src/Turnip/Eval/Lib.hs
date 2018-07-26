@@ -170,10 +170,12 @@ luaminus (Number a : Number b : _) = return $ [Number (a - b)]
 luaminus (a : b : _) = luametaop "__sub" [a,b]
 luaminus _ = throwErrorStr "Can't subtract those things"
 
+luaconcat :: NativeFunction
 luaconcat (Str a : Str b : _) = return [Str $ a ++ b]
 luaconcat (a : b : _) = luametaop "__concat" [a,b]
 luaconcat _ = throwErrorStr "Concat operator needs at least two values"
 
+lualen :: NativeFunction
 lualen (Str a : _) = return [Number . fromIntegral $ length a]
 lualen (Table tr : _) = do
     (TableData td _) <- getTableData tr

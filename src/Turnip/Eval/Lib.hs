@@ -10,10 +10,11 @@ import Turnip.Eval.Util
 import Turnip.Eval.Eval (callRef)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
-import Control.Lens ((^.), at)
 import Data.Map (lookupMax)
+import Data.Maybe (isJust)
 
 -- math helpers
+deg :: Floating a => a -> a
 deg x = x / pi * 180
 
 $(do
@@ -48,6 +49,7 @@ luaCmpEQ (a : b : _)
     | otherwise = luaEQHelper a b
 luaCmpEQ _ = throwErrorStr "Comparison requires at least two values"
 
+luaEQHelper :: Value -> Value -> LuaM [Value]
 luaEQHelper a b = do
     maybeEqA <- getMetaFunction "__eq" a
     maybeEqB <- getMetaFunction "__eq" b
@@ -61,7 +63,7 @@ luaCmpGT :: NativeFunction
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
 luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
 luaCmpGT (a : b : _) = luametaop "__lt" [b,a] -- order reversed
-luaCmpGT xs = throwErrorStr "Can't compare those values"
+luaCmpGT _ = throwErrorStr "Can't compare those values"
 
 luaCmpLT :: NativeFunction
 luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
@@ -178,10 +180,16 @@ luaconcat _ = throwErrorStr "Concat operator needs at least two values"
 lualen :: NativeFunction
 lualen (Str a : _) = return [Number . fromIntegral $ length a]
 lualen (Table tr : _) = do
-    (TableData td _) <- getTableData tr
-    case lookupMax td of
-        Just (Number x, _) -> return [Number x]
-        _ -> return [Number 0]
+    hasMetaLen <- isJust <$> getMetaFunction "__len" (Table tr)
+    if hasMetaLen
+        then luametaop "__len" [Table tr]
+        else do
+            (TableData td _) <- getTableData tr
+            case lookupMax td of
+                Just (Number x, _) -> return [Number x]
+                _ -> return [Number 0]
+
+lualen (Nil : _) = throwErrorStr "Attempt to get length of a nil value"
 lualen (a : _) = luametaop "__len" [a]
 lualen [] = throwErrorStr "Length operator called on 0 arguments"
         

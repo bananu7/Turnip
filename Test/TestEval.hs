@@ -432,14 +432,19 @@ spec = do
                         ,"return t / 2"
                         ]) `shouldBe` [Number 21.0]
 
-                {-
-                it "should allow setting __concat metafunction" $
+                it "should allow setting the __concat metafunction" $
                     runParse (unlines [
                          "t = { x = \"456\" }"
-                        ,"setmetatable(t, { __concat = function(a,b) return a .. b.x })"
+                        ,"setmetatable(t, { __concat = function(a,b) return a .. b.x end })"
                         ,"return \"123\" .. t"
-                        ]) `shouldBe` [Boolean True]
-                -}
+                        ]) `shouldBe` [Str "123456"]
+
+                it "should allow setting __len metafunction" $
+                    runParse (unlines [
+                         "t = { x = 42 }"
+                        ,"setmetatable(t, { __len = function(a) return a.x end })"
+                        ,"return #t"
+                        ]) `shouldBe` [Number 42.0]
 
             describe "metatable comparators" $ do
                 it "should allow setting the __lt metafunction" $

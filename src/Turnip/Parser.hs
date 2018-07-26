@@ -364,9 +364,9 @@ optable    = [ [ Infix  (reservedOp "^"   >> return (BinOp "^")) AssocRight
                , Infix  (reservedOp "<"   >> return (BinOp "<" )) AssocLeft
                , Infix  (reservedOp ">"   >> return (BinOp ">" )) AssocLeft
                ]
-             , [Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft
+             , [ Infix  (reservedOp "and" >> return (BinOp "and")) AssocLeft
                ]
-             , [Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft
+             , [ Infix  (reservedOp "or"  >> return (BinOp "or")) AssocLeft
                ]
              ]
 --------------------------------------------

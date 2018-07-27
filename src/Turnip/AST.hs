@@ -13,6 +13,7 @@ data LValue = LVar Name
 data UnaryOperator = OpLength
                    | OpNot
                    | OpUnaryMinus
+                   deriving (Show, Eq)
 
 data BinaryOperator = OpRaise
                     | OpMult
@@ -29,6 +30,7 @@ data BinaryOperator = OpRaise
                     | OpNotEqual
                     | OpAnd
                     | OpOr
+                    deriving (Show, Eq)
 
 data Expr = Number Double
           | StringLiteral SourcePos String
@@ -38,8 +40,8 @@ data Expr = Number Double
           | Call Expr [Expr]
           | MemberCall Expr Name [Expr]
           | TableCons [(Maybe Expr, Expr)]
-          | UnOp Operator Expr
-          | BinOp Operatpr Expr Expr
+          | UnOp UnaryOperator Expr
+          | BinOp BinaryOperator Expr Expr
           | FieldRef Expr Expr
           | Var Name
           | Lambda [Name] HasEllipsis Block

@@ -7,7 +7,7 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
-import Turnip.Eval.Eval (callRef)
+import Turnip.Eval.Eval (callRef, binaryMetaOperator, unaryMetaOperator)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
 import Data.Map (lookupMax)
@@ -62,13 +62,13 @@ luaEQHelper a b = do
 luaCmpGT :: NativeFunction
 luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
 luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
-luaCmpGT (a : b : _) = luametaop "__lt" [b,a] -- order reversed
+luaCmpGT (a : b : _) = binaryMetaOperator "__lt" [b,a] -- order reversed
 luaCmpGT _ = throwErrorStr "Can't compare those values"
 
 luaCmpLT :: NativeFunction
 luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
 luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
-luaCmpLT (a : b : _) = luametaop "__lt" [a,b]
+luaCmpLT (a : b : _) = binaryMetaOperator "__lt" [a,b]
 luaCmpLT _ = throwErrorStr "Can't compare those values"
 
 -- Bool-coercing logical operators
@@ -123,15 +123,6 @@ loadBaseLibrary = do
     addNativeFunction "==" (BuiltinFunction luaCmpEQ)
     addNativeFunction ">" (BuiltinFunction luaCmpGT)
     addNativeFunction "<" (BuiltinFunction luaCmpLT)
-
-    addNativeFunction "#" (BuiltinFunction lualen)
-
-    addNativeFunction "-" (BuiltinFunction luaminus)
-    addNativeFunction "+" (BuiltinFunction luaplus)
-    addNativeFunction "*" (BuiltinFunction luamult)
-    addNativeFunction "/" (BuiltinFunction luadiv)
-
-    addNativeFunction ".." (BuiltinFunction luaconcat)
 
     addNativeFunction "not" (BuiltinFunction luaNot)
     addNativeFunction "or" (BuiltinFunction luaOr)

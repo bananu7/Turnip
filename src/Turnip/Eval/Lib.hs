@@ -41,49 +41,6 @@ $(do
     return $ temps ++ loadLib
  )
 
--- Polymorphic comparison operators
-luaCmpEQ :: NativeFunction
-luaCmpEQ (Nil : Nil : _) = return [Boolean False]
-luaCmpEQ (a : b : _)
-    | a == b = return [Boolean True]
-    | otherwise = luaEQHelper a b
-luaCmpEQ _ = throwErrorStr "Comparison requires at least two values"
-
-luaEQHelper :: Value -> Value -> LuaM [Value]
-luaEQHelper a b = do
-    maybeEqA <- getMetaFunction "__eq" a
-    maybeEqB <- getMetaFunction "__eq" b
-
-    case (maybeEqA, maybeEqB) of
-        -- meta-equality is only used if both eq functions are the same
-        (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
-        _ -> return [Boolean False]
-
-luaCmpGT :: NativeFunction
-luaCmpGT (Number a : Number b : _) = return [Boolean $ a > b]
-luaCmpGT (Str a : Str b : _) = return [Boolean $ a > b]
-luaCmpGT (a : b : _) = binaryMetaOperator "__lt" [b,a] -- order reversed
-luaCmpGT _ = throwErrorStr "Can't compare those values"
-
-luaCmpLT :: NativeFunction
-luaCmpLT (Number a : Number b : _) = return [Boolean $ a < b]
-luaCmpLT (Str a : Str b : _) = return [Boolean $ a < b]
-luaCmpLT (a : b : _) = binaryMetaOperator "__lt" [a,b]
-luaCmpLT _ = throwErrorStr "Can't compare those values"
-
--- Bool-coercing logical operators
-luaNot, luaOr, luaAnd :: NativeFunction
-
--- Not is an unary operator
-luaNot [a] = return [Boolean . not . coerceToBool $ [a]]
-luaNot _ = throwErrorStr "Lua not operator must be called on one value!"
-
-luaOr [a,b] = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
-luaOr _ = throwErrorStr "'or' must be called on two values"
-
-luaAnd [a,b] = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
-luaAnd _ = throwErrorStr "'and' must be called on two values"
-
 luaerror :: NativeFunction
 luaerror (a:_) = throwError a
 luaerror _ = throwError Nil
@@ -120,13 +77,6 @@ luarawset _ = throwErrorStr "Invalid rawset parameters"
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
-    addNativeFunction "==" (BuiltinFunction luaCmpEQ)
-    addNativeFunction ">" (BuiltinFunction luaCmpGT)
-    addNativeFunction "<" (BuiltinFunction luaCmpLT)
-
-    addNativeFunction "not" (BuiltinFunction luaNot)
-    addNativeFunction "or" (BuiltinFunction luaOr)
-    addNativeFunction "and" (BuiltinFunction luaAnd)
 
     addNativeFunction "error" (BuiltinFunction luaerror)
     addNativeFunction "pcall" (BuiltinFunction luapcall)

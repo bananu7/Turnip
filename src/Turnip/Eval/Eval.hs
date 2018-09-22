@@ -217,12 +217,19 @@ binaryOperatorCall AST.OpMult a b = luamult a b
 binaryOperatorCall AST.OpDivide a b = luadiv a b
 binaryOperatorCall AST.OpConcat a b = luaconcat a b
 
-binaryOperatorCall op _ _ = vmErrorStr $ "Sorry, (" ++ show op ++ ") operator is not implemented yet."
+binaryOperatorCall AST.OpEqual a b = luaCmpEQ a b
+binaryOperatorCall AST.OpLess a b = luaLess a b
+binaryOperatorCall AST.OpGreater a b = luaGreater a b
+binaryOperatorCall AST.OpLE a b = vmErrorStr "Sorry, <= not implemented yet"
+binaryOperatorCall AST.OpGE a b = vmErrorStr "Sorry, >= not implemented yet"
+
+binaryOperatorCall AST.OpAnd a b = luaAnd a b
+binaryOperatorCall AST.OpOr a b = luaOr a b
 
 unaryOperatorCall :: AST.UnaryOperator -> Value -> LuaM [Value]
 unaryOperatorCall AST.OpUnaryMinus a = luaunaryminus a
 unaryOperatorCall AST.OpLength a = lualen a
-unaryOperatorCall AST.OpNot a = luanot a
+unaryOperatorCall AST.OpNot a = luaNot a
 
 {-
   https://www.lua.org/pil/13.1.html
@@ -297,9 +304,41 @@ lualen (Table tr) = do
 lualen Nil = throwErrorStr "Attempt to get length of a nil value"
 lualen a = unaryMetaOperator "__len" [a]
 
-luanot :: UnaryOperatorImpl
-luanot (Boolean a) = return [Boolean $ not a]
-luanot a = unaryMetaOperator "__not" [a]
+-- Polymorphic comparison operators
+luaCmpEQ :: BinaryOperatorImpl
+luaCmpEQ Nil Nil = return [Boolean False]
+luaCmpEQ a b
+    | a == b = return [Boolean True]
+    | otherwise = luaEQHelper a b
+    where
+        luaEQHelper :: Value -> Value -> LuaM [Value]
+        luaEQHelper a b = do
+            maybeEqA <- getMetaFunction "__eq" a
+            maybeEqB <- getMetaFunction "__eq" b
+
+            case (maybeEqA, maybeEqB) of
+                -- meta-equality is only used if both eq functions are the same
+                (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
+                _ -> return [Boolean False]
+
+luaGreater :: BinaryOperatorImpl
+luaGreater (Number a) (Number b) = return [Boolean $ a > b]
+luaGreater (Str a) (Str b) = return [Boolean $ a > b]
+luaGreater a b = binaryMetaOperator "__lt" [b,a] -- order reversed
+
+luaLess :: BinaryOperatorImpl
+luaLess (Number a) (Number b) = return [Boolean $ a < b]
+luaLess (Str a) (Str b) = return [Boolean $ a < b]
+luaLess a b = binaryMetaOperator "__lt" [a,b]
+
+luaNot :: UnaryOperatorImpl
+luaNot a = return [Boolean . not . coerceToBool $ [a]]
+
+luaOr :: BinaryOperatorImpl
+luaOr a b = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
+
+luaAnd :: BinaryOperatorImpl
+luaAnd a b = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
 
 --------------
 

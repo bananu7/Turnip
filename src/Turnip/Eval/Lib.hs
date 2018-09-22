@@ -7,7 +7,7 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
-import Turnip.Eval.Eval (callRef, binaryMetaOperator, unaryMetaOperator)
+import Turnip.Eval.Eval (callRef)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
 import Data.Map (lookupMax)

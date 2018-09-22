@@ -243,8 +243,8 @@ unaryOperatorCall AST.OpNot a = luaNot a
     __unm (for negation), and __pow
 -}
 
-binaryMetaOperator :: String -> NativeFunction
-binaryMetaOperator fstr (a : b : _) = do
+binaryMetaOperator :: String -> Value -> Value -> LuaM [Value]
+binaryMetaOperator fstr a b = do
     maybeFn <- getMetaFunction fstr a
     case maybeFn of
         Just fra -> callRef fra [a,b]
@@ -254,47 +254,44 @@ binaryMetaOperator fstr (a : b : _) = do
                 Just frb -> callRef frb [a,b]
                 _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on those two values"
 
-binaryMetaOperator _ _ = vmErrorStr "Invalid binary metaop call"
-
-unaryMetaOperator :: String -> NativeFunction
-unaryMetaOperator fstr [a] = do
+unaryMetaOperator :: String -> Value -> LuaM [Value]
+unaryMetaOperator fstr a = do
     maybeFn <- getMetaFunction fstr a
     case maybeFn of
         Just fr -> callRef fr [a]
         _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on this value"
 
-unaryMetaOperator _ _ = vmErrorStr "Invalid unary metaop call"
 
 luaplus :: BinaryOperatorImpl
 luaplus (Number a) (Number b) = return $ [Number (a + b)]
-luaplus a b = binaryMetaOperator "__add" [a,b]
+luaplus a b = binaryMetaOperator "__add" a b
 
 luamult :: BinaryOperatorImpl
 luamult (Number a) (Number b) = return $ [Number (a * b)]
-luamult a b = binaryMetaOperator "__mult" [a,b]
+luamult a b = binaryMetaOperator "__mult" a b
 
 luadiv :: BinaryOperatorImpl
 luadiv (Number a) (Number b) = return $ [Number (a / b)]
-luadiv a b = binaryMetaOperator "__div" [a,b]
+luadiv a b = binaryMetaOperator "__div" a b
 
 luaunaryminus :: UnaryOperatorImpl
 luaunaryminus (Number a) = return $ [Number (-a)] --unary negate
-luaunaryminus a = unaryMetaOperator "__unm" [a]
+luaunaryminus a = unaryMetaOperator "__unm" a
 
 luaminus :: BinaryOperatorImpl
 luaminus (Number a) (Number b) = return $ [Number (a - b)]
-luaminus a b = binaryMetaOperator "__sub" [a,b]
+luaminus a b = binaryMetaOperator "__sub" a b
 
 luaconcat :: BinaryOperatorImpl
 luaconcat (Str a) (Str b) = return [Str $ a ++ b]
-luaconcat a b = binaryMetaOperator "__concat" [a,b]
+luaconcat a b = binaryMetaOperator "__concat" a b
 
 lualen :: UnaryOperatorImpl
 lualen (Str a) = return [Number . fromIntegral $ length a]
 lualen (Table tr) = do
     hasMetaLen <- isJust <$> getMetaFunction "__len" (Table tr)
     if hasMetaLen
-        then unaryMetaOperator "__len" [Table tr]
+        then unaryMetaOperator "__len" (Table tr)
         else do
             (TableData td _) <- getTableData tr
             case Map.lookupMax td of
@@ -302,7 +299,7 @@ lualen (Table tr) = do
                 _ -> return [Number 0]
 
 lualen Nil = throwErrorStr "Attempt to get length of a nil value"
-lualen a = unaryMetaOperator "__len" [a]
+lualen a = unaryMetaOperator "__len" a
 
 -- Polymorphic comparison operators
 luaCmpEQ :: BinaryOperatorImpl
@@ -324,12 +321,12 @@ luaCmpEQ a b
 luaGreater :: BinaryOperatorImpl
 luaGreater (Number a) (Number b) = return [Boolean $ a > b]
 luaGreater (Str a) (Str b) = return [Boolean $ a > b]
-luaGreater a b = binaryMetaOperator "__lt" [b,a] -- order reversed
+luaGreater a b = binaryMetaOperator "__lt" b a -- order reversed
 
 luaLess :: BinaryOperatorImpl
 luaLess (Number a) (Number b) = return [Boolean $ a < b]
 luaLess (Str a) (Str b) = return [Boolean $ a < b]
-luaLess a b = binaryMetaOperator "__lt" [a,b]
+luaLess a b = binaryMetaOperator "__lt" a b
 
 luaNot :: UnaryOperatorImpl
 luaNot a = return [Boolean . not . coerceToBool $ [a]]

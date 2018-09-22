@@ -30,40 +30,6 @@ callMeta tr args = do
         Just fr -> callRef fr (self:args)
         _ -> throwErrorStr "Attempt to call a table without a __call metafunction"
 
-{-
-  https://www.lua.org/pil/13.1.html
-  To choose a metamethod, Lua does the following:
-    (1) If the first value has a metatable with an __add field, Lua uses this value as the metamethod,
-        independently of the second value;
-    (2) otherwise, if the second value has a metatable with an __add field, Lua uses this value as the metamethod;
-    (3) otherwise, Lua raises an error.
-
-    __add, __mul, __sub (for subtraction), __div (for division),
-    __unm (for negation), and __pow
--}
-
-binaryMetaOperator :: String -> NativeFunction
-binaryMetaOperator fstr (a : b : _) = do
-    maybeFn <- getMetaFunction fstr a
-    case maybeFn of
-        Just fra -> callRef fra [a,b]
-        _ -> do
-            maybeFnB <- getMetaFunction fstr b
-            case maybeFnB of
-                Just frb -> callRef frb [a,b]
-                _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on those two values"
-
-binaryMetaOperator _ _ = vmErrorStr "Invalid binary metaop call"
-
-unaryMetaOperator :: String -> NativeFunction
-unaryMetaOperator fstr [a] = do
-    maybeFn <- getMetaFunction fstr a
-    case maybeFn of
-        Just fr -> callRef fr [a]
-        _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on this value"
-
-unaryMetaOperator _ _ = vmErrorStr "Invalid unary metaop call"
-
 callRef :: FunctionRef -> [Value] -> LuaM [Value]
 callRef f args = do
     fd <- getFunctionData f

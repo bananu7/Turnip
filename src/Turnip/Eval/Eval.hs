@@ -140,7 +140,7 @@ eval (AST.FieldRef t k) = do
     kv <- head <$> eval k
 
     case tv of
-        self @ (Table tRef) -> getTableFieldWithMetatable tRef kv
+        Table tRef -> getTableFieldWithMetatable tRef kv
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
 
     where
@@ -555,7 +555,7 @@ assignLValue (AST.LFieldRef t k) v = do
         setTableFieldWithNewindex tr (k,v) = 
             rawGetTableField tr k >>= \mv -> case mv of
                 -- if key is already present, do regular insert
-                Just v -> regularSet
+                Just _ -> regularSet
                 -- if not, try the metatable
                 Nothing -> do
                     mtr <- getMetatable (Table tr)

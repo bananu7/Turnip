@@ -1,4 +1,4 @@
-module Turnip.Parser( prettyLuaFromFile, loadAST, parseLua ) where
+module Turnip.Parser( prettyLuaFromFile, parseLua ) where
 
 import Turnip.AST
 
@@ -12,15 +12,6 @@ import Data.Maybe
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
 -- thus separating the IO from the AST
-
---screw it, do it live
-fromRight :: Either a b -> b
-fromRight (Right b) = b
-
-loadAST :: String -> IO Block
-loadAST fname = do
-    anAST <- parseFromFile program fname
-    return $ fromRight anAST
 
 parseLua :: String -> Either ParseError Block
 parseLua text = parse program "" text
@@ -221,6 +212,7 @@ assignOrCallStmt = do
         (FieldRef t f) -> assignStmt [LFieldRef t f]
         _ -> fail "Invalid stmt"
 
+assignStmt :: [LValue] -> Parser Stmt
 assignStmt lhs = do
     comma
     lv <- lvalue
@@ -230,36 +222,27 @@ assignStmt lhs = do
     vals <- explist
     return $ Assignment (reverse lhs) vals
 
+lvalue :: Parser LValue
 lvalue = do
     ex <- primaryexp
-    tolvar ex
-
-tolvar ex = do
     case ex of
         (Var n) -> return $ LVar n
         (FieldRef t f) -> return $ LFieldRef t f
-        _ -> fail "Invalid lvalue"
+        _ -> fail "Invalid lvalue"    
 
 namelist :: Parser [Name]
 namelist = commaSep1 identifier
 
+prefixexp :: Parser Expr
 prefixexp = choice [
     identifier >>= return . Var,
     parens expr
     ]
 
+args :: Parser [Expr]
 args = (parens $ option [] explist)
     <|> (liftM (:[]) $ tableconstructor)
     <|> (getPosition >>= \pos -> liftM (\s -> [StringLiteral pos s]) $ stringl)
-
-functioncall = do
-    prefixexp
-    args
-  <|> do
-    prefixexp
-    colon
-    identifier
-    args
     
 -- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
 funcname :: Parser (Name, Maybe Name)
@@ -271,10 +254,15 @@ funcname = do
 explist :: Parser [Expr]
 explist = commaSep1 expr
 
+tableconstructor :: Parser Expr
 tableconstructor = liftM TableCons $ braces fieldlist
 
+fieldlist :: Parser [(Maybe Expr, Expr)]
 fieldlist = sepEndBy field fieldsep
+    where
+        fieldsep = comma <|> semi
 
+field :: Parser (Maybe Expr, Expr)
 field = do
     e <- brackets expr
     symbol "="
@@ -294,8 +282,7 @@ field = do
     v <- expr
     return (Nothing, v)
 
-fieldsep = comma <|> semi
-
+primaryexp :: Parser Expr
 primaryexp = do
     pfx <- prefixexp
     more pfx
@@ -330,7 +317,6 @@ exp_exp = choice [
     reserved "nil" >> return Nil,
     reserved "..." >> return Ellipsis,
     tableconstructor,
---    exp_anonfunction,
     primaryexp,
     lambda
     ]

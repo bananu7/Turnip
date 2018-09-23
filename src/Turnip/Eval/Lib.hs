@@ -10,7 +10,6 @@ import Turnip.Eval.Util
 import Turnip.Eval.Eval (callRef)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
-import Data.Maybe (isJust)
 
 -- math helpers
 deg :: Floating a => a -> a

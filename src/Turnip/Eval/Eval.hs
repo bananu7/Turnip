@@ -212,28 +212,28 @@ type UnaryOperatorImpl = Value -> LuaM [Value]
 
 binaryOperatorCall :: AST.BinaryOperator -> Value -> Value -> LuaM [Value]
 binaryOperatorCall AST.OpRaise = \_ _ -> vmErrorStr "Sorry, ^ not implemented yet"
-binaryOperatorCall AST.OpPlus = luaplus
-binaryOperatorCall AST.OpMinus = luaminus
-binaryOperatorCall AST.OpMult = luamult
-binaryOperatorCall AST.OpDivide = luadiv
+binaryOperatorCall AST.OpPlus = opPlus
+binaryOperatorCall AST.OpMinus = opMinus
+binaryOperatorCall AST.OpMult = opMult
+binaryOperatorCall AST.OpDivide = opDiv
 binaryOperatorCall AST.OpModulo = \_ _ -> vmErrorStr "Sorry, % not implemented yet"
 
-binaryOperatorCall AST.OpConcat = luaconcat
+binaryOperatorCall AST.OpConcat = opConcat
 
-binaryOperatorCall AST.OpEqual = luaCmpEQ
-binaryOperatorCall AST.OpLess = luaLess
-binaryOperatorCall AST.OpGreater = luaGreater
+binaryOperatorCall AST.OpEqual = opEqual
+binaryOperatorCall AST.OpLess = opLess
+binaryOperatorCall AST.OpGreater = opGreater
 binaryOperatorCall AST.OpLE = \_ _ -> vmErrorStr "Sorry, <= not implemented yet"
 binaryOperatorCall AST.OpGE = \_ _ -> vmErrorStr "Sorry, >= not implemented yet"
 binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
 
-binaryOperatorCall AST.OpAnd = luaAnd
-binaryOperatorCall AST.OpOr = luaOr
+binaryOperatorCall AST.OpAnd = opAnd
+binaryOperatorCall AST.OpOr = opOr
 
 unaryOperatorCall :: AST.UnaryOperator -> Value -> LuaM [Value]
-unaryOperatorCall AST.OpUnaryMinus a = luaunaryminus a
-unaryOperatorCall AST.OpLength a = lualen a
-unaryOperatorCall AST.OpNot a = luaNot a
+unaryOperatorCall AST.OpUnaryMinus = opUnaryMinus
+unaryOperatorCall AST.OpLength = opLength
+unaryOperatorCall AST.OpNot = opNot
 
 {-
   https://www.lua.org/pil/13.1.html
@@ -266,33 +266,33 @@ unaryMetaOperator fstr a = do
         _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on this value"
 
 
-luaplus :: BinaryOperatorImpl
-luaplus (Number a) (Number b) = return $ [Number (a + b)]
-luaplus a b = binaryMetaOperator "__add" a b
+opPlus :: BinaryOperatorImpl
+opPlus (Number a) (Number b) = return $ [Number (a + b)]
+opPlus a b = binaryMetaOperator "__add" a b
 
-luamult :: BinaryOperatorImpl
-luamult (Number a) (Number b) = return $ [Number (a * b)]
-luamult a b = binaryMetaOperator "__mult" a b
+opMult :: BinaryOperatorImpl
+opMult (Number a) (Number b) = return $ [Number (a * b)]
+opMult a b = binaryMetaOperator "__mult" a b
 
-luadiv :: BinaryOperatorImpl
-luadiv (Number a) (Number b) = return $ [Number (a / b)]
-luadiv a b = binaryMetaOperator "__div" a b
+opDiv :: BinaryOperatorImpl
+opDiv (Number a) (Number b) = return $ [Number (a / b)]
+opDiv a b = binaryMetaOperator "__div" a b
 
-luaunaryminus :: UnaryOperatorImpl
-luaunaryminus (Number a) = return $ [Number (-a)] --unary negate
-luaunaryminus a = unaryMetaOperator "__unm" a
+opUnaryMinus :: UnaryOperatorImpl
+opUnaryMinus (Number a) = return $ [Number (-a)] --unary negate
+opUnaryMinus a = unaryMetaOperator "__unm" a
 
-luaminus :: BinaryOperatorImpl
-luaminus (Number a) (Number b) = return $ [Number (a - b)]
-luaminus a b = binaryMetaOperator "__sub" a b
+opMinus :: BinaryOperatorImpl
+opMinus (Number a) (Number b) = return $ [Number (a - b)]
+opMinus a b = binaryMetaOperator "__sub" a b
 
-luaconcat :: BinaryOperatorImpl
-luaconcat (Str a) (Str b) = return [Str $ a ++ b]
-luaconcat a b = binaryMetaOperator "__concat" a b
+opConcat :: BinaryOperatorImpl
+opConcat (Str a) (Str b) = return [Str $ a ++ b]
+opConcat a b = binaryMetaOperator "__concat" a b
 
-lualen :: UnaryOperatorImpl
-lualen (Str a) = return [Number . fromIntegral $ length a]
-lualen (Table tr) = do
+opLength :: UnaryOperatorImpl
+opLength (Str a) = return [Number . fromIntegral $ length a]
+opLength (Table tr) = do
     hasMetaLen <- isJust <$> getMetaFunction "__len" (Table tr)
     if hasMetaLen
         then unaryMetaOperator "__len" (Table tr)
@@ -302,13 +302,13 @@ lualen (Table tr) = do
                 Just (Number x, _) -> return [Number x]
                 _ -> return [Number 0]
 
-lualen Nil = throwErrorStr "Attempt to get length of a nil value"
-lualen a = unaryMetaOperator "__len" a
+opLength Nil = throwErrorStr "Attempt to get length of a nil value" -- :)
+opLength a = unaryMetaOperator "__len" a
 
 -- Polymorphic comparison operators
-luaCmpEQ :: BinaryOperatorImpl
-luaCmpEQ Nil Nil = return [Boolean False]
-luaCmpEQ a b
+opEqual :: BinaryOperatorImpl
+opEqual Nil Nil = return [Boolean False]
+opEqual a b
     | a == b = return [Boolean True]
     | otherwise = luaEQHelper a b
     where
@@ -322,24 +322,24 @@ luaCmpEQ a b
                 (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
                 _ -> return [Boolean False]
 
-luaGreater :: BinaryOperatorImpl
-luaGreater (Number a) (Number b) = return [Boolean $ a > b]
-luaGreater (Str a) (Str b) = return [Boolean $ a > b]
-luaGreater a b = binaryMetaOperator "__lt" b a -- order reversed
+opGreater :: BinaryOperatorImpl
+opGreater (Number a) (Number b) = return [Boolean $ a > b]
+opGreater (Str a) (Str b) = return [Boolean $ a > b]
+opGreater a b = binaryMetaOperator "__lt" b a -- order reversed
 
-luaLess :: BinaryOperatorImpl
-luaLess (Number a) (Number b) = return [Boolean $ a < b]
-luaLess (Str a) (Str b) = return [Boolean $ a < b]
-luaLess a b = binaryMetaOperator "__lt" a b
+opLess :: BinaryOperatorImpl
+opLess (Number a) (Number b) = return [Boolean $ a < b]
+opLess (Str a) (Str b) = return [Boolean $ a < b]
+opLess a b = binaryMetaOperator "__lt" a b
 
-luaNot :: UnaryOperatorImpl
-luaNot a = return [Boolean . not . coerceToBool $ [a]]
+opNot :: UnaryOperatorImpl
+opNot a = return [Boolean . not . coerceToBool $ [a]]
 
-luaOr :: BinaryOperatorImpl
-luaOr a b = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
+opOr :: BinaryOperatorImpl
+opOr a b = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
 
-luaAnd :: BinaryOperatorImpl
-luaAnd a b = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
+opAnd :: BinaryOperatorImpl
+opAnd a b = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
 
 --------------
 

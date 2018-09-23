@@ -14,7 +14,6 @@ import qualified Turnip.AST as AST (Block)
 
 import qualified Data.Map as Map
 import Control.Lens hiding (Context)
-import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.RWS
 
@@ -52,8 +51,16 @@ type NativeFunction = [Value] -> LuaM [Value]
 data ClosureLevel = ClosureLevel { closureTableRef :: TableRef, closureVarargs :: Maybe [Value] }
 type Closure = [ClosureLevel]
 
-data FunctionData = FunctionData { closure :: Closure, block :: AST.Block, paramNames :: [String], varargs :: Bool }
-                  | BuiltinFunction { fn :: NativeFunction }
+data FunctionData = 
+      FunctionData {
+        closure :: Closure,
+        functionDataBlock :: AST.Block,
+        paramNames :: [String],
+        varargs :: Bool
+      }
+    | BuiltinFunction {
+        nativeFn :: NativeFunction
+      }
 
 type TableMapData = Map.Map Value Value
 data TableData = TableData {

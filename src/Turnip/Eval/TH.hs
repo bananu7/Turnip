@@ -7,7 +7,6 @@ import Turnip.Eval.Util
 
 import Language.Haskell.TH
 
-import Control.Applicative
 import Control.Monad
 import Data.Char
 
@@ -29,6 +28,7 @@ toPatName p = do
     name <- newName "x"
     liftM2 (,) (conP p [varP name]) (pure name)
 
+typeToMatch :: TypeT -> Q (Pat, Name) 
 typeToMatch = toPatName . typeToName
 
 type Entry = (Sig, String, Name, Name)

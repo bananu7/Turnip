@@ -3,7 +3,7 @@
 module Turnip.Eval.Metatables where
 
 import Turnip.Eval.Types
-import Turnip.Eval.Util (getTableData, rawGetTableField, throwErrorStr, vmErrorStr)
+import Turnip.Eval.Util (getTableData, rawGetTableField)
 import Control.Lens
 
 getMetatable :: Value -> LuaM (Maybe TableRef)

@@ -11,11 +11,9 @@ import Turnip.Eval.Util
 import Turnip.Eval.Metatables
 import Turnip.Eval.Closure
 
-import Control.Lens
 import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Map as Map
-import Debug.Trace
 import Data.Maybe (isJust)
 
 padWithNils :: Int -> [Value] -> [Value]

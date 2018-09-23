@@ -63,6 +63,8 @@ data Stmt = Do Block
 
 instance Show Stmt where
     show (Do x) = show x
+    show (While e b) = "while " ++ show e ++ "do\n" ++ show b
+    show (Until e b) = "repeat " ++ show b ++ "\nuntil" ++ show e
     show (Return xs) = "return " ++ show xs
     show (Assignment lvals exprs) = intercalate "\n" $ zipWith (\lval expr -> 
         (show lval) ++ " := " ++ (show expr)) lvals exprs

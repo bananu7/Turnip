@@ -211,20 +211,24 @@ type BinaryOperatorImpl = Value -> Value -> LuaM [Value]
 type UnaryOperatorImpl = Value -> LuaM [Value]
 
 binaryOperatorCall :: AST.BinaryOperator -> Value -> Value -> LuaM [Value]
-binaryOperatorCall AST.OpPlus a b = luaplus a b
-binaryOperatorCall AST.OpMinus a b = luaminus a b
-binaryOperatorCall AST.OpMult a b = luamult a b
-binaryOperatorCall AST.OpDivide a b = luadiv a b
-binaryOperatorCall AST.OpConcat a b = luaconcat a b
+binaryOperatorCall AST.OpRaise = \_ _ -> vmErrorStr "Sorry, ^ not implemented yet"
+binaryOperatorCall AST.OpPlus = luaplus
+binaryOperatorCall AST.OpMinus = luaminus
+binaryOperatorCall AST.OpMult = luamult
+binaryOperatorCall AST.OpDivide = luadiv
+binaryOperatorCall AST.OpModulo = \_ _ -> vmErrorStr "Sorry, % not implemented yet"
 
-binaryOperatorCall AST.OpEqual a b = luaCmpEQ a b
-binaryOperatorCall AST.OpLess a b = luaLess a b
-binaryOperatorCall AST.OpGreater a b = luaGreater a b
-binaryOperatorCall AST.OpLE a b = vmErrorStr "Sorry, <= not implemented yet"
-binaryOperatorCall AST.OpGE a b = vmErrorStr "Sorry, >= not implemented yet"
+binaryOperatorCall AST.OpConcat = luaconcat
 
-binaryOperatorCall AST.OpAnd a b = luaAnd a b
-binaryOperatorCall AST.OpOr a b = luaOr a b
+binaryOperatorCall AST.OpEqual = luaCmpEQ
+binaryOperatorCall AST.OpLess = luaLess
+binaryOperatorCall AST.OpGreater = luaGreater
+binaryOperatorCall AST.OpLE = \_ _ -> vmErrorStr "Sorry, <= not implemented yet"
+binaryOperatorCall AST.OpGE = \_ _ -> vmErrorStr "Sorry, >= not implemented yet"
+binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
+
+binaryOperatorCall AST.OpAnd = luaAnd
+binaryOperatorCall AST.OpOr = luaOr
 
 unaryOperatorCall :: AST.UnaryOperator -> Value -> LuaM [Value]
 unaryOperatorCall AST.OpUnaryMinus a = luaunaryminus a

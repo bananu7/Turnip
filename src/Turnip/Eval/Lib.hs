@@ -49,7 +49,7 @@ luapcall (Function fref : _) = ((callRef fref []) >>= prependTrue) `catchError` 
         prependTrue result = return $ Boolean True : result
         pcallHandler e = return [Boolean False, e]
 luapcall (_a : _) = return [Boolean False, Str "Attempt to call something that isn't a function"]
-luapcall _ = vmErrorStr "Bad argument to 'pcall': value expected"
+luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 
 luasetmetatable :: NativeFunction
 luasetmetatable (Table tr : Nil : _) = setMetatable tr Nothing >> return [Nil] -- reset to nil

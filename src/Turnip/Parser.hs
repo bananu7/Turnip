@@ -137,7 +137,7 @@ ifStmt = do
         return (Block b')
 
     reserved "end"
-    return $ If ((e, Block b) : elseIfBlocks) elseBlock
+    return $ If (e, Block b) elseIfBlocks elseBlock
 
 -- |"function statement" is just syntax sugar over
 --  assignment of a lambda

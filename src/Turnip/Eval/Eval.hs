@@ -357,12 +357,14 @@ execBlock (AST.Block stmts) = runUntil stmts $ \stmt -> execStmt stmt
 
 execStmt :: AST.Stmt -> LuaM Bubble
 
-execStmt (AST.If blocks mElseB) = do
+execStmt (AST.If block ifElseBlocks mElseB) = do
     -- if an else block is present, we can append it to the list
     -- with a predicate that always evals to True.
-    let blocks' = case mElseB of
-                    Just elseB -> blocks ++ [(AST.Bool True, elseB)]
-                    Nothing -> blocks
+    let blocks' = block : ifElseBlocks ++ elseBlock
+                    where
+                        elseBlock = case mElseB of
+                            Just elseB -> [(AST.Bool True, elseB)]
+                            Nothing -> []
 
     runUntil blocks' $ \(expr, b) -> do
         result <- coerceToBool <$> eval expr

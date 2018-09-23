@@ -151,13 +151,13 @@ spec = do
 
         describe "should parse if statements" $ do
             it "without else" $
-                parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
+                parse "if true then return true end" `shouldBe` (Block [If (Bool True, Block [Return [Bool True]]) [] Nothing])
             it "with else" $
                 parse "if true then return true else return false end"
-                    `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
+                    `shouldBe` (Block [If (Bool True, Block [Return [Bool True]]) [] (Just $ Block [Return [Bool False]])])
             it "with elseif" $
                 parse "if true then return true elseif false then return false end"
-                    `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
+                    `shouldBe` (Block [If (Bool True, Block [Return [Bool True]]) [(Bool False, Block [Return [Bool False]])] Nothing])
 
         describe "should parse local definitions" $ do
             it "simple local variable" $

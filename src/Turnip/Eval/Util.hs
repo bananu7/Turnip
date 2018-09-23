@@ -88,3 +88,8 @@ getTableField tr k = rawGetTableField tr k >>= \v -> return $ case v of
 
 throwErrorStr :: String -> LuaM a
 throwErrorStr = throwError . Str
+
+-- |This function is currently not doing anything over regular throwError.
+-- In the future, however, it should be used to report critical vm errors (such as totality problems etc.)
+vmErrorStr :: String -> LuaM a
+vmErrorStr = throwErrorStr

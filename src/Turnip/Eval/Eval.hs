@@ -16,6 +16,7 @@ import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Map as Map
 import Debug.Trace
+import Data.Maybe (isJust)
 
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
@@ -160,10 +161,14 @@ eval (AST.FieldRef t k) = do
                                 _ -> return [Nil]
                         Nothing -> return [Nil]
 
--- this is essentially the same as regular call
--- TODO should it even be a difference in the AST?
-eval (AST.BinOp name lhs rhs) = eval (AST.Call (AST.Var name) [lhs, rhs])
-eval (AST.UnOp name expr) = eval (AST.Call (AST.Var name) [expr])
+eval (AST.BinOp op lhs rhs) = do 
+    a <- head <$> eval lhs
+    b <- head <$> eval rhs
+    binaryOperatorCall op a b
+
+eval (AST.UnOp op expr) = do
+    a <- head <$> eval expr
+    unaryOperatorCall op a
 
 -- Table constructor in form { k = v, ... }
 eval (AST.TableCons entries) = do
@@ -199,6 +204,142 @@ evalExpressionList xs = do
     pack <- eval (last xs)
 
     return $ singular ++ pack
+
+--------------
+
+type BinaryOperatorImpl = Value -> Value -> LuaM [Value]
+type UnaryOperatorImpl = Value -> LuaM [Value]
+
+binaryOperatorCall :: AST.BinaryOperator -> Value -> Value -> LuaM [Value]
+binaryOperatorCall AST.OpRaise = \_ _ -> vmErrorStr "Sorry, ^ not implemented yet"
+binaryOperatorCall AST.OpPlus = opPlus
+binaryOperatorCall AST.OpMinus = opMinus
+binaryOperatorCall AST.OpMult = opMult
+binaryOperatorCall AST.OpDivide = opDiv
+binaryOperatorCall AST.OpModulo = \_ _ -> vmErrorStr "Sorry, % not implemented yet"
+
+binaryOperatorCall AST.OpConcat = opConcat
+
+binaryOperatorCall AST.OpEqual = opEqual
+binaryOperatorCall AST.OpLess = opLess
+binaryOperatorCall AST.OpGreater = opGreater
+binaryOperatorCall AST.OpLE = \_ _ -> vmErrorStr "Sorry, <= not implemented yet"
+binaryOperatorCall AST.OpGE = \_ _ -> vmErrorStr "Sorry, >= not implemented yet"
+binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
+
+binaryOperatorCall AST.OpAnd = opAnd
+binaryOperatorCall AST.OpOr = opOr
+
+unaryOperatorCall :: AST.UnaryOperator -> Value -> LuaM [Value]
+unaryOperatorCall AST.OpUnaryMinus = opUnaryMinus
+unaryOperatorCall AST.OpLength = opLength
+unaryOperatorCall AST.OpNot = opNot
+
+{-
+  https://www.lua.org/pil/13.1.html
+  To choose a metamethod, Lua does the following:
+    (1) If the first value has a metatable with an __add field, Lua uses this value as the metamethod,
+        independently of the second value;
+    (2) otherwise, if the second value has a metatable with an __add field, Lua uses this value as the metamethod;
+    (3) otherwise, Lua raises an error.
+
+    __add, __mul, __sub (for subtraction), __div (for division),
+    __unm (for negation), and __pow
+-}
+
+binaryMetaOperator :: String -> Value -> Value -> LuaM [Value]
+binaryMetaOperator fstr a b = do
+    maybeFn <- getMetaFunction fstr a
+    case maybeFn of
+        Just fra -> callRef fra [a,b]
+        _ -> do
+            maybeFnB <- getMetaFunction fstr b
+            case maybeFnB of
+                Just frb -> callRef frb [a,b]
+                _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on those two values"
+
+unaryMetaOperator :: String -> Value -> LuaM [Value]
+unaryMetaOperator fstr a = do
+    maybeFn <- getMetaFunction fstr a
+    case maybeFn of
+        Just fr -> callRef fr [a]
+        _ -> throwErrorStr $ "No metaop '" ++ fstr ++ "' on this value"
+
+
+opPlus :: BinaryOperatorImpl
+opPlus (Number a) (Number b) = return $ [Number (a + b)]
+opPlus a b = binaryMetaOperator "__add" a b
+
+opMult :: BinaryOperatorImpl
+opMult (Number a) (Number b) = return $ [Number (a * b)]
+opMult a b = binaryMetaOperator "__mult" a b
+
+opDiv :: BinaryOperatorImpl
+opDiv (Number a) (Number b) = return $ [Number (a / b)]
+opDiv a b = binaryMetaOperator "__div" a b
+
+opUnaryMinus :: UnaryOperatorImpl
+opUnaryMinus (Number a) = return $ [Number (-a)] --unary negate
+opUnaryMinus a = unaryMetaOperator "__unm" a
+
+opMinus :: BinaryOperatorImpl
+opMinus (Number a) (Number b) = return $ [Number (a - b)]
+opMinus a b = binaryMetaOperator "__sub" a b
+
+opConcat :: BinaryOperatorImpl
+opConcat (Str a) (Str b) = return [Str $ a ++ b]
+opConcat a b = binaryMetaOperator "__concat" a b
+
+opLength :: UnaryOperatorImpl
+opLength (Str a) = return [Number . fromIntegral $ length a]
+opLength (Table tr) = do
+    hasMetaLen <- isJust <$> getMetaFunction "__len" (Table tr)
+    if hasMetaLen
+        then unaryMetaOperator "__len" (Table tr)
+        else do
+            (TableData td _) <- getTableData tr
+            case Map.lookupMax td of
+                Just (Number x, _) -> return [Number x]
+                _ -> return [Number 0]
+
+opLength Nil = throwErrorStr "Attempt to get length of a nil value" -- :)
+opLength a = unaryMetaOperator "__len" a
+
+-- Polymorphic comparison operators
+opEqual :: BinaryOperatorImpl
+opEqual Nil Nil = return [Boolean False]
+opEqual a b
+    | a == b = return [Boolean True]
+    | otherwise = luaEQHelper a b
+    where
+        luaEQHelper :: Value -> Value -> LuaM [Value]
+        luaEQHelper a b = do
+            maybeEqA <- getMetaFunction "__eq" a
+            maybeEqB <- getMetaFunction "__eq" b
+
+            case (maybeEqA, maybeEqB) of
+                -- meta-equality is only used if both eq functions are the same
+                (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
+                _ -> return [Boolean False]
+
+opGreater :: BinaryOperatorImpl
+opGreater (Number a) (Number b) = return [Boolean $ a > b]
+opGreater (Str a) (Str b) = return [Boolean $ a > b]
+opGreater a b = binaryMetaOperator "__lt" b a -- order reversed
+
+opLess :: BinaryOperatorImpl
+opLess (Number a) (Number b) = return [Boolean $ a < b]
+opLess (Str a) (Str b) = return [Boolean $ a < b]
+opLess a b = binaryMetaOperator "__lt" a b
+
+opNot :: UnaryOperatorImpl
+opNot a = return [Boolean . not . coerceToBool $ [a]]
+
+opOr :: BinaryOperatorImpl
+opOr a b = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
+
+opAnd :: BinaryOperatorImpl
+opAnd a b = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
 
 --------------
 
@@ -428,3 +569,5 @@ assignLValue (AST.LFieldRef t k) v = do
                         Nothing -> regularSet
             where
                 regularSet = setTableField tr (k,v)
+
+

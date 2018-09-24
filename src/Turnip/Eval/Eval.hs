@@ -161,10 +161,9 @@ eval (AST.FieldRef t k) = do
                                 _ -> return [Nil]
                         Nothing -> return [Nil]
 
-eval (AST.BinOp op lhs rhs) = do 
+eval (AST.BinOp op lhs rhs) = do
     a <- head <$> eval lhs
-    b <- head <$> eval rhs
-    binaryOperatorCall op a b
+    binaryOperatorCall op a rhs
 
 eval (AST.UnOp op expr) = do
     a <- head <$> eval expr
@@ -207,28 +206,34 @@ evalExpressionList xs = do
 
 --------------
 
+-- The second param to Binary Operators is an expression to allow
+-- short-circuiting of and/or operators.
 type BinaryOperatorImpl = Value -> Value -> LuaM [Value]
 type UnaryOperatorImpl = Value -> LuaM [Value]
 
-binaryOperatorCall :: AST.BinaryOperator -> Value -> Value -> LuaM [Value]
+binaryOperatorCall :: AST.BinaryOperator -> Value -> AST.Expr -> LuaM [Value]
 binaryOperatorCall AST.OpRaise = \_ _ -> vmErrorStr "Sorry, ^ not implemented yet"
-binaryOperatorCall AST.OpPlus = opPlus
-binaryOperatorCall AST.OpMinus = opMinus
-binaryOperatorCall AST.OpMult = opMult
-binaryOperatorCall AST.OpDivide = opDiv
+binaryOperatorCall AST.OpPlus = strictBinaryOp opPlus
+binaryOperatorCall AST.OpMinus = strictBinaryOp opMinus
+binaryOperatorCall AST.OpMult = strictBinaryOp opMult
+binaryOperatorCall AST.OpDivide = strictBinaryOp opDiv
 binaryOperatorCall AST.OpModulo = \_ _ -> vmErrorStr "Sorry, % not implemented yet"
 
-binaryOperatorCall AST.OpConcat = opConcat
+binaryOperatorCall AST.OpConcat = strictBinaryOp opConcat
 
-binaryOperatorCall AST.OpEqual = opEqual
-binaryOperatorCall AST.OpLess = opLess
-binaryOperatorCall AST.OpGreater = opGreater
+binaryOperatorCall AST.OpEqual = strictBinaryOp opEqual
+binaryOperatorCall AST.OpLess = strictBinaryOp opLess
+binaryOperatorCall AST.OpGreater = strictBinaryOp opGreater
 binaryOperatorCall AST.OpLE = \_ _ -> vmErrorStr "Sorry, <= not implemented yet"
 binaryOperatorCall AST.OpGE = \_ _ -> vmErrorStr "Sorry, >= not implemented yet"
 binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
 
 binaryOperatorCall AST.OpAnd = opAnd
 binaryOperatorCall AST.OpOr = opOr
+    
+strictBinaryOp op a rhs  = do
+    b <- head <$> eval rhs
+    op a b
 
 unaryOperatorCall :: AST.UnaryOperator -> Value -> LuaM [Value]
 unaryOperatorCall AST.OpUnaryMinus = opUnaryMinus
@@ -335,11 +340,21 @@ opLess a b = binaryMetaOperator "__lt" a b
 opNot :: UnaryOperatorImpl
 opNot a = return [Boolean . not . coerceToBool $ [a]]
 
-opOr :: BinaryOperatorImpl
-opOr a b = return [Boolean $ (coerceToBool [a]) || (coerceToBool [b])]
+opOr :: Value -> AST.Expr -> LuaM [Value]
+opOr a rhs = do
+    if coerceToBool [a] then
+        return [a]
+    else do
+        b <- head <$> eval rhs
+        return [b]
 
-opAnd :: BinaryOperatorImpl
-opAnd a b = return [Boolean $ (coerceToBool [a]) && (coerceToBool [b])]
+opAnd :: Value -> AST.Expr -> LuaM [Value]
+opAnd a rhs = do
+    if not $ coerceToBool [a] then
+        return [a]
+    else do
+        b <- head <$> eval rhs
+        return [b]
 
 --------------
 

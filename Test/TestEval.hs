@@ -33,9 +33,13 @@ spec = do
                 it "-" $ runParse "return 3 - 2" `shouldBe` [Number 1.0]
                 it "*" $ runParse "return 3 * 8" `shouldBe` [Number 24.0]
                 it "/" $ runParse "return 9 / 3" `shouldBe` [Number 3.0]
+                it "%" $ runParse "return 4 % 3" `shouldBe` [Number 1.0]
+                it "^" $ runParse "return 2 ^ 4" `shouldBe` [Number 16.0]
             describe "comparisons" $ do
                 it ">" $ runParse "return 1 > 2, 2 > 1, 1 > 1" `shouldBe` (map Boolean [False, True, False])
                 it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])
+                it ">=" $ runParse "return 1 >= 2, 2 >= 1, 1 >= 1" `shouldBe` (map Boolean [False, True, True])
+                it "<=" $ runParse "return 1 <= 2, 2 <= 1, 1 <= 1" `shouldBe` (map Boolean [True, False, True])
             it "concat (..)" $ runParse "return \"abc\" .. \"def\"" `shouldBe` [Str "abcdef"]
 
         describe "length operator" $ do
@@ -57,17 +61,43 @@ spec = do
             it "booleans" $ runParse "return true == true, false == false, true == false, false == true"
                 `shouldBe` (map Boolean [True, True, False, False])
             it "nil" $ runParse "return nil == nil, nil == 1, nil == \"a\", nil == {}"
-                `shouldBe` (map Boolean [False, False, False, False])
+                `shouldBe` (map Boolean [True, False, False, False])
             it "tables" $ runParse "return {} == {}, {\"a\"} == \"a\", {42} == 42, {} == false"
                 `shouldBe` (map Boolean [False, False, False, False])
+            it "not-equality" $ runParse "return {} ~= {}, {42} ~= 42, nil ~= nil, false ~= false"
+                `shouldBe` (map Boolean [True, True, False, False])
+
 
         describe "logical operators" $ do
-            it "not" $ runParse "return not nil, not true, not false, not 5, not \"\"" `shouldBe`
-                (map Boolean [True, False, True, False, False])
-            it "or" $ runParse "return true and true, true and false, false and true, false and false" `shouldBe`
-                (map Boolean [True, False, False, False])
-            it "and" $ runParse "return true or true, true or false, false or true, false or false" `shouldBe`
-                (map Boolean [True, True, True, False])
+            describe "basics" $ do
+                it "not" $ runParse "return not nil, not true, not false, not 5, not \"\"" `shouldBe`
+                    (map Boolean [True, False, True, False, False])
+                it "or" $ runParse "return true and true, true and false, false and true, false and false" `shouldBe`
+                    (map Boolean [True, False, False, False])
+                it "and" $ runParse "return true or true, true or false, false or true, false or false" `shouldBe`
+                    (map Boolean [True, True, True, False])
+            describe "passthrough" $ do
+                describe "or" $ do
+                    it "both true" $ do
+                        runParse "return 1 or 2" `shouldBe` [Number 1.0]
+                        runParse "return true or 5" `shouldBe` [Boolean True]
+                    it "first false" $ do
+                        runParse "return false or 3" `shouldBe` [Number 3.0]
+                        runParse "return nil or 4" `shouldBe` [Number 4.0]
+                        runParse "return false or true" `shouldBe` [Boolean True]
+                    it "both coerced false" $ do
+                        runParse "return false or nil" `shouldBe` [Nil]
+                        runParse "return nil or nil" `shouldBe` [Nil]
+                    it "doesn't eval 2nd if first true" $
+                        runParse "x = 1; function f() x = 2 end; return true or f(), x"
+                             `shouldBe` [Boolean True, Number 1.0]
+
+                describe "and" $ do
+                    it "both true" $ runParse "return 1 and 2" `shouldBe` [Number 2.0]
+                    it "first false" $ runParse "return false and 3" `shouldBe` [Boolean False]
+                    it "doesn't eval 2nd if first false" $
+                        runParse "x = 1; function f() x = 2 end; return false and f(), x"
+                            `shouldBe` [Boolean False, Number 1.0]
 
         describe "should eval 'if' statements" $ do
             it "trivial always-true" $
@@ -388,6 +418,10 @@ spec = do
             it "should work with non-string errors" $ do
                 runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
                 runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+
+        describe "_G" $ do
+            it "should expose _G table" $
+                runParse "x = 5; return _G.x" `shouldBe` [Number 5.0]
 
         describe "metatables" $ do
             it "should allow setting and getting the metatable" $

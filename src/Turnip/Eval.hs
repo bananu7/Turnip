@@ -59,4 +59,5 @@ defaultCtx = Context {
     }
   where
     gRef = TableRef 1
-    gTable = TableData Map.empty Nothing
+    gTable = TableData gTableData Nothing
+    gTableData = Map.fromList [(Str "_G", Table gRef)]

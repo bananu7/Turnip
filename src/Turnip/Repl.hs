@@ -10,6 +10,7 @@ import System.IO
 import Paths_Turnip (version)
 import Data.Version (showVersion)
 
+disableBuffering :: IO ()
 disableBuffering = hSetBuffering stdout NoBuffering
 
 repl :: IO ()
@@ -26,12 +27,11 @@ repl = do
 
         case maybeAST of
             Right ast -> do
-                ctx <- get
                 maybeResult <- state $ \s -> runWith s ast
                 case maybeResult of 
                     Right result -> liftIO $ print result
-                    Left error -> liftIO . putStrLn $ "Lua error " ++ show error
+                    Left err -> liftIO . putStrLn $ "Lua error " ++ show err
 
-            Left error ->
-                liftIO . putStrLn $ "Parse error " ++ show error
+            Left err ->
+                liftIO . putStrLn $ "Parse error " ++ show err
 

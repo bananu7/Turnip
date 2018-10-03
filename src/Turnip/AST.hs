@@ -51,7 +51,7 @@ data Expr = Number Double
 data Stmt = Do Block
           | While Expr Block
           | Until Expr Block
-          | If [(Expr, Block)] (Maybe Block)
+          | If (Expr, Block) [(Expr, Block)] (Maybe Block)
           | Return [Expr]
           | Break
           | For [Name] ForGen Block
@@ -63,12 +63,14 @@ data Stmt = Do Block
 
 instance Show Stmt where
     show (Do x) = show x
+    show (While e b) = "while " ++ show e ++ "do\n" ++ show b
+    show (Until e b) = "repeat " ++ show b ++ "\nuntil" ++ show e
     show (Return xs) = "return " ++ show xs
     show (Assignment lvals exprs) = intercalate "\n" $ zipWith (\lval expr -> 
         (show lval) ++ " := " ++ (show expr)) lvals exprs
     show (CallStmt f params) = show f ++ "(" ++ show params ++ ")"
     show (MemberCallStmt obj f params) = show obj ++ ":" ++ f ++ "(" ++ show params ++ ")"
-    show (If (block:elseIfBlocks) elseBlock) = "if " ++ show block ++ elseIfBlocksStr ++ elseBlockStr
+    show (If block elseIfBlocks elseBlock) = "if " ++ show block ++ elseIfBlocksStr ++ elseBlockStr
       where
         elseIfBlocksStr = concatMap (("\nelseif " ++) . show) elseIfBlocks
         elseBlockStr = maybe "" (("\nelse " ++) . show) elseBlock

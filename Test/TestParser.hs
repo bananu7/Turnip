@@ -3,15 +3,12 @@ module Main where
 import Test.Hspec
 import Text.ParserCombinators.Parsec.Pos
 
-import Turnip.Parser
 import Turnip.AST
 
-successful (Right x) = x
-successful (Left err) = error $ show err
-
-parse = successful . parseLua
+import TestUtil
 
 -- helper for string literals, assumes 1-liners
+pos :: Column -> SourcePos
 pos = newPos "" 1
 
 spec :: Spec
@@ -151,13 +148,13 @@ spec = do
 
         describe "should parse if statements" $ do
             it "without else" $
-                parse "if true then return true end" `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] Nothing])
+                parse "if true then return true end" `shouldBe` (Block [If (Bool True, Block [Return [Bool True]]) [] Nothing])
             it "with else" $
                 parse "if true then return true else return false end"
-                    `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]])] (Just $ Block [Return [Bool False]])])
+                    `shouldBe` (Block [If (Bool True, Block [Return [Bool True]]) [] (Just $ Block [Return [Bool False]])])
             it "with elseif" $
                 parse "if true then return true elseif false then return false end"
-                    `shouldBe` (Block [If [(Bool True, Block [Return [Bool True]]), (Bool False, Block [Return [Bool False]])] Nothing])
+                    `shouldBe` (Block [If (Bool True, Block [Return [Bool True]]) [(Bool False, Block [Return [Bool False]])] Nothing])
 
         describe "should parse local definitions" $ do
             it "simple local variable" $
@@ -195,4 +192,5 @@ spec = do
                         For ["k", "v"] (ForIter [Call (Var "pairs") [Var "t"]]) (Block [])
                     ]
 
+main :: IO ()
 main = hspec spec

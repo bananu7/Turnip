@@ -11,11 +11,9 @@ import Turnip.Eval.Util
 import Turnip.Eval.Metatables
 import Turnip.Eval.Closure
 
-import Control.Lens
 import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Map as Map
-import Debug.Trace
 import Data.Maybe (isJust)
 import Data.Fixed (mod')
 
@@ -143,22 +141,22 @@ eval (AST.FieldRef t k) = do
     kv <- head <$> eval k
 
     case tv of
-        self @ (Table tRef) -> getTableFieldWithMetatable tRef kv
+        Table tRef -> getTableFieldWithMetatable tRef kv
         _ -> throwErrorStr $ "Attempt to index a non-table (" ++ show tv ++ ")"
 
     where
         getTableFieldWithMetatable :: TableRef -> Value -> LuaM [Value]
-        getTableFieldWithMetatable tr k = 
-            rawGetTableField tr k >>= \mv -> case mv of
+        getTableFieldWithMetatable tr tk = 
+            rawGetTableField tr tk >>= \mv -> case mv of
                 Just v -> return [v]
                 Nothing -> do
-                    mtr <- getMetatable (Table tr)
-                    case mtr of
-                        Just tr -> do
-                            maybeMetaIndex <- rawGetTableField tr (Str "__index")
+                    maybeMetaTr <- getMetatable (Table tr)
+                    case maybeMetaTr of
+                        Just metaTr -> do
+                            maybeMetaIndex <- rawGetTableField metaTr (Str "__index")
                             case maybeMetaIndex of
-                                Just (Table metaTabRef) -> getTableFieldWithMetatable metaTabRef k
-                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k]
+                                Just (Table metaTabRef) -> getTableFieldWithMetatable metaTabRef tk
+                                Just (Function metaFunRef) -> callRef metaFunRef [(Table metaTr), tk]
                                 _ -> return [Nil]
                         Nothing -> return [Nil]
 
@@ -228,7 +226,8 @@ binaryOperatorCall AST.OpGE = strictBinaryOp opGE
 binaryOperatorCall AST.OpNotEqual = strictBinaryOp opNotEqual
 binaryOperatorCall AST.OpAnd = opAnd
 binaryOperatorCall AST.OpOr = opOr
-    
+
+strictBinaryOp :: BinaryOperatorImpl -> Value -> AST.Expr -> LuaM [Value]
 strictBinaryOp op a rhs  = do
     b <- head <$> eval rhs
     op a b
@@ -392,12 +391,14 @@ execBlock (AST.Block stmts) = runUntil stmts $ \stmt -> execStmt stmt
 
 execStmt :: AST.Stmt -> LuaM Bubble
 
-execStmt (AST.If blocks mElseB) = do
+execStmt (AST.If block ifElseBlocks mElseB) = do
     -- if an else block is present, we can append it to the list
     -- with a predicate that always evals to True.
-    let blocks' = case mElseB of
-                    Just elseB -> blocks ++ [(AST.Bool True, elseB)]
-                    Nothing -> blocks
+    let blocks' = block : ifElseBlocks ++ elseBlock
+                    where
+                        elseBlock = case mElseB of
+                            Just elseB -> [(AST.Bool True, elseB)]
+                            Nothing -> []
 
     runUntil blocks' $ \(expr, b) -> do
         result <- coerceToBool <$> eval expr
@@ -585,22 +586,22 @@ assignLValue (AST.LFieldRef t k) v = do
         _ -> throwErrorStr "Trying to assign to a field of non-table"
     where
         setTableFieldWithNewindex :: TableRef -> (Value,Value) -> LuaM ()
-        setTableFieldWithNewindex tr (k,v) = 
-            rawGetTableField tr k >>= \mv -> case mv of
+        setTableFieldWithNewindex tr (tk, tv) = 
+            rawGetTableField tr tk >>= \mv -> case mv of
                 -- if key is already present, do regular insert
-                Just v -> regularSet
+                Just _ -> regularSet
                 -- if not, try the metatable
                 Nothing -> do
-                    mtr <- getMetatable (Table tr)
-                    case mtr of
-                        Just mtr -> do
+                    maybeMetaTr <- getMetatable (Table tr)
+                    case maybeMetaTr of
+                        Just metaTr -> do
                             -- see if it has metaindex
-                            maybeNewIndex <- rawGetTableField mtr (Str "__newindex")
+                            maybeNewIndex <- rawGetTableField metaTr (Str "__newindex")
                             case maybeNewIndex of
-                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), k, v] >> return ()
+                                Just (Function metaFunRef) -> callRef metaFunRef [(Table tr), tk, tv] >> return ()
                                 _ -> regularSet
                         Nothing -> regularSet
             where
-                regularSet = setTableField tr (k,v)
+                regularSet = setTableField tr (tk, tv)
 
 

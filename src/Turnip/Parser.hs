@@ -1,4 +1,7 @@
-module Turnip.Parser( prettyLuaFromFile, loadAST, parseLua ) where
+{-# OPTIONS_GHC -Wno-missing-signatures #-} -- a lot of helpers
+{-# OPTIONS_GHC -Wno-unused-do-bind #-} -- annoying discards of static data
+
+module Turnip.Parser( prettyLuaFromFile, parseLua ) where
 
 import Turnip.AST
 
@@ -12,15 +15,6 @@ import Data.Maybe
 
 -- Might be better to have a function that reads from the file, and sep function to do the parsing, 
 -- thus separating the IO from the AST
-
---screw it, do it live
-fromRight :: Either a b -> b
-fromRight (Right b) = b
-
-loadAST :: String -> IO Block
-loadAST fname = do
-    anAST <- parseFromFile program fname
-    return $ fromRight anAST
 
 parseLua :: String -> Either ParseError Block
 parseLua text = parse program "" text
@@ -137,7 +131,7 @@ ifStmt = do
         return (Block b')
 
     reserved "end"
-    return $ If ((e, Block b) : elseIfBlocks) elseBlock
+    return $ If (e, Block b) elseIfBlocks elseBlock
 
 -- |"function statement" is just syntax sugar over
 --  assignment of a lambda
@@ -221,6 +215,7 @@ assignOrCallStmt = do
         (FieldRef t f) -> assignStmt [LFieldRef t f]
         _ -> fail "Invalid stmt"
 
+assignStmt :: [LValue] -> Parser Stmt
 assignStmt lhs = do
     comma
     lv <- lvalue
@@ -230,36 +225,27 @@ assignStmt lhs = do
     vals <- explist
     return $ Assignment (reverse lhs) vals
 
+lvalue :: Parser LValue
 lvalue = do
     ex <- primaryexp
-    tolvar ex
-
-tolvar ex = do
     case ex of
         (Var n) -> return $ LVar n
         (FieldRef t f) -> return $ LFieldRef t f
-        _ -> fail "Invalid lvalue"
+        _ -> fail "Invalid lvalue"    
 
 namelist :: Parser [Name]
 namelist = commaSep1 identifier
 
+prefixexp :: Parser Expr
 prefixexp = choice [
     identifier >>= return . Var,
     parens expr
     ]
 
+args :: Parser [Expr]
 args = (parens $ option [] explist)
     <|> (liftM (:[]) $ tableconstructor)
     <|> (getPosition >>= \pos -> liftM (\s -> [StringLiteral pos s]) $ stringl)
-
-functioncall = do
-    prefixexp
-    args
-  <|> do
-    prefixexp
-    colon
-    identifier
-    args
     
 -- Function names are identifiers seperated by 0 or more dots, and with an optional colon, identifier at the end.
 funcname :: Parser (Name, Maybe Name)
@@ -271,10 +257,15 @@ funcname = do
 explist :: Parser [Expr]
 explist = commaSep1 expr
 
+tableconstructor :: Parser Expr
 tableconstructor = liftM TableCons $ braces fieldlist
 
+fieldlist :: Parser [(Maybe Expr, Expr)]
 fieldlist = sepEndBy field fieldsep
+    where
+        fieldsep = comma <|> semi
 
+field :: Parser (Maybe Expr, Expr)
 field = do
     e <- brackets expr
     symbol "="
@@ -283,19 +274,18 @@ field = do
 
   <|> do
     pos <- getPosition
-    id <- try $ do 
+    fieldId <- try $ do 
         i <- identifier
         symbol "="
         return i
     v <- expr
-    return (Just (StringLiteral pos id), v)
+    return (Just (StringLiteral pos fieldId), v)
 
   <|> do
     v <- expr
     return (Nothing, v)
 
-fieldsep = comma <|> semi
-
+primaryexp :: Parser Expr
 primaryexp = do
     pfx <- prefixexp
     more pfx
@@ -309,16 +299,16 @@ primaryexp = do
         dot_index e = do 
             dot
             pos <- getPosition
-            id <- identifier
-            return $ FieldRef e (StringLiteral pos id)
+            fieldId <- identifier
+            return $ FieldRef e (StringLiteral pos fieldId)
             
         brace_index e = liftM (FieldRef e) $ brackets expr
         
         member_call e = do
             colon
-            id <- identifier
+            memberId <- identifier
             arg <- args
-            return $ MemberCall e id arg
+            return $ MemberCall e memberId arg
             
         fcall e = liftM (Call e) args
 
@@ -330,7 +320,6 @@ exp_exp = choice [
     reserved "nil" >> return Nil,
     reserved "..." >> return Ellipsis,
     tableconstructor,
---    exp_anonfunction,
     primaryexp,
     lambda
     ]
@@ -381,7 +370,7 @@ lexer = P.makeTokenParser(
             )
 
 whiteSpace= P.whiteSpace lexer
-lexeme    = P.lexeme lexer
+-- lexeme    = P.lexeme lexer
 symbol    = P.symbol lexer
 stringl   = P.stringLiteral lexer
 number    = try (P.float lexer) <|> (fromIntegral <$> (P.integer lexer))
@@ -396,4 +385,4 @@ brackets  = P.brackets lexer
 dot       = P.dot lexer
 colon     = P.colon lexer
 commaSep1 = P.commaSep1 lexer
-commaSep  = P.commaSep lexer
+-- commaSep  = P.commaSep lexer

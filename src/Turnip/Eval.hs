@@ -2,8 +2,6 @@
 
 module Turnip.Eval (run, runWith, defaultCtx, Context(), Value(..)) where
 
-import Prelude hiding (Nil)
-
 import qualified Turnip.AST as AST
 import qualified Data.Map as Map
 import Control.Monad.RWS
@@ -52,12 +50,12 @@ run b = runIdentity $ runM b
 
 defaultCtx :: Context
 defaultCtx = Context {
-    _gRef = gRef,
+    _gRef = gTableRef,
     _functions = Map.empty,
-    _tables = Map.fromList [(gRef, gTable)],
+    _tables = Map.fromList [(gTableRef, gTable)],
     _lastId = 10
     }
   where
-    gRef = TableRef 1
+    gTableRef = TableRef 1
     gTable = TableData gTableData Nothing
-    gTableData = Map.fromList [(Str "_G", Table gRef)]
+    gTableData = Map.fromList [(Str "_G", Table gTableRef)]

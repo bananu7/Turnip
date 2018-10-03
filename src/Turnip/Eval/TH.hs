@@ -7,7 +7,6 @@ import Turnip.Eval.Util
 
 import Language.Haskell.TH
 
-import Control.Applicative
 import Control.Monad
 import Data.Char
 
@@ -29,6 +28,7 @@ toPatName p = do
     name <- newName "x"
     liftM2 (,) (conP p [varP name]) (pure name)
 
+typeToMatch :: TypeT -> Q (Pat, Name) 
 typeToMatch = toPatName . typeToName
 
 type Entry = (Sig, String, Name, Name)
@@ -63,10 +63,10 @@ genDec (Sig paramTs returnT) tempName origName = do
     matches <- mapM typeToMatch paramTs
 
     let
-      match :: [Q Pat]
+      patterns :: [Q Pat]
       -- to accept more args, it'd need to use ConP '(:) [m, WildP]
       -- but I'm too lazy to write it right now (TODO)
-      match = [return . ListP $ (map fst $ matches)]
+      patterns = [return . ListP $ (map fst $ matches)]
 
     let
       params :: Q [Exp]
@@ -82,6 +82,6 @@ genDec (Sig paramTs returnT) tempName origName = do
 
     -- Generate the function body and a signature for it
     sigQ <- sigD tempName [t| Eval.NativeFunction |]
-    bodyQ <- funD tempName [clause match body []]
+    bodyQ <- funD tempName [clause patterns body []]
 
     return [sigQ, bodyQ]

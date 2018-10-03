@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-} -- a lot of helpers
+{-# OPTIONS_GHC -Wno-unused-do-bind #-} -- annoying discards of static data
+
 module Turnip.Parser( prettyLuaFromFile, parseLua ) where
 
 import Turnip.AST
@@ -271,12 +274,12 @@ field = do
 
   <|> do
     pos <- getPosition
-    id <- try $ do 
+    fieldId <- try $ do 
         i <- identifier
         symbol "="
         return i
     v <- expr
-    return (Just (StringLiteral pos id), v)
+    return (Just (StringLiteral pos fieldId), v)
 
   <|> do
     v <- expr
@@ -296,16 +299,16 @@ primaryexp = do
         dot_index e = do 
             dot
             pos <- getPosition
-            id <- identifier
-            return $ FieldRef e (StringLiteral pos id)
+            fieldId <- identifier
+            return $ FieldRef e (StringLiteral pos fieldId)
             
         brace_index e = liftM (FieldRef e) $ brackets expr
         
         member_call e = do
             colon
-            id <- identifier
+            memberId <- identifier
             arg <- args
-            return $ MemberCall e id arg
+            return $ MemberCall e memberId arg
             
         fcall e = liftM (Call e) args
 
@@ -367,7 +370,7 @@ lexer = P.makeTokenParser(
             )
 
 whiteSpace= P.whiteSpace lexer
-lexeme    = P.lexeme lexer
+-- lexeme    = P.lexeme lexer
 symbol    = P.symbol lexer
 stringl   = P.stringLiteral lexer
 number    = try (P.float lexer) <|> (fromIntegral <$> (P.integer lexer))
@@ -382,4 +385,4 @@ brackets  = P.brackets lexer
 dot       = P.dot lexer
 colon     = P.colon lexer
 commaSep1 = P.commaSep1 lexer
-commaSep  = P.commaSep lexer
+-- commaSep  = P.commaSep lexer

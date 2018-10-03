@@ -94,6 +94,7 @@ executable main
                        , template-haskell
                        , either
                        , Turnip
+    ghc-options: -Wall -Wno-missing-home-modules
 
 test-suite parser
     type: exitcode-stdio-1.0
@@ -107,6 +108,7 @@ test-suite parser
                  , transformers
                  , mtl
     default-language: Haskell2010
+    ghc-options: -Wall -Wno-missing-home-modules
 
 test-suite eval
     type: exitcode-stdio-1.0
@@ -120,4 +122,5 @@ test-suite eval
                  , transformers
                  , mtl
     default-language: Haskell2010
+    ghc-options: -Wall -Wno-missing-home-modules
     

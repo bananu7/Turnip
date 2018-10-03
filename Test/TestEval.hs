@@ -2,20 +2,13 @@ module Main where
 
 import Test.Hspec
 
-import Turnip.Parser (parseLua)
-import qualified Turnip.AST as AST
 import Turnip.Eval
-
-import Control.Monad.IO.Class
-
-successful (Right x) = x
-successful (Left err) = error $ show err
-
-parse = successful . parseLua
+import TestUtil
 
 runParse :: String -> [Value]
 runParse = successful . run . parse
 
+testFile :: String -> String -> Spec
 testFile desc path =
     runIO (readFile $ "Test/lua/" ++ path) >>=
       \fileContents -> it desc $ do
@@ -580,5 +573,5 @@ spec = do
                         ,"return getmetatable(t).x"
                     ]) `shouldBe` [Number 4.0]
 
-
+main :: IO ()
 main = hspec spec

@@ -3,15 +3,12 @@ module Main where
 import Test.Hspec
 import Text.ParserCombinators.Parsec.Pos
 
-import Turnip.Parser
 import Turnip.AST
 
-successful (Right x) = x
-successful (Left err) = error $ show err
-
-parse = successful . parseLua
+import TestUtil
 
 -- helper for string literals, assumes 1-liners
+pos :: Column -> SourcePos
 pos = newPos "" 1
 
 spec :: Spec
@@ -195,4 +192,5 @@ spec = do
                         For ["k", "v"] (ForIter [Call (Var "pairs") [Var "t"]]) (Block [])
                     ]
 
+main :: IO ()
 main = hspec spec

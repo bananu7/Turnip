@@ -219,16 +219,13 @@ binaryOperatorCall AST.OpMinus = strictBinaryOp opMinus
 binaryOperatorCall AST.OpMult = strictBinaryOp opMult
 binaryOperatorCall AST.OpDivide = strictBinaryOp opDiv
 binaryOperatorCall AST.OpModulo = strictBinaryOp opModulo
-
 binaryOperatorCall AST.OpConcat = strictBinaryOp opConcat
-
 binaryOperatorCall AST.OpEqual = strictBinaryOp opEqual
 binaryOperatorCall AST.OpLess = strictBinaryOp opLess
 binaryOperatorCall AST.OpGreater = strictBinaryOp opGreater
 binaryOperatorCall AST.OpLE = strictBinaryOp opLE
 binaryOperatorCall AST.OpGE = strictBinaryOp opGE
-binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
-
+binaryOperatorCall AST.OpNotEqual = strictBinaryOp opNotEqual
 binaryOperatorCall AST.OpAnd = opAnd
 binaryOperatorCall AST.OpOr = opOr
     
@@ -321,20 +318,26 @@ opLength a = unaryMetaOperator "__len" a
 
 -- Polymorphic comparison operators
 opEqual :: BinaryOperatorImpl
-opEqual Nil Nil = return [Boolean False]
+opEqual Nil Nil = return [Boolean True]
 opEqual a b
     | a == b = return [Boolean True]
-    | otherwise = luaEQHelper a b
-    where
-        luaEQHelper :: Value -> Value -> LuaM [Value]
-        luaEQHelper a b = do
-            maybeEqA <- getMetaFunction "__eq" a
-            maybeEqB <- getMetaFunction "__eq" b
+    | otherwise = (:[]) . Boolean <$> eqHelper a b
 
-            case (maybeEqA, maybeEqB) of
-                -- meta-equality is only used if both eq functions are the same
-                (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
-                _ -> return [Boolean False]
+opNotEqual :: BinaryOperatorImpl
+opNotEqual Nil Nil = return [Boolean False]
+opNotEqual a b 
+    | a == b = return [Boolean False]
+    | otherwise = (:[]) . Boolean . not <$> eqHelper a b
+
+eqHelper :: Value -> Value -> LuaM Bool
+eqHelper a b = do
+    maybeEqA <- getMetaFunction "__eq" a
+    maybeEqB <- getMetaFunction "__eq" b
+
+    case (maybeEqA, maybeEqB) of
+        -- meta-equality is only used if both eq functions are the same
+        (Just eqA, Just eqB) | eqA == eqB -> coerceToBool <$> callRef eqA [a,b]
+        _ -> return False
 
 opLess :: BinaryOperatorImpl
 opLess (Number a) (Number b) = return [Boolean $ a < b]

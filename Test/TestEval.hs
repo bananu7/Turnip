@@ -33,6 +33,8 @@ spec = do
                 it "-" $ runParse "return 3 - 2" `shouldBe` [Number 1.0]
                 it "*" $ runParse "return 3 * 8" `shouldBe` [Number 24.0]
                 it "/" $ runParse "return 9 / 3" `shouldBe` [Number 3.0]
+                it "%" $ runParse "return 4 % 3" `shouldBe` [Number 1.0]
+                it "^" $ runParse "return 2 ^ 4" `shouldBe` [Number 16.0]
             describe "comparisons" $ do
                 it ">" $ runParse "return 1 > 2, 2 > 1, 1 > 1" `shouldBe` (map Boolean [False, True, False])
                 it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])

@@ -17,6 +17,7 @@ import Control.Monad.State
 import qualified Data.Map as Map
 import Debug.Trace
 import Data.Maybe (isJust)
+import Data.Fixed (mod')
 
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
@@ -212,12 +213,12 @@ type BinaryOperatorImpl = Value -> Value -> LuaM [Value]
 type UnaryOperatorImpl = Value -> LuaM [Value]
 
 binaryOperatorCall :: AST.BinaryOperator -> Value -> AST.Expr -> LuaM [Value]
-binaryOperatorCall AST.OpRaise = \_ _ -> vmErrorStr "Sorry, ^ not implemented yet"
+binaryOperatorCall AST.OpRaise = strictBinaryOp opRaise
 binaryOperatorCall AST.OpPlus = strictBinaryOp opPlus
 binaryOperatorCall AST.OpMinus = strictBinaryOp opMinus
 binaryOperatorCall AST.OpMult = strictBinaryOp opMult
 binaryOperatorCall AST.OpDivide = strictBinaryOp opDiv
-binaryOperatorCall AST.OpModulo = \_ _ -> vmErrorStr "Sorry, % not implemented yet"
+binaryOperatorCall AST.OpModulo = strictBinaryOp opModulo
 
 binaryOperatorCall AST.OpConcat = strictBinaryOp opConcat
 
@@ -290,6 +291,14 @@ opUnaryMinus a = unaryMetaOperator "__unm" a
 opMinus :: BinaryOperatorImpl
 opMinus (Number a) (Number b) = return $ [Number (a - b)]
 opMinus a b = binaryMetaOperator "__sub" a b
+
+opRaise :: BinaryOperatorImpl
+opRaise (Number a) (Number b) = return [Number $ a ** b]
+opRaise a b = binaryMetaOperator "__pow" a b
+
+opModulo :: BinaryOperatorImpl
+opModulo (Number a) (Number b) = return [Number $ a `mod'` b]
+opModulo a b = binaryMetaOperator "__mod" a b
 
 opConcat :: BinaryOperatorImpl
 opConcat (Str a) (Str b) = return [Str $ a ++ b]

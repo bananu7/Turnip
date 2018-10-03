@@ -17,6 +17,7 @@ import Control.Monad.State
 import qualified Data.Map as Map
 import Debug.Trace
 import Data.Maybe (isJust)
+import Data.Fixed (mod')
 
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
@@ -212,22 +213,19 @@ type BinaryOperatorImpl = Value -> Value -> LuaM [Value]
 type UnaryOperatorImpl = Value -> LuaM [Value]
 
 binaryOperatorCall :: AST.BinaryOperator -> Value -> AST.Expr -> LuaM [Value]
-binaryOperatorCall AST.OpRaise = \_ _ -> vmErrorStr "Sorry, ^ not implemented yet"
+binaryOperatorCall AST.OpRaise = strictBinaryOp opRaise
 binaryOperatorCall AST.OpPlus = strictBinaryOp opPlus
 binaryOperatorCall AST.OpMinus = strictBinaryOp opMinus
 binaryOperatorCall AST.OpMult = strictBinaryOp opMult
 binaryOperatorCall AST.OpDivide = strictBinaryOp opDiv
-binaryOperatorCall AST.OpModulo = \_ _ -> vmErrorStr "Sorry, % not implemented yet"
-
+binaryOperatorCall AST.OpModulo = strictBinaryOp opModulo
 binaryOperatorCall AST.OpConcat = strictBinaryOp opConcat
-
 binaryOperatorCall AST.OpEqual = strictBinaryOp opEqual
 binaryOperatorCall AST.OpLess = strictBinaryOp opLess
 binaryOperatorCall AST.OpGreater = strictBinaryOp opGreater
-binaryOperatorCall AST.OpLE = \_ _ -> vmErrorStr "Sorry, <= not implemented yet"
-binaryOperatorCall AST.OpGE = \_ _ -> vmErrorStr "Sorry, >= not implemented yet"
-binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
-
+binaryOperatorCall AST.OpLE = strictBinaryOp opLE
+binaryOperatorCall AST.OpGE = strictBinaryOp opGE
+binaryOperatorCall AST.OpNotEqual = strictBinaryOp opNotEqual
 binaryOperatorCall AST.OpAnd = opAnd
 binaryOperatorCall AST.OpOr = opOr
     
@@ -291,6 +289,14 @@ opMinus :: BinaryOperatorImpl
 opMinus (Number a) (Number b) = return $ [Number (a - b)]
 opMinus a b = binaryMetaOperator "__sub" a b
 
+opRaise :: BinaryOperatorImpl
+opRaise (Number a) (Number b) = return [Number $ a ** b]
+opRaise a b = binaryMetaOperator "__pow" a b
+
+opModulo :: BinaryOperatorImpl
+opModulo (Number a) (Number b) = return [Number $ a `mod'` b]
+opModulo a b = binaryMetaOperator "__mod" a b
+
 opConcat :: BinaryOperatorImpl
 opConcat (Str a) (Str b) = return [Str $ a ++ b]
 opConcat a b = binaryMetaOperator "__concat" a b
@@ -312,30 +318,42 @@ opLength a = unaryMetaOperator "__len" a
 
 -- Polymorphic comparison operators
 opEqual :: BinaryOperatorImpl
-opEqual Nil Nil = return [Boolean False]
+opEqual Nil Nil = return [Boolean True]
 opEqual a b
     | a == b = return [Boolean True]
-    | otherwise = luaEQHelper a b
-    where
-        luaEQHelper :: Value -> Value -> LuaM [Value]
-        luaEQHelper a b = do
-            maybeEqA <- getMetaFunction "__eq" a
-            maybeEqB <- getMetaFunction "__eq" b
+    | otherwise = (:[]) . Boolean <$> eqHelper a b
 
-            case (maybeEqA, maybeEqB) of
-                -- meta-equality is only used if both eq functions are the same
-                (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
-                _ -> return [Boolean False]
+opNotEqual :: BinaryOperatorImpl
+opNotEqual Nil Nil = return [Boolean False]
+opNotEqual a b 
+    | a == b = return [Boolean False]
+    | otherwise = (:[]) . Boolean . not <$> eqHelper a b
 
-opGreater :: BinaryOperatorImpl
-opGreater (Number a) (Number b) = return [Boolean $ a > b]
-opGreater (Str a) (Str b) = return [Boolean $ a > b]
-opGreater a b = binaryMetaOperator "__lt" b a -- order reversed
+eqHelper :: Value -> Value -> LuaM Bool
+eqHelper a b = do
+    maybeEqA <- getMetaFunction "__eq" a
+    maybeEqB <- getMetaFunction "__eq" b
+
+    case (maybeEqA, maybeEqB) of
+        -- meta-equality is only used if both eq functions are the same
+        (Just eqA, Just eqB) | eqA == eqB -> coerceToBool <$> callRef eqA [a,b]
+        _ -> return False
 
 opLess :: BinaryOperatorImpl
 opLess (Number a) (Number b) = return [Boolean $ a < b]
 opLess (Str a) (Str b) = return [Boolean $ a < b]
 opLess a b = binaryMetaOperator "__lt" a b
+
+opGreater :: BinaryOperatorImpl
+opGreater a b = opLess b a
+
+opLE :: BinaryOperatorImpl
+opLE (Number a) (Number b) = return [Boolean $ a <= b]
+opLE (Str a) (Str b) = return [Boolean $ a <= b]
+opLE a b = binaryMetaOperator "__le" a b
+
+opGE :: BinaryOperatorImpl
+opGE a b = opLE b a
 
 opNot :: UnaryOperatorImpl
 opNot a = return [Boolean . not . coerceToBool $ [a]]

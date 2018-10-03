@@ -53,10 +53,10 @@ type Closure = [ClosureLevel]
 
 data FunctionData = 
       FunctionData {
-        closure :: Closure,
-        functionDataBlock :: AST.Block,
-        paramNames :: [String],
-        varargs :: Bool
+        fdClosure :: Closure,
+        fdBlock :: AST.Block,
+        fdParamNames :: [String],
+        fdHasVarargs :: Bool
       }
     | BuiltinFunction {
         nativeFn :: NativeFunction

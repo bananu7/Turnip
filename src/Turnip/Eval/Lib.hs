@@ -39,6 +39,13 @@ $(do
     return $ temps ++ loadLib
  )
 
+callAny :: Value -> [Value] -> LuaM [Value]
+callAny (Function fr) args = callRef fr
+callAny (Number _) _ = throwErrorStr "Attempt to call a number value"
+callAny (Str _) _ = throwErrorStr "Attempt to call a string value"
+callAny (Nil) _ = throwErrorStr "Attempt to call a nil value"
+callAny (Boolean _) _ = throwErrorStr "Attempt to call a boolean value"
+
 luaerror :: NativeFunction
 luaerror (a:_) = throwError a
 luaerror _ = throwError Nil
@@ -74,7 +81,16 @@ luarawset _ = throwErrorStr "Invalid rawset parameters"
        
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
-luatostring (Table tr : _) = return [Str $ "table: " ++ show tr]
+luatostring (Table tr : _) = do
+    mt <- getMetatable t
+    case mt of
+        Just mtr -> do
+            maybeToString <- rawGetTableField mtr (Str "__tostring")
+            case maybeToString of
+                Just (Function tostring) -> callRef tostring [t]
+                _ -> return [Table mtr]
+        Nothing -> return [Str $ "table: " ++ show tr]
+
 luatostring (Function fr : _) = return [Str $ "function: " ++ show fr]
 luatostring (Str s : _) = return [Str s]
 luatostring (Boolean True : _) = return [Str "true"]

@@ -38,6 +38,8 @@ spec = do
             describe "comparisons" $ do
                 it ">" $ runParse "return 1 > 2, 2 > 1, 1 > 1" `shouldBe` (map Boolean [False, True, False])
                 it "<" $ runParse "return 1 < 2, 2 < 1, 1 < 1" `shouldBe` (map Boolean [True, False, False])
+                it ">=" $ runParse "return 1 >= 2, 2 >= 1, 1 >= 1" `shouldBe` (map Boolean [False, True, True])
+                it "<=" $ runParse "return 1 <= 2, 2 <= 1, 1 <= 1" `shouldBe` (map Boolean [True, False, True])
             it "concat (..)" $ runParse "return \"abc\" .. \"def\"" `shouldBe` [Str "abcdef"]
 
         describe "length operator" $ do

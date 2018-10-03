@@ -225,8 +225,8 @@ binaryOperatorCall AST.OpConcat = strictBinaryOp opConcat
 binaryOperatorCall AST.OpEqual = strictBinaryOp opEqual
 binaryOperatorCall AST.OpLess = strictBinaryOp opLess
 binaryOperatorCall AST.OpGreater = strictBinaryOp opGreater
-binaryOperatorCall AST.OpLE = \_ _ -> vmErrorStr "Sorry, <= not implemented yet"
-binaryOperatorCall AST.OpGE = \_ _ -> vmErrorStr "Sorry, >= not implemented yet"
+binaryOperatorCall AST.OpLE = strictBinaryOp opLE
+binaryOperatorCall AST.OpGE = strictBinaryOp opGE
 binaryOperatorCall AST.OpNotEqual = \_ _ -> vmErrorStr "Sorry, ~= not implemented yet"
 
 binaryOperatorCall AST.OpAnd = opAnd
@@ -336,15 +336,21 @@ opEqual a b
                 (Just eqA, Just eqB) | eqA == eqB -> callRef eqA [a,b]
                 _ -> return [Boolean False]
 
-opGreater :: BinaryOperatorImpl
-opGreater (Number a) (Number b) = return [Boolean $ a > b]
-opGreater (Str a) (Str b) = return [Boolean $ a > b]
-opGreater a b = binaryMetaOperator "__lt" b a -- order reversed
-
 opLess :: BinaryOperatorImpl
 opLess (Number a) (Number b) = return [Boolean $ a < b]
 opLess (Str a) (Str b) = return [Boolean $ a < b]
 opLess a b = binaryMetaOperator "__lt" a b
+
+opGreater :: BinaryOperatorImpl
+opGreater a b = opLess b a
+
+opLE :: BinaryOperatorImpl
+opLE (Number a) (Number b) = return [Boolean $ a <= b]
+opLE (Str a) (Str b) = return [Boolean $ a <= b]
+opLE a b = binaryMetaOperator "__le" a b
+
+opGE :: BinaryOperatorImpl
+opGE a b = opLE b a
 
 opNot :: UnaryOperatorImpl
 opNot a = return [Boolean . not . coerceToBool $ [a]]

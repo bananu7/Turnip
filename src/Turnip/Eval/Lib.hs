@@ -40,7 +40,7 @@ $(do
  )
 
 callAny :: Value -> [Value] -> LuaM [Value]
-callAny (Function fr) args = callRef fr
+callAny (Function fr) args = callRef fr args
 callAny (Number _) _ = throwErrorStr "Attempt to call a number value"
 callAny (Str _) _ = throwErrorStr "Attempt to call a string value"
 callAny (Nil) _ = throwErrorStr "Attempt to call a nil value"
@@ -82,13 +82,11 @@ luarawset _ = throwErrorStr "Invalid rawset parameters"
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
-    mt <- getMetatable t
+    mt <- getMetatable (Table tr)
     case mt of
         Just mtr -> do
-            maybeToString <- rawGetTableField mtr (Str "__tostring")
-            case maybeToString of
-                Just (Function tostring) -> callRef tostring [t]
-                _ -> return [Table mtr]
+            toString <- getTableField mtr (Str "__tostring")
+            callAny toString [(Table tr)]
         Nothing -> return [Str $ "table: " ++ show tr]
 
 luatostring (Function fr : _) = return [Str $ "function: " ++ show fr]

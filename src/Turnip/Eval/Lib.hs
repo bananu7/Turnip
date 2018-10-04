@@ -7,9 +7,11 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
-import Turnip.Eval.Eval (callRef)
+import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
+
+import Numeric (showGFloat)
 
 -- math helpers
 deg :: Floating a => a -> a
@@ -54,7 +56,7 @@ luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 luasetmetatable :: NativeFunction
 luasetmetatable (Table tr : Nil : _) = setMetatable tr Nothing >> return [Nil] -- reset to nil
 luasetmetatable (Table tr : Table mtr : _) = setMetatable tr (Just mtr) >> return [Nil]
-luasetmetatable _ = vmErrorStr "Wrong parameters to setmetatable"
+luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
 
 luagetmetatable :: NativeFunction
 luagetmetatable (t : _) = do
@@ -66,12 +68,32 @@ luagetmetatable (t : _) = do
                 Just mth -> return [mth]
                 Nothing -> return [Table mtr]
         Nothing -> return [Nil]
-luagetmetatable _ = vmErrorStr "Wrong argument to luagetmetatable, table expected"
+luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expected"
 
 luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
-        
+       
+luatostring :: NativeFunction
+luatostring (Nil : _) = return [Str "nil"]
+luatostring (Table tr : _) = do
+    mt <- getMetatable (Table tr)
+    case mt of
+        Just mtr -> do
+            toString <- getTableField mtr (Str "__tostring")
+            call toString [(Table tr)]
+        Nothing -> return [Str $ "table: " ++ show tr]
+
+luatostring (Function fr : _) = return [Str $ "function: " ++ show fr]
+luatostring (Str s : _) = return [Str s]
+luatostring (Boolean True : _) = return [Str "true"]
+luatostring (Boolean False : _) = return [Str "false"]
+luatostring (Number n : _) = return [Str $ showGFloat (decimalDigits n) n ""]
+luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
+
+decimalDigits :: Double -> Maybe Int
+decimalDigits x = if x == (fromIntegral . floor $ x) then Just 0 else Nothing
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
@@ -82,3 +104,4 @@ loadBaseLibrary = do
     addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
     addNativeFunction "rawset" (BuiltinFunction luarawset)
+    addNativeFunction "tostring" (BuiltinFunction luatostring)

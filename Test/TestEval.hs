@@ -386,31 +386,48 @@ spec = do
                     ,"return x, y"
                     ]) `shouldBe` [Number 5.0, Number 4.0]
 
-        describe "pcall" $ do
-            it "should properly contain simple errors" $ do
-                runParse (unlines[
-                     "function f()"
-                    ,"  error(\"test\")"
-                    ,"end"
-                    ,"pcall(f)"
-                    ,"return 1"
-                    ]) `shouldBe` [Number 1.0]
+        describe "standard library" $ do
+            describe "pcall" $ do
+                it "should properly contain simple errors" $ do
+                    runParse (unlines[
+                         "function f()"
+                        ,"  error(\"test\")"
+                        ,"end"
+                        ,"pcall(f)"
+                        ,"return 1"
+                        ]) `shouldBe` [Number 1.0]
 
-            it "should properly forward on success" $ do
-                runParse (unlines[
-                     "function f()"
-                    ,"  return 1,2,3"
-                    ,"end"
-                    ,"return pcall(f)"
-                    ]) `shouldBe` [Boolean True, Number 1.0, Number 2.0, Number 3.0]
+                it "should properly forward on success" $ do
+                    runParse (unlines[
+                         "function f()"
+                        ,"  return 1,2,3"
+                        ,"end"
+                        ,"return pcall(f)"
+                        ]) `shouldBe` [Boolean True, Number 1.0, Number 2.0, Number 3.0]
 
-            it "should return false and the error in case of errors" $ do
-                runParse ("return pcall(function() error(\"test\") end)")
-                    `shouldBe` [Boolean False, Str "test"]
+                it "should return false and the error in case of errors" $ do
+                    runParse ("return pcall(function() error(\"test\") end)")
+                        `shouldBe` [Boolean False, Str "test"]
 
-            it "should work with non-string errors" $ do
-                runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
-                runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+                it "should work with non-string errors" $ do
+                    runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
+                    runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+
+            describe "tostring" $ do
+                it "booleans" $ do
+                    runParse ("return tostring(true)") `shouldBe` [Str "true"]
+                    runParse ("return tostring(false)") `shouldBe` [Str "false"]
+
+                it "numbers" $ do
+                    runParse ("return tostring(42)") `shouldBe` [Str "42"]
+                    runParse ("return tostring(3.14)") `shouldBe` [Str "3.14"]
+
+                it "strings" $ do
+                    runParse ("return tostring(\"\")") `shouldBe` [Str ""]
+                    runParse ("return tostring(\"xyz\")") `shouldBe` [Str "xyz"]
+
+                it "nil" $
+                    runParse ("return tostring(nil)") `shouldBe` [Str "nil"]
 
         describe "_G" $ do
             it "should expose _G table" $
@@ -518,6 +535,13 @@ spec = do
                         ,"setmetatable(t, { __call = function(a, x) return a.x + x end })"
                         ,"return t(42)"
                         ]) `shouldBe` [Number 47.0]
+
+                it "should allow setting the __tostring metafunction" $
+                    runParse (unlines [
+                         "t = { }"
+                        ,"setmetatable(t, { __tostring = function(t) return \"t\" end })"
+                        ,"return tostring(t)"
+                        ]) `shouldBe` [Str "t"]
 
                 it "should allow setting the __index metafunction" $
                     runParse (unlines [

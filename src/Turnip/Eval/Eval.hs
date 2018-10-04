@@ -20,6 +20,14 @@ import Data.Fixed (mod')
 padWithNils :: Int -> [Value] -> [Value]
 padWithNils n xs = xs ++ replicate (n - length xs) Nil
 
+call :: Value -> [Value] -> LuaM [Value]
+call (Function fr) args = callRef fr args
+call (Number _) _ = throwErrorStr "Attempt to call a number value"
+call (Str _) _ = throwErrorStr "Attempt to call a string value"
+call (Nil) _ = throwErrorStr "Attempt to call a nil value"
+call (Boolean _) _ = throwErrorStr "Attempt to call a boolean value"
+call (Table tr) args = callMeta tr args
+
 callMeta :: TableRef -> [Value] -> LuaM [Value]
 callMeta tr args = do
     let self = Table tr
@@ -32,10 +40,10 @@ callMeta tr args = do
 callRef :: FunctionRef -> [Value] -> LuaM [Value]
 callRef f args = do
     fd <- getFunctionData f
-    call fd args
+    callFunction fd args
 
-call :: FunctionData -> [Value] -> LuaM [Value]
-call (BuiltinFunction fn) args = do
+callFunction :: FunctionData -> [Value] -> LuaM [Value]
+callFunction (BuiltinFunction fn) args = do
     -- ensure args match signature
     -- if yes, extract them into list of Haskell values ? what about Haskell functions operating on Lua-level values ?
     result <- fn args
@@ -43,7 +51,7 @@ call (BuiltinFunction fn) args = do
     -- possibly with liftIO
     return result
 
-call (FunctionData cls block names hasVarargs) args = do
+callFunction (FunctionData cls block names hasVarargs) args = do
     -- for every arg set cls[names[i]] = args[i]
     -- TODO: in case of a (trailing) vararg function, set `arg` variable to hold
     -- (the REST of) the arguments
@@ -462,7 +470,7 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
         where
             loopBody fv s var = do
                 -- the first value is the "iterator"
-                vars <- call fv [s, var]
+                vars <- callFunction fv [s, var]
                 -- the rest are put in the local variables
                 execAssignment (map AST.LVar names) vars
 

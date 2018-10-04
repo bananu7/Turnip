@@ -7,7 +7,7 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
-import Turnip.Eval.Eval (callRef)
+import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
 
@@ -38,13 +38,6 @@ $(do
 
     return $ temps ++ loadLib
  )
-
-callAny :: Value -> [Value] -> LuaM [Value]
-callAny (Function fr) args = callRef fr args
-callAny (Number _) _ = throwErrorStr "Attempt to call a number value"
-callAny (Str _) _ = throwErrorStr "Attempt to call a string value"
-callAny (Nil) _ = throwErrorStr "Attempt to call a nil value"
-callAny (Boolean _) _ = throwErrorStr "Attempt to call a boolean value"
 
 luaerror :: NativeFunction
 luaerror (a:_) = throwError a
@@ -86,7 +79,7 @@ luatostring (Table tr : _) = do
     case mt of
         Just mtr -> do
             toString <- getTableField mtr (Str "__tostring")
-            callAny toString [(Table tr)]
+            call toString [(Table tr)]
         Nothing -> return [Str $ "table: " ++ show tr]
 
 luatostring (Function fr : _) = return [Str $ "function: " ++ show fr]

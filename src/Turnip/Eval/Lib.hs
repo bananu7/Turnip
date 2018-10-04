@@ -11,6 +11,8 @@ import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
 
+import Numeric (showGFloat)
+
 -- math helpers
 deg :: Floating a => a -> a
 deg x = x / pi * 180
@@ -86,8 +88,11 @@ luatostring (Function fr : _) = return [Str $ "function: " ++ show fr]
 luatostring (Str s : _) = return [Str s]
 luatostring (Boolean True : _) = return [Str "true"]
 luatostring (Boolean False : _) = return [Str "false"]
-luatostring (Number n : _) = return [Str $ show n]
+luatostring (Number n : _) = return [Str $ showGFloat (decimalDigits n) n ""]
 luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
+
+decimalDigits :: Double -> Maybe Int
+decimalDigits x = if x == (fromIntegral . floor $ x) then Just 0 else Nothing
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do

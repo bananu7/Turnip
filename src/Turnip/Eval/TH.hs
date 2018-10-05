@@ -62,11 +62,12 @@ genDec :: Sig -> Name -> Name -> Q [Dec]
 genDec (Sig paramTs returnT) tempName origName = do
     matches <- mapM typeToMatch paramTs
 
+    let listOfPatterns = map fst matches
     let
-      patterns :: [Q Pat]
-      -- to accept more args, it'd need to use ConP '(:) [m, WildP]
-      -- but I'm too lazy to write it right now (TODO)
-      patterns = [return . ListP $ (map fst $ matches)]
+      -- the generated function accepts one param, with a pattern of (t1 : t2 : t3 : ... : _),
+      -- where t1..tn are the types in its signature
+      inputPattern :: Q Pat
+      inputPattern = return $ foldr (\par pat -> ConP '(:) [par, pat]) WildP listOfPatterns
 
     let
       params :: Q [Exp]
@@ -74,7 +75,7 @@ genDec (Sig paramTs returnT) tempName origName = do
 
     let
       app :: Q Exp
-      app = foldl AppE (VarE origName) <$> params 
+      app = foldl AppE (VarE origName) <$> params
 
     -- this rather convoluted body just means to use appropriate type wrapper for the function's
     -- return type
@@ -82,6 +83,6 @@ genDec (Sig paramTs returnT) tempName origName = do
 
     -- Generate the function body and a signature for it
     sigQ <- sigD tempName [t| Eval.NativeFunction |]
-    bodyQ <- funD tempName [clause patterns body []]
+    bodyQ <- funD tempName [clause [inputPattern] body []]
 
     return [sigQ, bodyQ]

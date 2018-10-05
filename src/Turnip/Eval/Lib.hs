@@ -92,7 +92,7 @@ luatostring (Number n : _) = return [Str $ showGFloat (decimalDigits n) n ""]
 luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
 
 decimalDigits :: Double -> Maybe Int
-decimalDigits x = if x == (fromIntegral . floor $ x) then Just 0 else Nothing
+decimalDigits x = if x == (fromIntegral . (floor :: Double -> Int) $ x) then Just 0 else Nothing
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do

@@ -74,6 +74,7 @@ defaultCtx = Context {
     _functions = Map.empty,
     _tables = Map.fromList [(gTableRef, gTable)],
     _lastId = 10
+    _iobuf = emptyIoBuf
     }
   where
     gTableRef = TableRef 1

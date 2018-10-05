@@ -68,6 +68,17 @@ data TableData = TableData {
     _metatable :: Maybe TableRef -- Can be either nil or some table
     }
 
+
+data Buffer = Buffer {
+    bufferData :: String,
+    bufferPos :: Int
+    }
+
+data IoBuf = IoBuf {
+    ioBufIn :: Buffer,
+    ioBufOut :: Buffer
+    }
+
 data Context = Context {
     _gRef :: TableRef,
     _functions :: Map.Map FunctionRef FunctionData,

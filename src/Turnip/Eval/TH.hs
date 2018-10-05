@@ -79,10 +79,20 @@ genDec (Sig paramTs returnT) tempName origName = do
 
     -- this rather convoluted body just means to use appropriate type wrapper for the function's
     -- return type
-    let body = normalB $ [| return $ [ $(appE (conE $ typeToName returnT) app) ] |]
+    let body = normalB [| return $ [ $(appE (conE $ typeToName returnT) app) ] |]
+
+    -- error body is used when the static signature doesn't match the passed arguments
+    -- TODO: maybe it could be useful to allow writing native functions accepting any value
+    -- or generally being more flexible in their arguments; I'll leave that for the future
+    -- public API.
+    let errorBody = normalB [| throwErrorStr "The arguments are wrong for this native function." |]
 
     -- Generate the function body and a signature for it
-    sigQ <- sigD tempName [t| Eval.NativeFunction |]
-    bodyQ <- funD tempName [clause [inputPattern] body []]
+    sigDec <- sigD tempName [t| Eval.NativeFunction |]
+    bodyDec <-
+      funD tempName [
+        clause [inputPattern] body [],
+        clause [wildP] errorBody []
+        ]
 
-    return [sigQ, bodyQ]
+    return [sigDec, bodyDec]

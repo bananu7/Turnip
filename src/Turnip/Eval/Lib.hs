@@ -94,6 +94,15 @@ luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
 decimalDigits :: Double -> Maybe Int
 decimalDigits x = if x == (fromIntegral . (floor :: Double -> Int) $ x) then Just 0 else Nothing
 
+luatype :: NativeFunction
+luatype (Nil : _) = return [Str "nil"]
+luatype (Table _ : _) = return [Str "table"]
+luatype (Function _ : _) = return [Str "function"]
+luatype (Str _ : _) = return [Str "string"]
+luatype (Boolean _ : _) = return [Str "boolean"]
+luatype (Number _ : _) = return [Str "number"]
+luatype _ = throwErrorStr "Wrong argument to 'type', value expected"
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
@@ -105,3 +114,4 @@ loadBaseLibrary = do
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
     addNativeFunction "rawset" (BuiltinFunction luarawset)
     addNativeFunction "tostring" (BuiltinFunction luatostring)
+    addNativeFunction "type" (BuiltinFunction luatype)

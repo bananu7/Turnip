@@ -10,8 +10,10 @@ import Turnip.Eval.Util
 import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
+
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
+import Turnip.Eval.IO
 
 import Numeric (showGFloat)
 
@@ -147,6 +149,13 @@ luaselect (Number n : args) =
         Nothing -> throwErrorStr "Wrong argument to select (number has no integer representation)"
 luaselect _ = throwErrorStr "Wrong argument to select, either number or string '#' required."
 
+luaprint :: NativeFunction
+luaprint p = do
+    ps <- luatostring p
+    case ps of
+        [Str s] -> bufferPrint s >> return [Nil]
+        _ -> throwErrorStr "Can't print this value"
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
@@ -167,3 +176,4 @@ loadBaseLibrary = do
     addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)
     addNativeFunction "select" (BuiltinFunction luaselect)
+    addNativeFunction "print" (BuiltinFunction luaprint)

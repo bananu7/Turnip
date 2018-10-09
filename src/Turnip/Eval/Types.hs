@@ -75,15 +75,16 @@ data Buffer = Buffer {
     }
 
 data IoBuf = IoBuf {
-    ioBufIn :: Buffer,
-    ioBufOut :: Buffer
+    _ioBufIn :: Buffer,
+    _ioBufOut :: Buffer
     }
 
 data Context = Context {
     _gRef :: TableRef,
     _functions :: Map.Map FunctionRef FunctionData,
     _tables :: Map.Map TableRef TableData,
-    _lastId :: Int
+    _lastId :: Int,
+    _ioBuf :: IoBuf
     }
 makeLenses ''Context
 
@@ -94,3 +95,4 @@ type LuaError = String
 data Bubble = BreakBubble | ReturnBubble [Value] | EmptyBubble deriving (Show, Eq)
 
 makeLenses ''TableData
+makeLenses ''IoBuf

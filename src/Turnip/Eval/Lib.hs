@@ -9,8 +9,9 @@ import Turnip.Eval.TH
 import Turnip.Eval.Util
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
-import Control.Monad.Except
+import Turnip.Eval.IO
 
+import Control.Monad.Except
 import Numeric (showGFloat)
 
 -- math helpers
@@ -103,6 +104,13 @@ luatype (Boolean _ : _) = return [Str "boolean"]
 luatype (Number _ : _) = return [Str "number"]
 luatype _ = throwErrorStr "Wrong argument to 'type', value expected"
 
+luaprint :: NativeFunction
+luaprint p = do
+    ps <- luatostring p
+    case ps of
+        [Str s] -> bufferPrint s >> return [Nil]
+        _ -> throwErrorStr "Can't print this value"
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
@@ -115,3 +123,4 @@ loadBaseLibrary = do
     addNativeFunction "rawset" (BuiltinFunction luarawset)
     addNativeFunction "tostring" (BuiltinFunction luatostring)
     addNativeFunction "type" (BuiltinFunction luatype)
+    addNativeFunction "print" (BuiltinFunction luaprint)

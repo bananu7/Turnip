@@ -12,6 +12,7 @@ import Turnip.Eval.Types
 import Turnip.Eval.Eval
 import Turnip.Eval.Lib (loadBaseLibrary)
 import Turnip.Eval.Util (throwErrorStr)
+import Turnip.Eval.IO
 
 runLuaMTWith :: Monad m => Closure -> Context -> LuaMT m a -> m (Either Value a, Context)
 runLuaMTWith c s (LuaMT f) = stripWriter <$> runRWST (runExceptT f) c s
@@ -53,8 +54,8 @@ defaultCtx = Context {
     _gRef = gTableRef,
     _functions = Map.empty,
     _tables = Map.fromList [(gTableRef, gTable)],
-    _lastId = 10
-    _iobuf = emptyIoBuf
+    _lastId = 10,
+    _ioBuf = emptyIoBuf
     }
   where
     gTableRef = TableRef 1

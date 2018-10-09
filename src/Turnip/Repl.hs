@@ -4,6 +4,8 @@ module Turnip.Repl where
 
 import Turnip.Parser
 import Turnip.Eval
+import Turnip.Eval.IO
+
 import Control.Monad.State
 import System.IO
 
@@ -35,7 +37,10 @@ runFileFromCommandline path ctx = do
         case maybeAST of
             Right ast -> do
                 maybeResult <- state $ \s -> runWith s ast
-                case maybeResult of
+                buf <- state flushOutBuffer
+                liftIO $ putStrLn buf
+
+                case maybeResult of 
                     Right result -> liftIO $ print result
                     Left err -> liftIO . putStrLn $ "Lua error " ++ show err
 

@@ -73,7 +73,10 @@ luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expe
 luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
-       
+
+decimalDigits :: Double -> Maybe Int
+decimalDigits x = if x == (fromIntegral . (floor :: Double -> Int) $ x) then Just 0 else Nothing
+
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
@@ -99,6 +102,32 @@ toInt x = if isInt x then Just . floor $ x else Nothing
 
 decimalDigits :: Double -> Maybe Int
 decimalDigits x = if isInt x then Just 0 else Nothing
+
+luatonumber :: NativeFunction
+luatonumber (Number n : []) = return [Number n]
+luatonumber (Str s : []) = return [Number $ read s]
+luatonumber (Str s : Number base : _) = readNumberBase base s
+luatonumber (_ : _) = return [Nil]
+luatonumber _ = throwErrorStr "Wrong argument to 'tonumber'"
+    where
+        readNumberBase base s =
+            if not $ isInt base then
+                throwErrorStr "Wrong argument #2 to 'tonumber' (base must be an integer)"
+            else
+                let maybeVal = foldl (accumDigit ((floor :: Double -> Int) $ xbase) (Just 0) s
+                return $ [maybe Nil (Number . fromIntegral)]
+
+        accumDigit :: Int -> Maybe Int -> Char -> Maybe Int
+        accumDigit base val digit = do
+            if isHexDigit digit then
+                Just $ val + digitToInt * base
+            else do
+                let lowerDigit = toLower digit
+                if ord lowerDigit >= ord 'g' && ord lowerDigit <= ord 'z' then
+                    Just ... -- don'd do that, use digitToInt impl end extend to base 36
+                else
+                    Nothing
+        isInt x = x == fromIntegral (round x)
 
 luatype :: NativeFunction
 luatype (Nil : _) = return [Str "nil"]
@@ -130,5 +159,6 @@ loadBaseLibrary = do
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
     addNativeFunction "rawset" (BuiltinFunction luarawset)
     addNativeFunction "tostring" (BuiltinFunction luatostring)
+    addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)
     addNativeFunction "select" (BuiltinFunction luaselect)

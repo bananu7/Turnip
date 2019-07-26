@@ -469,6 +469,30 @@ spec = do
                         ,"return select(2, f())"
                         ]) `shouldBe` [Number 43.0, Number 44.0]
 
+            describe "tonumber" $ do
+                it "number passtrough" $ do
+                    runParse ("return tonumber(0)") `shouldBe` [Number 0]
+                    runParse ("return tonumber(-1)") `shouldBe` [Number (-1)]
+                    runParse ("return tonumber(3.14)") `shouldBe` [Number 3.14]
+
+                it "string parse" $ do
+                    runParse ("return tonumber(\"0\")") `shouldBe` [Number 0]
+                    runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
+                    runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
+
+                it "different base" $ do
+                    runParse ("return tonumber(\"101\", 2)") `shouldBe` [Number 5]
+                    runParse ("return tonumber(\"ff\", 16)") `shouldBe` [Number 255]
+                    runParse ("return tonumber(\"FF\", 16)") `shouldBe` [Number 255]
+                    runParse ("return tonumber(\"10\", 36)") `shouldBe` [Number 36]
+
+                it "failed conversions" $ do
+                    runParse ("return tonumber(nil)") `shouldBe` [Nil]
+                    runParse ("return tonumber({})") `shouldBe` [Nil]
+                    runParse ("return tonumber(false)") `shouldBe` [Nil]
+                    runParse ("return tonumber(true)") `shouldBe` [Nil]
+                    runParse ("return tonumber(function()end)") `shouldBe` [Nil]
+
         describe "_G" $ do
             it "should expose _G table" $
                 runParse "x = 5; return _G.x" `shouldBe` [Number 5.0]

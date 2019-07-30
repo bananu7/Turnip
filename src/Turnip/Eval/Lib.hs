@@ -12,6 +12,7 @@ import Turnip.Eval.Metatables
 import Control.Monad.Except
 
 import Numeric (showGFloat)
+import Data.Char (ord)
 
 -- math helpers
 deg :: Floating a => a -> a
@@ -74,9 +75,6 @@ luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
 
-decimalDigits :: Double -> Maybe Int
-decimalDigits x = if x == (fromIntegral . (floor :: Double -> Int) $ x) then Just 0 else Nothing
-
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
@@ -103,31 +101,46 @@ toInt x = if isInt x then Just . floor $ x else Nothing
 decimalDigits :: Double -> Maybe Int
 decimalDigits x = if isInt x then Just 0 else Nothing
 
+digitToIntBase :: Int -> Char -> Maybe Int
+digitToIntBase base c
+  | (fromIntegral dec::Word) <= 9 = Just dec
+  | (fromIntegral alphal::Word) <= nonnumeric = Just $ alphal + 10
+  | (fromIntegral alphau::Word) <= nonnumeric = Just $ alphau + 10
+  | otherwise = Nothing
+  where
+    dec = ord c - ord '0'
+    alphal = ord c - ord 'a'
+    alphau = ord c - ord 'A'
+
+    nonnumeric :: Word
+    nonnumeric = fromIntegral base - 10 - 1
+
 luatonumber :: NativeFunction
 luatonumber (Number n : []) = return [Number n]
 luatonumber (Str s : []) = return [Number $ read s]
 luatonumber (Str s : Number base : _) = readNumberBase base s
-luatonumber (_ : _) = return [Nil]
-luatonumber _ = throwErrorStr "Wrong argument to 'tonumber'"
     where
+        readNumberBase :: Double -> String -> LuaM [Value]
         readNumberBase base s =
             if not $ isInt base then
                 throwErrorStr "Wrong argument #2 to 'tonumber' (base must be an integer)"
             else
-                let maybeVal = foldl (accumDigit ((floor :: Double -> Int) $ xbase) (Just 0) s
-                return $ [maybe Nil (Number . fromIntegral)]
+                do
+                    let ibase = (floor :: Double -> Int) $ base
+                    let maybeVal = foldl (accumDigit ibase) (Just 0) . zip [0..] . reverse $ s
+                    return $ [maybe Nil (Number . fromIntegral) maybeVal]
 
-        accumDigit :: Int -> Maybe Int -> Char -> Maybe Int
-        accumDigit base val digit = do
-            if isHexDigit digit then
-                Just $ val + digitToInt * base
-            else do
-                let lowerDigit = toLower digit
-                if ord lowerDigit >= ord 'g' && ord lowerDigit <= ord 'z' then
-                    Just ... -- don'd do that, use digitToInt impl end extend to base 36
-                else
-                    Nothing
-        isInt x = x == fromIntegral (round x)
+        isInt x = x == (fromIntegral . round $ x)
+
+        accumDigit :: Int -> Maybe Int -> (Int, Char) -> Maybe Int
+        accumDigit base mval (n, digit) = do
+            val <- mval
+            di <- digitToIntBase base digit
+            return $ val + di * base ^ n
+
+luatonumber (_ : _) = return [Nil]
+luatonumber _ = throwErrorStr "Wrong argument to 'tonumber'"
+
 
 luatype :: NativeFunction
 luatype (Nil : _) = return [Str "nil"]

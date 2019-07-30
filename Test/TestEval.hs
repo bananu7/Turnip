@@ -480,11 +480,17 @@ spec = do
                     runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
                     runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
 
-                it "different base" $ do
-                    runParse ("return tonumber(\"101\", 2)") `shouldBe` [Number 5]
-                    runParse ("return tonumber(\"ff\", 16)") `shouldBe` [Number 255]
-                    runParse ("return tonumber(\"FF\", 16)") `shouldBe` [Number 255]
-                    runParse ("return tonumber(\"10\", 36)") `shouldBe` [Number 36]
+                describe "different base" $ do
+                    it "binary" $ do
+                        runParse ("return tonumber(\"100\", 2)") `shouldBe` [Number 4]
+                        runParse ("return tonumber(\"101\", 2)") `shouldBe` [Number 5]
+                        runParse ("return tonumber(\"110\", 2)") `shouldBe` [Number 6]
+                        runParse ("return tonumber(\"0111\", 2)") `shouldBe` [Number 7]
+                        runParse ("return tonumber(\"01011001\", 2)") `shouldBe` [Number 89] -- ;)
+                    it "other bases" $ do
+                        runParse ("return tonumber(\"ff\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"FF\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"10\", 36)") `shouldBe` [Number 36]
 
                 it "failed conversions" $ do
                     runParse ("return tonumber(nil)") `shouldBe` [Nil]

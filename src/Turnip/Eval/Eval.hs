@@ -476,16 +476,16 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
         where
             loopBody fv s var = do
                 -- the first value is the "iterator"
-                iterator <- packHead <$> callFunction fv [s, var]
+                vars <- callFunction fv [s, var]
                 -- the rest are put in the local variables
-                execAssignment (map AST.LVar names) [iterator]
+                execAssignment (map AST.LVar names) vars
 
-                if coerceToBool [iterator]
+                if coerceToBool vars
                     then do
                         -- TODO: duplication between numeric and generic for
                         blockResult <- execBlock b
                         case blockResult of
-                            EmptyBubble -> loopBody fv s iterator
+                            EmptyBubble -> loopBody fv s (packHead vars)
                             BreakBubble -> return EmptyBubble
                             x -> return x
                     else

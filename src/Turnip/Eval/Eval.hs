@@ -28,7 +28,7 @@ call (Nil) _ = throwErrorStr "Attempt to call a nil value"
 call (Boolean _) _ = throwErrorStr "Attempt to call a boolean value"
 call (Table tr) args = callMeta tr args
 
--- | Returns a head of a [Value] pack safely, that is producing a Nil in case it's empty
+-- | Returns the head of a [Value] pack safely, that is producing a Nil in case it's empty
 packHead :: [Value] -> Value
 packHead [] = Nil
 packHead (x:_) = x
@@ -592,8 +592,8 @@ assignLValue (AST.LVar name) v = do
     setTableField target (Str name, v)
 
 assignLValue (AST.LFieldRef t k) v = do
-    tv <- head <$> eval t
-    kv <- head <$> eval k
+    tv <- evalHead t
+    kv <- evalHead k
     case tv of
         Table tr -> setTableFieldWithNewindex tr (kv,v)
         _ -> throwErrorStr "Trying to assign to a field of non-table"

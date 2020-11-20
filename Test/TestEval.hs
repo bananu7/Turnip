@@ -347,6 +347,7 @@ spec = do
 
             testFile "should correctly handle a simple numeric loop" "for-loop-numeric.lua"
             testFile "should correctly handle a reverse numeric loop" "for-loop-numeric-reverse.lua"
+            testFile "should correctly handle a generic loop with kv iter" "for-loop-kv.lua"
 
             it "should correctly handle for loops that shouldn't run even once" $ do
                 runParse "for x = 2,1 do return false end return true" `shouldBe` [Boolean True]

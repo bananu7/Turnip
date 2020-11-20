@@ -28,6 +28,17 @@ call (Nil) _ = throwErrorStr "Attempt to call a nil value"
 call (Boolean _) _ = throwErrorStr "Attempt to call a boolean value"
 call (Table tr) args = callMeta tr args
 
+-- | Returns a head of a [Value] pack safely, that is producing a Nil in case it's empty
+packHead :: [Value] -> Value
+packHead [] = Nil
+packHead (x:_) = x
+
+-- | Evaluates an expression into the head, discarding the rest of the pack.
+-- This is a common operation because a lot of expressions discard the packs returned,
+-- such as array subscripts (on both sides), function calls etc.
+evalHead :: AST.Expr -> LuaM Value
+evalHead x = packHead <$> eval x
+
 callMeta :: TableRef -> [Value] -> LuaM [Value]
 callMeta tr args = do
     let self = Table tr
@@ -119,10 +130,8 @@ eval (AST.Lambda parNames varargs b) = do
 eval (AST.Var name) = (:[]) <$> closureLookup (Str name)
 
 eval (AST.Call fn args) = do
-    -- theoretically always a Nil should be returned, but
-    -- it's not in the type system yet. (wrt head)
-    argVs <- map head <$> mapM (\a -> eval a) args
-    fnV <- head <$> eval fn
+    argVs <- mapM evalHead args
+    fnV <- evalHead fn
 
     case fnV of 
         Function ref -> callRef ref argVs
@@ -130,8 +139,8 @@ eval (AST.Call fn args) = do
         x -> throwErrorStr $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.MemberCall obj fName args) = do
-    argVs <- map head <$> mapM eval args
-    objV <- head <$> eval obj
+    argVs <- mapM evalHead args
+    objV <- evalHead obj
     case objV of
         Table tr -> do
             fV <- getTableField tr (Str fName)
@@ -144,9 +153,9 @@ eval (AST.MemberCall obj fName args) = do
 eval (AST.FieldRef t k) = do
     -- we ignore any values returned by the expression because
     -- we only want to index the first one anyway
-    tv <- head <$> eval t
+    tv <- evalHead t
     -- similarly the composite index keys just don't work and the first value is used
-    kv <- head <$> eval k
+    kv <- evalHead k
 
     case tv of
         Table tRef -> getTableFieldWithMetatable tRef kv
@@ -169,11 +178,11 @@ eval (AST.FieldRef t k) = do
                         Nothing -> return [Nil]
 
 eval (AST.BinOp op lhs rhs) = do
-    a <- head <$> eval lhs
+    a <- evalHead lhs
     binaryOperatorCall op a rhs
 
 eval (AST.UnOp op expr) = do
-    a <- head <$> eval expr
+    a <- evalHead expr
     unaryOperatorCall op a
 
 -- Table constructor in form { k = v, ... }
@@ -189,8 +198,8 @@ eval (AST.TableCons entries) = do
         -- The map-like entry
         -- I need to 'lift' here to separate the LuaM rankntype from the StateT
         addEntry tr (Just ek, ev) = lift $ do
-            k <- head <$> eval ek
-            v <- head <$> eval ev
+            k <- evalHead ek
+            v <- evalHead ev
             setTableField tr (k,v)
 
         -- The numeric, array-like entry
@@ -199,17 +208,16 @@ eval (AST.TableCons entries) = do
             put $ ix + 1
 
             lift $ do
-                v <- head <$> eval ev
+                v <- evalHead ev
                 setTableField tr (Number (fromIntegral ix), v)            
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
 evalExpressionList :: [AST.Expr] -> LuaM [Value]
 evalExpressionList xs = do
-    firsts <- mapM eval (init xs)
-    let singular = map head firsts
-    pack <- eval (last xs)
+    front <- mapM evalHead (init xs)
+    remainingPack <- eval (last xs)
 
-    return $ singular ++ pack
+    return $ front ++ remainingPack
 
 --------------
 
@@ -237,7 +245,7 @@ binaryOperatorCall AST.OpOr = opOr
 
 strictBinaryOp :: BinaryOperatorImpl -> Value -> AST.Expr -> LuaM [Value]
 strictBinaryOp op a rhs  = do
-    b <- head <$> eval rhs
+    b <- evalHead rhs
     op a b
 
 unaryOperatorCall :: AST.UnaryOperator -> Value -> LuaM [Value]
@@ -369,17 +377,15 @@ opOr :: Value -> AST.Expr -> LuaM [Value]
 opOr a rhs = do
     if coerceToBool [a] then
         return [a]
-    else do
-        b <- head <$> eval rhs
-        return [b]
+    else
+        (:[]) <$> evalHead rhs
 
 opAnd :: Value -> AST.Expr -> LuaM [Value]
 opAnd a rhs = do
     if not $ coerceToBool [a] then
         return [a]
-    else do
-        b <- head <$> eval rhs
-        return [b]
+    else
+        (:[]) <$> evalHead rhs 
 
 --------------
 
@@ -416,11 +422,11 @@ execStmt (AST.If block ifElseBlocks mElseB) = do
 
 execStmt (AST.For names (AST.ForNum emin emax mestep) b) = do
     step <- case mestep of
-        Just estep -> head <$> eval estep
+        Just estep -> evalHead estep
         Nothing -> pure $ Number 1.0
 
-    vmin <- head <$> eval emin
-    vmax <- head <$> eval emax
+    vmin <- evalHead emin
+    vmax <- evalHead emax
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
@@ -470,17 +476,16 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
         where
             loopBody fv s var = do
                 -- the first value is the "iterator"
-                vars <- callFunction fv [s, var]
+                iterator <- packHead <$> callFunction fv [s, var]
                 -- the rest are put in the local variables
-                execAssignment (map AST.LVar names) vars
+                execAssignment (map AST.LVar names) [iterator]
 
-                let var' = head vars
-                if coerceToBool [var']
+                if coerceToBool [iterator]
                     then do
                         -- TODO: duplication between numeric and generic for
                         blockResult <- execBlock b
                         case blockResult of
-                            EmptyBubble -> loopBody fv s var'
+                            EmptyBubble -> loopBody fv s iterator
                             BreakBubble -> return EmptyBubble
                             x -> return x
                     else
@@ -541,7 +546,7 @@ execStmt (AST.Assignment lvals [expr]) = do
 execStmt (AST.Assignment lvals exprs) = do
     -- this takes the first value of every expression
     -- it only happens when there are more than 1 expr on rhs
-    vals <- mapM (\e -> head <$> eval e) exprs
+    vals <- mapM evalHead exprs
     execAssignment lvals vals
     return EmptyBubble
 
@@ -563,7 +568,7 @@ execStmt (AST.Return exprs) = do
     -- multiple values, it needs to be forwarded
     vals <- case exprs of
         [singleExpr] -> eval singleExpr
-        multipleExprs -> map head <$> mapM (\e -> eval e) multipleExprs
+        multipleExprs -> mapM evalHead multipleExprs
 
     return $ ReturnBubble vals
 

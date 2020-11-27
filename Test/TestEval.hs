@@ -194,6 +194,28 @@ spec = do
                     ,"return f()"
                     ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
 
+            describe "pack spills" $ do
+                it "should properly spill a pack into arguments" $ 
+                    runParse (unlines [
+                         "function f() return 1,2,3 end"
+                        ,"function g(a,b,c) return a,b,c end"
+                        ,"return g(f())"
+                        ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
+                it "should properly handle multiple packs" $
+                    -- in case there are multiple packs, only the last one spills
+                    runParse (unlines [
+                         "function f() return 1,2 end"
+                        ,"function g() return 3,4 end"
+                        ,"function h(a,b,c,d) return a,b,c,d end"
+                        ,"return h(f(), g())"
+                        ]) `shouldBe` [Number 1.0, Number 3.0, Number 4.0, Nil]
+                it "should also spill in member calls" $
+                    runParse (unlines [
+                         "t = { f = function(self, a,b) return a,b end }"
+                        ,"function g() return 1,2 end"
+                        ,"return t:f(g())" 
+                        ]) `shouldBe` [Number 1.0, Number 2.0]
+
             describe "vararg functions" $ do
                 describe "arg" $ do
                     it "no arguments to a vararg functions should result in an empty table" $
@@ -374,7 +396,6 @@ spec = do
                     ,"return x, r"
                     ]) `shouldBe` [Number 5.0, Number 0.0]
 
-
         describe "do..end" $ do
             it "should properly scope do-blocks" $ do
                 runParse (unlines[
@@ -429,6 +450,24 @@ spec = do
 
                 it "nil" $
                     runParse ("return tostring(nil)") `shouldBe` [Str "nil"]
+
+            describe "select" $ do
+                it "should return the length of the pack with '#'" $ do
+                    runParse "return select(\"#\")" `shouldBe` [Number 0.0]
+                    runParse "return select(\"#\", 1)" `shouldBe` [Number 1.0]
+                    runParse "return select(\"#\", nil, \"b\")" `shouldBe` [Number 2.0]
+                    runParse "return select(\"#\", 1, nil, 2, nil)" `shouldBe` [Number 4.0]
+                it "should return appropriate cutoff pack" $ do
+                    runParse "return select(1, 1)" `shouldBe` [Number 1.0]
+                    runParse "return select(1, 3, 4)" `shouldBe` [Number 3.0, Number 4.0]
+                    runParse "return select(2, 3, 4)" `shouldBe` [Number 4.0]
+                    runParse "return select(3, 3, 4)" `shouldBe` []
+                    runParse "return select(4, 3, 4)" `shouldBe` []
+                it "should properly work with function returns" $ do
+                    runParse (unlines [
+                         "function f() return 42,43,44 end"
+                        ,"return select(2, f())"
+                        ]) `shouldBe` [Number 43.0, Number 44.0]
 
         describe "_G" $ do
             it "should expose _G table" $

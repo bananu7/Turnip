@@ -104,6 +104,12 @@ callFunction (FunctionData cls block names hasVarargs) args = do
                 ReturnBubble vs -> return vs
                 _ -> return [Nil]
 
+evalArgsWithSpill :: [AST.Expr] -> LuaM [Value]
+evalArgsWithSpill [] = return []
+evalArgsWithSpill args = do
+    frontArgVs <- mapM evalHead (init args)
+    lastArgPack <- eval (last args)
+    return $ frontArgVs ++ lastArgPack
 
 eval :: AST.Expr -> LuaM [Value]
 -- Literals don't use the closure parameter
@@ -130,8 +136,11 @@ eval (AST.Lambda parNames varargs b) = do
 eval (AST.Var name) = (:[]) <$> closureLookup (Str name)
 
 eval (AST.Call fn args) = do
-    argVs <- mapM evalHead args
+    -- Lua seems to evaluate the function expression before arguments, but
+    -- "Evaluation order and assignment order are both explicitly undefined." -- Roberto
+    -- http://lua-users.org/lists/lua-l/2006-06/msg00378.html
     fnV <- evalHead fn
+    argVs <- evalArgsWithSpill args
 
     case fnV of 
         Function ref -> callRef ref argVs
@@ -139,7 +148,7 @@ eval (AST.Call fn args) = do
         x -> throwErrorStr $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
 
 eval (AST.MemberCall obj fName args) = do
-    argVs <- mapM evalHead args
+    argVs <- evalArgsWithSpill args
     objV <- evalHead obj
     case objV of
         Table tr -> do

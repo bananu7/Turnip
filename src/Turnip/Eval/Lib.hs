@@ -91,8 +91,14 @@ luatostring (Boolean False : _) = return [Str "false"]
 luatostring (Number n : _) = return [Str $ showGFloat (decimalDigits n) n ""]
 luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
 
+isInt :: Double -> Bool
+isInt x = x == (fromIntegral ((floor :: Double -> Int) x))
+
+toInt :: Double -> Maybe Int
+toInt x = if isInt x then Just . floor $ x else Nothing
+
 decimalDigits :: Double -> Maybe Int
-decimalDigits x = if x == (fromIntegral . (floor :: Double -> Int) $ x) then Just 0 else Nothing
+decimalDigits x = if isInt x then Just 0 else Nothing
 
 luatype :: NativeFunction
 luatype (Nil : _) = return [Str "nil"]
@@ -102,6 +108,16 @@ luatype (Str _ : _) = return [Str "string"]
 luatype (Boolean _ : _) = return [Str "boolean"]
 luatype (Number _ : _) = return [Str "number"]
 luatype _ = throwErrorStr "Wrong argument to 'type', value expected"
+
+luaselect :: NativeFunction
+luaselect (Str "#" : args) = return [Number . fromIntegral . length $ args]
+-- luaselect (Str n : args) = return [args !! luatonuber n] -- cursed implicit coercion version
+-- it works in the original Lua but I'm not implementing this.
+luaselect (Number n : args) = 
+    case toInt n of
+        Just i -> return $ drop (i-1) args
+        Nothing -> throwErrorStr "Wrong argument to select (number has no integer representation)"
+luaselect _ = throwErrorStr "Wrong argument to select, either number or string '#' required."
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
@@ -115,3 +131,4 @@ loadBaseLibrary = do
     addNativeFunction "rawset" (BuiltinFunction luarawset)
     addNativeFunction "tostring" (BuiltinFunction luatostring)
     addNativeFunction "type" (BuiltinFunction luatype)
+    addNativeFunction "select" (BuiltinFunction luaselect)

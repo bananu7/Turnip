@@ -201,7 +201,7 @@ spec = do
                         ,"function g(a,b,c) return a,b,c end"
                         ,"return g(f())"
                         ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
-                it "should properly handle multiple packs" $ do
+                it "should properly handle multiple packs" $
                     -- in case there are multiple packs, only the last one spills
                     runParse (unlines [
                          "function f() return 1,2 end"
@@ -209,6 +209,12 @@ spec = do
                         ,"function h(a,b,c,d) return a,b,c,d end"
                         ,"return h(f(), g())"
                         ]) `shouldBe` [Number 1.0, Number 3.0, Number 4.0, Nil]
+                it "should also spill in member calls" $
+                    runParse (unlines [
+                         "t = { f = function(self, a,b) return a,b end }"
+                        ,"function g() return 1,2 end"
+                        ,"return t:f(g())" 
+                        ]) `shouldBe` [Number 1.0, Number 2.0]
 
             describe "vararg functions" $ do
                 describe "arg" $ do

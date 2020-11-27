@@ -194,6 +194,14 @@ spec = do
                     ,"return f()"
                     ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
 
+            describe "pack spills" $ do
+                it "should properly spill a pack into arguments" $ 
+                    runParse (unlines [
+                         "function f() return 1,2,3 end"
+                        ,"function g(a,b,c) return a,b,c end"
+                        ,"return g(f())"
+                        ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
+
             describe "vararg functions" $ do
                 describe "arg" $ do
                     it "no arguments to a vararg functions should result in an empty table" $
@@ -431,10 +439,10 @@ spec = do
 
             describe "select" $ do
                 it "should return the length of the pack with '#'" $ do
-                    runParse "return select('#')" `shouldBe` [Number 0.0]
-                    runParse "return select('#', 1)" `shouldBe` [Number 1.0]
-                    runParse "return select('#', nil, 'b')" `shouldBe` [Number 2.0]
-                    runParse "return select('#', 1, nil, 2, nil)" `shouldBe` [Number 4.0]
+                    runParse "return select(\"#\")" `shouldBe` [Number 0.0]
+                    runParse "return select(\"#\", 1)" `shouldBe` [Number 1.0]
+                    runParse "return select(\"#\", nil, \"b\")" `shouldBe` [Number 2.0]
+                    runParse "return select(\"#\", 1, nil, 2, nil)" `shouldBe` [Number 4.0]
                 it "should return appropriate cutoff pack" $ do
                     runParse "return select(1, 1)" `shouldBe` [Number 1.0]
                     runParse "return select(1, 3, 4)" `shouldBe` [Number 3.0, Number 4.0]

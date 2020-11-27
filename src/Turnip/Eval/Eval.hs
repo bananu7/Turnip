@@ -130,8 +130,16 @@ eval (AST.Lambda parNames varargs b) = do
 eval (AST.Var name) = (:[]) <$> closureLookup (Str name)
 
 eval (AST.Call fn args) = do
-    argVs <- mapM evalHead args
+    -- Lua evaluates the function expression before arguments, but I have no idea
+    -- if it's defined anywhere
     fnV <- evalHead fn
+
+    argVs <- case args of
+        [] -> return []
+        args -> do
+            frontArgVs <- mapM evalHead (init args)
+            lastArgPack <- eval (last args)
+            return $ frontArgVs ++ lastArgPack
 
     case fnV of 
         Function ref -> callRef ref argVs

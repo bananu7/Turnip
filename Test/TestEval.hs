@@ -201,6 +201,14 @@ spec = do
                         ,"function g(a,b,c) return a,b,c end"
                         ,"return g(f())"
                         ]) `shouldBe` [Number 1.0, Number 2.0, Number 3.0]
+                it "should properly handle multiple packs" $ do
+                    -- in case there are multiple packs, only the last one spills
+                    runParse (unlines [
+                         "function f() return 1,2 end"
+                        ,"function g() return 3,4 end"
+                        ,"function h(a,b,c,d) return a,b,c,d end"
+                        ,"return h(f(), g())"
+                        ]) `shouldBe` [Number 1.0, Number 3.0, Number 4.0, Nil]
 
             describe "vararg functions" $ do
                 describe "arg" $ do

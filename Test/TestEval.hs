@@ -374,7 +374,6 @@ spec = do
                     ,"return x, r"
                     ]) `shouldBe` [Number 5.0, Number 0.0]
 
-
         describe "do..end" $ do
             it "should properly scope do-blocks" $ do
                 runParse (unlines[
@@ -429,6 +428,24 @@ spec = do
 
                 it "nil" $
                     runParse ("return tostring(nil)") `shouldBe` [Str "nil"]
+
+            describe "select" $ do
+                it "should return the length of the pack with '#'" $ do
+                    runParse "return select('#')" `shouldBe` [Number 0.0]
+                    runParse "return select('#', 1)" `shouldBe` [Number 1.0]
+                    runParse "return select('#', nil, 'b')" `shouldBe` [Number 2.0]
+                    runParse "return select('#', 1, nil, 2, nil)" `shouldBe` [Number 4.0]
+                it "should return appropriate cutoff pack" $ do
+                    runParse "return select(1, 1)" `shouldBe` [Number 1.0]
+                    runParse "return select(1, 3, 4)" `shouldBe` [Number 3.0, Number 4.0]
+                    runParse "return select(2, 3, 4)" `shouldBe` [Number 4.0]
+                    runParse "return select(3, 3, 4)" `shouldBe` []
+                    runParse "return select(4, 3, 4)" `shouldBe` []
+                it "should properly work with function returns" $ do
+                    runParse (unlines [
+                         "function f() return 42,43,44 end"
+                        ,"return select(2, f())"
+                        ]) `shouldBe` [Number 43.0, Number 44.0]
 
         describe "_G" $ do
             it "should expose _G table" $

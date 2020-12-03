@@ -478,6 +478,7 @@ spec = do
                 it "string parse" $ do
                     runParse ("return tonumber(\"0\")") `shouldBe` [Number 0]
                     runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
+                    runParse ("return tonumber(\"+42\")") `shouldBe` [Number 42]
                     runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
 
                 describe "different base" $ do
@@ -498,6 +499,8 @@ spec = do
                     runParse ("return tonumber(false)") `shouldBe` [Nil]
                     runParse ("return tonumber(true)") `shouldBe` [Nil]
                     runParse ("return tonumber(function()end)") `shouldBe` [Nil]
+                    runParse ("return tonumber(\"f\") end") `shouldBe` [Nil]
+                    runParse ("return tonumber(\"3-10\") end") `shouldBe` [Nil]
 
         describe "_G" $ do
             it "should expose _G table" $

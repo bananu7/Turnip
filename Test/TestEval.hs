@@ -475,11 +475,16 @@ spec = do
                     runParse ("return tonumber(-1)") `shouldBe` [Number (-1)]
                     runParse ("return tonumber(3.14)") `shouldBe` [Number 3.14]
 
-                it "string parse" $ do
-                    runParse ("return tonumber(\"0\")") `shouldBe` [Number 0]
-                    runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
-                    runParse ("return tonumber(\"+42\")") `shouldBe` [Number 42]
-                    runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
+                describe "string parse" $ do
+                    it "0" $ runParse ("return tonumber(\"0\")") `shouldBe` [Number 0]
+                    it "-1" $ runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
+                    it "+42" $ runParse ("return tonumber(\"+42\")") `shouldBe` [Number 42]
+                    it "3.14" $ runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
+
+                describe "whitespace surround" $ do
+                    it " -2" $ runParse ("return tonumber(\" -2\")") `shouldBe` [Number (-2)]
+                    it "-3 " $ runParse ("return tonumber(\"-3 \")") `shouldBe` [Number (-3)]
+                    it " 4 " $ runParse ("return tonumber(\"-3 \")") `shouldBe` [Number 4]
 
                 describe "different base" $ do
                     it "binary" $ do
@@ -493,14 +498,14 @@ spec = do
                         runParse ("return tonumber(\"FF\", 16)") `shouldBe` [Number 255]
                         runParse ("return tonumber(\"10\", 36)") `shouldBe` [Number 36]
 
-                it "failed conversions" $ do
-                    runParse ("return tonumber(nil)") `shouldBe` [Nil]
-                    runParse ("return tonumber({})") `shouldBe` [Nil]
-                    runParse ("return tonumber(false)") `shouldBe` [Nil]
-                    runParse ("return tonumber(true)") `shouldBe` [Nil]
-                    runParse ("return tonumber(function()end)") `shouldBe` [Nil]
-                    runParse ("return tonumber(\"f\") end") `shouldBe` [Nil]
-                    runParse ("return tonumber(\"3-10\") end") `shouldBe` [Nil]
+                describe "failed conversions" $ do
+                    it "nil" $ runParse ("return tonumber(nil)") `shouldBe` [Nil]
+                    it "{}" $ runParse ("return tonumber({})") `shouldBe` [Nil]
+                    it "false" $ runParse ("return tonumber(false)") `shouldBe` [Nil]
+                    it "true" $ runParse ("return tonumber(true)") `shouldBe` [Nil]
+                    it "function()" $ runParse ("return tonumber(function()end)") `shouldBe` [Nil]
+                    it "\"f\"" $ runParse ("return tonumber(\"f\")") `shouldBe` [Nil]
+                    it "\"3-10\"" $ runParse ("return tonumber(\"3-10\")") `shouldBe` [Nil]
 
         describe "_G" $ do
             it "should expose _G table" $

@@ -7,6 +7,7 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
+import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
@@ -92,52 +93,18 @@ luatostring (Boolean False : _) = return [Str "false"]
 luatostring (Number n : _) = return [Str $ showGFloat (decimalDigits n) n ""]
 luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
 
-isInt :: Double -> Bool
-isInt x = x == (fromIntegral ((floor :: Double -> Int) x))
 
-toInt :: Double -> Maybe Int
-toInt x = if isInt x then Just . floor $ x else Nothing
+readNumberBase' :: Double -> String -> LuaM [Value]
+readNumberBase' base s =
+    case toInt base of
+        Just basei -> return $ [readNumberBase basei s]
+        Nothing -> throwErrorStr "Wrong argument #2 to 'tonumber' (base must be an integer)"
 
-decimalDigits :: Double -> Maybe Int
-decimalDigits x = if isInt x then Just 0 else Nothing
-
-digitToIntBase :: Int -> Char -> Maybe Int
-digitToIntBase base c
-  | (fromIntegral dec::Word) <= 9 = Just dec
-  | (fromIntegral alphal::Word) <= nonnumeric = Just $ alphal + 10
-  | (fromIntegral alphau::Word) <= nonnumeric = Just $ alphau + 10
-  | otherwise = Nothing
-  where
-    dec = ord c - ord '0'
-    alphal = ord c - ord 'a'
-    alphau = ord c - ord 'A'
-
-    nonnumeric :: Word
-    nonnumeric = fromIntegral base - 10 - 1
 
 luatonumber :: NativeFunction
 luatonumber (Number n : []) = return [Number n]
-luatonumber (Str s : []) = return [Number $ read s]
-luatonumber (Str s : Number base : _) = readNumberBase base s
-    where
-        readNumberBase :: Double -> String -> LuaM [Value]
-        readNumberBase base s =
-            if not $ isInt base then
-                throwErrorStr "Wrong argument #2 to 'tonumber' (base must be an integer)"
-            else
-                do
-                    let ibase = (floor :: Double -> Int) $ base
-                    let maybeVal = foldl (accumDigit ibase) (Just 0) . zip [0..] . reverse $ s
-                    return $ [maybe Nil (Number . fromIntegral) maybeVal]
-
-        isInt x = x == (fromIntegral . round $ x)
-
-        accumDigit :: Int -> Maybe Int -> (Int, Char) -> Maybe Int
-        accumDigit base mval (n, digit) = do
-            val <- mval
-            di <- digitToIntBase base digit
-            return $ val + di * base ^ n
-
+luatonumber (Str s : []) = return $ [readNumberBase 10 s]
+luatonumber (Str s : Number base : _) = readNumberBase' base s
 luatonumber (_ : _) = return [Nil]
 luatonumber _ = throwErrorStr "Wrong argument to 'tonumber'"
 

@@ -55,6 +55,7 @@ library
   other-modules:       Turnip.Eval.Closure,
                        Turnip.Eval.Eval,
                        Turnip.Eval.Util,
+                       Turnip.Eval.UtilNumbers,
                        Turnip.Eval.Types,
                        Turnip.Eval.TH,
                        Turnip.Eval.Lib,

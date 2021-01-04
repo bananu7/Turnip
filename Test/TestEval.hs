@@ -484,7 +484,7 @@ spec = do
                 describe "whitespace surround" $ do
                     it " -2" $ runParse ("return tonumber(\" -2\")") `shouldBe` [Number (-2)]
                     it "-3 " $ runParse ("return tonumber(\"-3 \")") `shouldBe` [Number (-3)]
-                    it " 4 " $ runParse ("return tonumber(\"-3 \")") `shouldBe` [Number 4]
+                    it " 4 " $ runParse ("return tonumber(\" 4 \")") `shouldBe` [Number 4]
 
                 describe "different base" $ do
                     it "binary" $ do

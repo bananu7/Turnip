@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Turnip.Eval.UtilNumbers
     (isInt
     ,toInt
@@ -7,7 +9,7 @@ module Turnip.Eval.UtilNumbers
 where
 
 import Data.Char (ord)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe, fromJust)
 import Turnip.Eval.Types (Value(..))
 import Text.ParserCombinators.Parsec
 
@@ -38,16 +40,27 @@ numberBase base = do
         1    <$ return ()
         ]
     whitespace
-    digits <- digitsBase base
+
+    (digits, fractionalDigits) <- integralAndFractional <|> justFractional
+
     whitespace
-
-    decimalDigits <- optionMaybe $ do
-        char '.'
-        digitsBase base
-
     eof
 
-    return $ sign * (numerize base digits decimalDigits)
+    return $ sign * (numerize base digits fractionalDigits)
+
+    where
+        integralAndFractional :: Parser (String, String)
+        integralAndFractional = do
+            int <- digitsBase base
+            optional $ char '.'
+            frac <- fromMaybe "" <$> (optionMaybe $ digitsBase base)
+            return (int, frac)
+
+        justFractional :: Parser (String, String)
+        justFractional = do
+            _ <- char '.'
+            frac <- digitsBase base
+            return ("", frac)
 
 
 whitespace :: Parser ()
@@ -71,18 +84,24 @@ isDigitBase base d =
         dist c x = if (ord c - ord x) < 0 then 1000 else (ord c - ord x)
 
 
-numerize :: Int -> String -> Maybe String -> Double
-numerize base digits decimalDigits = integralPart + decimalPart
+numerize :: Int -> String -> String -> Double
+numerize base digits fractionalDigits = integralPart + fractionalPart
     where
         integralPart :: Double
-        integralPart = fst . foldr accumIntegral (0,0 :: Int) $ digits
+        integralPart = fst . foldr accumIntegral (0 :: Double, 0 :: Int) $ digits
         accumIntegral d (v, n) = 
             (v + numDigitPos n d, n + 1)
 
-        decimalPart :: Double
-        decimalPart = 0
+        fractionalPart :: Double
+        fractionalPart = fst . foldl accumFractional (0 :: Double, 1 :: Int) $ fractionalDigits
+        accumFractional (v, n) d = 
+            (v + numDigitPosInv n d, n + 1)
 
+        numDigitPos :: Int -> Char -> Double
         numDigitPos n d = fromIntegral $ (numDigit d) * (base ^ n)
+
+        numDigitPosInv :: Int -> Char -> Double
+        numDigitPosInv n d = (fromIntegral . numDigit $ d) * (fromIntegral base ** (fromIntegral (-n)))
         numDigit d = fromJust . digitToIntBase base $ d
 
 

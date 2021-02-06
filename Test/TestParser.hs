@@ -16,7 +16,13 @@ spec = do
     describe "Parser.parseLua" $ do
         describe "literals" $ do
             it "should parse integers" $ parse "return 5" `shouldBe` Block [Return [Number 5.0]]
-            it "should parse floats" $ parse "return 4.2" `shouldBe` Block [Return [Number 4.2]]
+            describe "should parse decimals" $ do
+                it "regular decimal" $ parse "return 4.2" `shouldBe` Block [Return [Number 4.2]]
+
+                -- TODO - fix
+                -- it "ending with dot (1.)" $ parse "return 1." `shouldBe` Block [Return [Number 1.0]]
+                -- it "starting with dot (.1)" $ parse "return .1" `shouldBe` Block [Return [Number 0.1]]
+
             it "should parse negative numbers" $ do
                 parse "return -3" `shouldBe` Block [Return [UnOp OpUnaryMinus (Number 3.0)]]
                 parse "return -2.9" `shouldBe` Block [Return [UnOp OpUnaryMinus (Number 2.9)]]            

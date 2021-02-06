@@ -474,6 +474,7 @@ spec = do
                     runParse ("return tonumber(0)") `shouldBe` [Number 0]
                     runParse ("return tonumber(-1)") `shouldBe` [Number (-1)]
                     runParse ("return tonumber(3.14)") `shouldBe` [Number 3.14]
+                    runParse ("return tonumber(1.)") `shouldBe` [Number 1.0]
                     -- runParse ("return tonumber(.123)") `shouldBe` [Number 0.123] -- TODO - fix Parser!
 
                 describe "string parse" $ do

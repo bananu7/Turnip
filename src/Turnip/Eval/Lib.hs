@@ -13,7 +13,6 @@ import Turnip.Eval.Metatables
 import Control.Monad.Except
 
 import Numeric (showGFloat)
-import Data.Char (ord)
 
 -- math helpers
 deg :: Floating a => a -> a

@@ -7,7 +7,9 @@ module Turnip.Eval.UtilNumbers
 where
 
 import Data.Char (ord)
+import Data.Maybe (fromJust)
 import Turnip.Eval.Types (Value(..))
+import Text.ParserCombinators.Parsec
 
 isInt :: Double -> Bool
 isInt x = x == (fromIntegral ((floor :: Double -> Int) x))
@@ -22,15 +24,66 @@ decimalDigits x = if isInt x then Just 0 else Nothing
 
 
 readNumberBase :: Int -> String -> Value
-readNumberBase base s = maybe Nil (Number . fromIntegral) maybeVal
-    where
-        maybeVal = foldl (accumDigit base) (Just 0) . zip [0..] . reverse $ s
+readNumberBase base input = case parse (numberBase base) "" input of
+    Left _ -> Nil
+    Right n -> Number n
 
-        accumDigit :: Int -> Maybe Int -> (Int, Char) -> Maybe Int
-        accumDigit base mval (n, digit) = do
-            val <- mval
-            di <- digitToIntBase base digit
-            return $ val + di * base ^ n
+
+numberBase :: Int -> Parser Double
+numberBase base = do
+    whitespace
+    sign <- choice [
+        (-1) <$ char '-',
+        1    <$ char '+',
+        1    <$ return ()
+        ]
+    whitespace
+    digits <- digitsBase base
+    whitespace
+
+    decimalDigits <- optionMaybe $ do
+        char '.'
+        digitsBase base
+
+    eof
+
+    return $ sign * (numerize base digits decimalDigits)
+
+
+whitespace :: Parser ()
+whitespace = const () <$> (many . oneOf $ " \n\t")
+
+
+digitsBase :: Int -> Parser String
+digitsBase base = many1 $ satisfy (isDigitBase base)
+
+
+isDigitBase :: Int -> Char -> Bool
+isDigitBase base d = 
+    if base <= 10 then
+        (dist d '0') < base
+    else
+        (dist d '0') < 10 ||
+        (dist d 'A') < (base - 10) ||
+        (dist d 'a') < (base - 10)
+    where
+        dist :: Char -> Char -> Int
+        dist c x = if (ord c - ord x) < 0 then 1000 else (ord c - ord x)
+
+
+numerize :: Int -> String -> Maybe String -> Double
+numerize base digits decimalDigits = integralPart + decimalPart
+    where
+        integralPart :: Double
+        integralPart = fst . foldr accumIntegral (0,0 :: Int) $ digits
+        accumIntegral d (v, n) = 
+            (v + numDigitPos n d, n + 1)
+
+        decimalPart :: Double
+        decimalPart = 0
+
+        numDigitPos n d = fromIntegral $ (numDigit d) * (base ^ n)
+        numDigit d = fromJust . digitToIntBase base $ d
 
 
 digitToIntBase :: Int -> Char -> Maybe Int

@@ -474,12 +474,14 @@ spec = do
                     runParse ("return tonumber(0)") `shouldBe` [Number 0]
                     runParse ("return tonumber(-1)") `shouldBe` [Number (-1)]
                     runParse ("return tonumber(3.14)") `shouldBe` [Number 3.14]
+                    -- runParse ("return tonumber(.123)") `shouldBe` [Number 0.123] -- TODO - fix Parser!
 
                 describe "string parse" $ do
                     it "0" $ runParse ("return tonumber(\"0\")") `shouldBe` [Number 0]
                     it "-1" $ runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
                     it "+42" $ runParse ("return tonumber(\"+42\")") `shouldBe` [Number 42]
                     it "3.14" $ runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
+                    it ".123" $ runParse ("return tonumber(\".123\")") `shouldBe` [Number 0.123]
 
                 describe "whitespace surround" $ do
                     it " -2" $ runParse ("return tonumber(\" -2\")") `shouldBe` [Number (-2)]

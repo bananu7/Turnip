@@ -9,7 +9,8 @@ module Turnip.Eval.UtilNumbers
 where
 
 import Data.Char (ord)
-import Data.Maybe (fromMaybe, fromJust)
+import Text.Read (readMaybe)
+import Data.Maybe (fromJust)
 import Turnip.Eval.Types (Value(..))
 import Text.ParserCombinators.Parsec
 
@@ -26,41 +27,53 @@ decimalDigits x = if isInt x then Just 0 else Nothing
 
 
 readNumberBase :: Int -> String -> Value
-readNumberBase base input = case parse (numberBase base) "" input of
-    Left _ -> Nil
-    Right n -> Number n
+readNumberBase base input =
+    case parse (numberStrBase base) "" input of
+        Left _ -> Nil
+        Right s -> 
+            if base == 10 then
+                case readMaybe s of
+                    Nothing -> Nil
+                    Just n -> Number n
+            else
+                Number (numerize base s)
 
+--return $ sign * (numerize base digits fractionalDigits)
 
-numberBase :: Int -> Parser Double
-numberBase base = do
+numberStrBase :: Int -> Parser String
+numberStrBase base = do
     whitespace
     sign <- choice [
-        (-1) <$ char '-',
-        1    <$ char '+',
-        1    <$ return ()
+        "-"  <$ char '-',
+        ""   <$ char '+',
+        ""   <$ return ()
         ]
     whitespace
 
-    (digits, fractionalDigits) <- integralAndFractional <|> justFractional
+    digits <-
+        if base == 10 then
+            integralAndFractional <|> justFractional
+        else
+            digitsBase base
 
     whitespace
     eof
 
-    return $ sign * (numerize base digits fractionalDigits)
+    return (sign ++ digits)
 
     where
-        integralAndFractional :: Parser (String, String)
+        integralAndFractional :: Parser String
         integralAndFractional = do
-            int <- digitsBase base
+            int <- digitsBase 10
             optional $ char '.'
-            frac <- fromMaybe "" <$> (optionMaybe $ digitsBase base)
-            return (int, frac)
+            frac <- maybe "" ('.':) <$> (optionMaybe $ digitsBase 10)
+            return (int ++ frac)
 
-        justFractional :: Parser (String, String)
+        justFractional :: Parser String
         justFractional = do
             _ <- char '.'
-            frac <- digitsBase base
-            return ("", frac)
+            frac <- digitsBase 10
+            return ('0':'.':frac)
 
 
 whitespace :: Parser ()
@@ -84,24 +97,14 @@ isDigitBase base d =
         dist c x = if (ord c - ord x) < 0 then 1000 else (ord c - ord x)
 
 
-numerize :: Int -> String -> String -> Double
-numerize base digits fractionalDigits = integralPart + fractionalPart
+numerize :: Int -> String -> Double
+numerize base digits = fst . foldr accum (0 :: Double, 0 :: Int) $ digits
     where
-        integralPart :: Double
-        integralPart = fst . foldr accumIntegral (0 :: Double, 0 :: Int) $ digits
-        accumIntegral d (v, n) = 
-            (v + numDigitPos n d, n + 1)
-
-        fractionalPart :: Double
-        fractionalPart = fst . foldl accumFractional (0 :: Double, 1 :: Int) $ fractionalDigits
-        accumFractional (v, n) d = 
-            (v + numDigitPosInv n d, n + 1)
+        accum d (v, n) = (v + numDigitPos n d, n + 1)
 
         numDigitPos :: Int -> Char -> Double
         numDigitPos n d = fromIntegral $ (numDigit d) * (base ^ n)
 
-        numDigitPosInv :: Int -> Char -> Double
-        numDigitPosInv n d = (fromIntegral . numDigit $ d) * (fromIntegral base ** (fromIntegral (-n)))
         numDigit d = fromJust . digitToIntBase base $ d
 
 

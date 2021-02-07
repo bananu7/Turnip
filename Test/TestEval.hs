@@ -475,13 +475,18 @@ spec = do
                          "t = { x = 42 }"
                         ,"return rawget(t, \"x\")"
                         ]) `shouldBe` [Number 42.0]
-                it "with __index" $
+                it "with __index, missing key" $
                     runParse (unlines[
-                         "t = { x = 42 }"
-                        ,"mt = { __index = function(t,i) return 43 end }"
+                         "t = { }"
                         ,"setmetatable(t, { __index = function(t,i) return 43 end })"
-                        ,"return rawget(t, \"x\")"
-                        ]) `shouldBe` [Number 42.0]
+                        ,"return rawget(t, \"x\"), t.x"
+                        ]) `shouldBe` [Nil, Number 43.0]
+                it "with __index, existing key" $
+                    runParse (unlines[
+                         "t = { x = 5 }"
+                        ,"setmetatable(t, { __index = function(t,i) return 43 end })"
+                        ,"return rawget(t, \"x\"), t.x"
+                        ]) `shouldBe` [Number 5.0, Number 5.0]
 
             describe "rawlen" $ do
                 it "strings" $ 

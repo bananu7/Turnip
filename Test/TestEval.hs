@@ -469,6 +469,20 @@ spec = do
                         ,"return select(2, f())"
                         ]) `shouldBe` [Number 43.0, Number 44.0]
 
+            describe "rawget" $ do
+                it "without a metatable/__index" $ do
+                    runParse (unlines[
+                         "t = { x = 42 }"
+                        ,"return rawget(t, \"x\")"
+                        ]) `shouldBe` [Number 42.0]
+                it "with __index" $ do
+                    runParse (unlines[
+                         "t = { x = 42 }"
+                        ,"mt = { __index = function() return 43 end }"
+                        ,"setmetatable(t, mt)"
+                        ,"return rawget(t, \"x\")"
+                        ]) `shouldBe` [Number 42.0]
+
             describe "tonumber" $ do
                 it "number passtrough" $ do
                     runParse ("return tonumber(0)") `shouldBe` [Number 0]

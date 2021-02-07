@@ -11,6 +11,7 @@ import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
+import Data.Maybe (fromMaybe)
 
 import Numeric (showGFloat)
 
@@ -75,6 +76,10 @@ luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
 
+luarawget :: NativeFunction
+luarawget (Table tr : k : _) = (:[]) . fromMaybe Nil <$> rawGetTableField tr k
+luarawget _ = throwErrorStr "Invalid rawget parameters"
+
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
@@ -137,6 +142,7 @@ loadBaseLibrary = do
     addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
     addNativeFunction "rawset" (BuiltinFunction luarawset)
+    addNativeFunction "rawget" (BuiltinFunction luarawget)
     addNativeFunction "tostring" (BuiltinFunction luatostring)
     addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)

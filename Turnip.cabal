@@ -55,6 +55,7 @@ library
   other-modules:       Turnip.Eval.Closure,
                        Turnip.Eval.Eval,
                        Turnip.Eval.Util,
+                       Turnip.Eval.UtilNumbers,
                        Turnip.Eval.Types,
                        Turnip.Eval.TH,
                        Turnip.Eval.Lib,
@@ -94,6 +95,20 @@ executable main
                        , template-haskell
                        , either
                        , Turnip
+
+    other-modules:     Turnip.AST,
+                       Turnip.Eval,
+                       Turnip.Eval.Closure,
+                       Turnip.Eval.Eval,
+                       Turnip.Eval.Metatables,
+                       Turnip.Eval.Lib,
+                       Turnip.Eval.Types,
+                       Turnip.Eval.TH,
+                       Turnip.Eval.Util,
+                       Turnip.Eval.UtilNumbers,
+                       Turnip.Parser,
+                       Turnip.Repl
+  
     ghc-options: -Wall -Wno-missing-home-modules
 
 test-suite parser

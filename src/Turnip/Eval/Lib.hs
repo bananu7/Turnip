@@ -7,6 +7,7 @@ module Turnip.Eval.Lib (loadBaseLibrary) where
 import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
+import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
@@ -73,7 +74,7 @@ luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expe
 luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
-       
+
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
@@ -91,14 +92,21 @@ luatostring (Boolean False : _) = return [Str "false"]
 luatostring (Number n : _) = return [Str $ showGFloat (decimalDigits n) n ""]
 luatostring _ = throwErrorStr "Wrong argument to 'tostring', value expected"
 
-isInt :: Double -> Bool
-isInt x = x == (fromIntegral ((floor :: Double -> Int) x))
 
-toInt :: Double -> Maybe Int
-toInt x = if isInt x then Just . floor $ x else Nothing
+readNumberBase' :: Double -> String -> LuaM [Value]
+readNumberBase' base s =
+    case toInt base of
+        Just basei -> return $ [readNumberBase basei s]
+        Nothing -> throwErrorStr "Wrong argument #2 to 'tonumber' (base must be an integer)"
 
-decimalDigits :: Double -> Maybe Int
-decimalDigits x = if isInt x then Just 0 else Nothing
+
+luatonumber :: NativeFunction
+luatonumber (Number n : []) = return [Number n]
+luatonumber (Str s : []) = return $ [readNumberBase 10 s]
+luatonumber (Str s : Number base : _) = readNumberBase' base s
+luatonumber (_ : _) = return [Nil]
+luatonumber _ = throwErrorStr "Wrong argument to 'tonumber'"
+
 
 luatype :: NativeFunction
 luatype (Nil : _) = return [Str "nil"]
@@ -130,5 +138,6 @@ loadBaseLibrary = do
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
     addNativeFunction "rawset" (BuiltinFunction luarawset)
     addNativeFunction "tostring" (BuiltinFunction luatostring)
+    addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)
     addNativeFunction "select" (BuiltinFunction luaselect)

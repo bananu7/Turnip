@@ -469,6 +469,53 @@ spec = do
                         ,"return select(2, f())"
                         ]) `shouldBe` [Number 43.0, Number 44.0]
 
+            describe "tonumber" $ do
+                it "number passtrough" $ do
+                    runParse ("return tonumber(0)") `shouldBe` [Number 0]
+                    runParse ("return tonumber(-1)") `shouldBe` [Number (-1)]
+                    runParse ("return tonumber(3.14)") `shouldBe` [Number 3.14]
+                    -- runParse ("return tonumber(1.)") `shouldBe` [Number 1.0] -- TODO - fix Parser!
+                    -- runParse ("return tonumber(.123)") `shouldBe` [Number 0.123] -- TODO - fix Parser!
+
+                describe "string parse" $ do
+                    it "0" $ runParse ("return tonumber(\"0\")") `shouldBe` [Number 0]
+                    it "-1" $ runParse ("return tonumber(\"-1\")") `shouldBe` [Number (-1)]
+                    it "+42" $ runParse ("return tonumber(\"+42\")") `shouldBe` [Number 42]
+                    it "3.14" $ runParse ("return tonumber(\"3.14\")") `shouldBe` [Number 3.14]
+                    it "1." $ runParse ("return tonumber(\"1.\")") `shouldBe` [Number 1.0]
+                    it ".123" $ runParse ("return tonumber(\".123\")") `shouldBe` [Number 0.123]
+
+                describe "whitespace surround" $ do
+                    it " -2" $ runParse ("return tonumber(\" -2\")") `shouldBe` [Number (-2)]
+                    it "-3 " $ runParse ("return tonumber(\"-3 \")") `shouldBe` [Number (-3)]
+                    it " 4 " $ runParse ("return tonumber(\" 4 \")") `shouldBe` [Number 4]
+
+                describe "different base" $ do
+                    it "binary" $ do
+                        runParse ("return tonumber(\"100\", 2)") `shouldBe` [Number 4]
+                        runParse ("return tonumber(\"101\", 2)") `shouldBe` [Number 5]
+                        runParse ("return tonumber(\"110\", 2)") `shouldBe` [Number 6]
+                        runParse ("return tonumber(\"0111\", 2)") `shouldBe` [Number 7]
+                        runParse ("return tonumber(\"01011001\", 2)") `shouldBe` [Number 89] -- ;)
+                    it "negative binary" $
+                        runParse ("return tonumber(\"-1\", 2)") `shouldBe` [Number (-1)]
+                    it "other bases" $ do
+                        runParse ("return tonumber(\"ff\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"FF\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"+ff\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"-ff\", 16)") `shouldBe` [Number (-255)]
+                        runParse ("return tonumber(\"-FF\", 16)") `shouldBe` [Number (-255)]
+                        runParse ("return tonumber(\"10\", 36)") `shouldBe` [Number 36]
+
+                describe "failed conversions" $ do
+                    it "nil" $ runParse ("return tonumber(nil)") `shouldBe` [Nil]
+                    it "{}" $ runParse ("return tonumber({})") `shouldBe` [Nil]
+                    it "false" $ runParse ("return tonumber(false)") `shouldBe` [Nil]
+                    it "true" $ runParse ("return tonumber(true)") `shouldBe` [Nil]
+                    it "function()" $ runParse ("return tonumber(function()end)") `shouldBe` [Nil]
+                    it "\"f\"" $ runParse ("return tonumber(\"f\")") `shouldBe` [Nil]
+                    it "\"3-10\"" $ runParse ("return tonumber(\"3-10\")") `shouldBe` [Nil]
+
         describe "_G" $ do
             it "should expose _G table" $
                 runParse "x = 5; return _G.x" `shouldBe` [Number 5.0]

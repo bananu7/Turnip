@@ -10,7 +10,6 @@ where
 
 import Data.Char (ord)
 import Text.Read (readMaybe)
-import Data.Maybe (fromJust)
 import Turnip.Eval.Types (Value(..))
 import Text.ParserCombinators.Parsec
 
@@ -36,9 +35,10 @@ readNumberBase base input =
                     Nothing -> Nil
                     Just n -> Number n
             else
-                Number (numerize base s)
+                case readBaseMaybe base s of
+                    Nothing -> Nil
+                    Just n -> Number n
 
---return $ sign * (numerize base digits fractionalDigits)
 
 numberStrBase :: Int -> Parser String
 numberStrBase base = do
@@ -97,15 +97,17 @@ isDigitBase base d =
         dist c x = if (ord c - ord x) < 0 then 1000 else (ord c - ord x)
 
 
-numerize :: Int -> String -> Double
-numerize base digits = fst . foldr accum (0 :: Double, 0 :: Int) $ digits
+readBaseMaybe :: Int -> String -> Maybe Double
+readBaseMaybe base ('-':digits) = (* (-1.0)) <$> readBaseMaybe base digits
+readBaseMaybe base digits = fst . foldr accum (Just 0.0 :: Maybe Double, 0 :: Int) $ digits
     where
-        accum d (v, n) = (v + numDigitPos n d, n + 1)
+        accum :: Char -> (Maybe Double, Int) -> (Maybe Double, Int)
+        accum d (v, n) = ((+) <$> v <*> (fromIntegral <$> numDigitPos n d), n + 1)
 
-        numDigitPos :: Int -> Char -> Double
-        numDigitPos n d = fromIntegral $ (numDigit d) * (base ^ n)
+        numDigitPos :: Int -> Char -> Maybe Int
+        numDigitPos n d = ((base ^ n) *) <$> (numDigit d)
 
-        numDigit d = fromJust . digitToIntBase base $ d
+        numDigit d = digitToIntBase base $ d
 
 
 digitToIntBase :: Int -> Char -> Maybe Int

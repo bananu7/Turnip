@@ -497,9 +497,14 @@ spec = do
                         runParse ("return tonumber(\"110\", 2)") `shouldBe` [Number 6]
                         runParse ("return tonumber(\"0111\", 2)") `shouldBe` [Number 7]
                         runParse ("return tonumber(\"01011001\", 2)") `shouldBe` [Number 89] -- ;)
+                    it "negative binary" $
+                        runParse ("return tonumber(\"-1\", 2)") `shouldBe` [Number (-1)]
                     it "other bases" $ do
                         runParse ("return tonumber(\"ff\", 16)") `shouldBe` [Number 255]
                         runParse ("return tonumber(\"FF\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"+ff\", 16)") `shouldBe` [Number 255]
+                        runParse ("return tonumber(\"-ff\", 16)") `shouldBe` [Number (-255)]
+                        runParse ("return tonumber(\"-FF\", 16)") `shouldBe` [Number (-255)]
                         runParse ("return tonumber(\"10\", 36)") `shouldBe` [Number 36]
 
                 describe "failed conversions" $ do

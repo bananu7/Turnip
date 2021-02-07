@@ -470,18 +470,38 @@ spec = do
                         ]) `shouldBe` [Number 43.0, Number 44.0]
 
             describe "rawget" $ do
-                it "without a metatable/__index" $ do
+                it "without a metatable/__index" $
                     runParse (unlines[
                          "t = { x = 42 }"
                         ,"return rawget(t, \"x\")"
                         ]) `shouldBe` [Number 42.0]
-                it "with __index" $ do
+                it "with __index" $
                     runParse (unlines[
                          "t = { x = 42 }"
-                        ,"mt = { __index = function() return 43 end }"
+                        ,"mt = { __index = function(t,i) return 43 end }"
+                        ,"setmetatable(t, { __index = function(t,i) return 43 end })"
+                        ,"return rawget(t, \"x\")"
+                        ]) `shouldBe` [Number 42.0]
+
+            describe "rawlen" $ do
+                it "strings" $ 
+                    runParse (unlines[
+                        "return rawlen(\"xyz\")"
+                        ]) `shouldBe` [Number 3.0]
+
+                it "table w/o __len" $ do
+                    runParse (unlines[
+                         "t = {1,2,3,4}"
+                        ,"return rawlen(t), #t"
+                        ]) `shouldBe` [Number 4.0, Number 4.0]
+
+                it "table with __len" $ do
+                    runParse (unlines[
+                         "t = {1,2,3,4}"
+                        ,"mt = { __len = function() return 42 end }"
                         ,"setmetatable(t, mt)"
-                        ,"return rawget(t, \"x\")"
-                        ]) `shouldBe` [Number 42.0]
+                        ,"return rawlen(t), #t"
+                        ]) `shouldBe` [Number 4.0, Number 42.0]
 
             describe "tonumber" $ do
                 it "number passtrough" $ do

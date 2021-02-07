@@ -80,6 +80,11 @@ luarawget :: NativeFunction
 luarawget (Table tr : k : _) = (:[]) . fromMaybe Nil <$> rawGetTableField tr k
 luarawget _ = throwErrorStr "Invalid rawget parameters"
 
+luarawlen :: NativeFunction
+luarawlen (Str s : _) = return [Number . fromIntegral . length $ s]
+luarawlen (Table tr : _) = (:[]) <$> getTableLength tr
+luarawlen _ = throwErrorStr "Invalid rawget parameters"
+
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
@@ -141,8 +146,11 @@ loadBaseLibrary = do
 
     addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
+
     addNativeFunction "rawset" (BuiltinFunction luarawset)
     addNativeFunction "rawget" (BuiltinFunction luarawget)
+    addNativeFunction "rawlen" (BuiltinFunction luarawlen)
+
     addNativeFunction "tostring" (BuiltinFunction luatostring)
     addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)

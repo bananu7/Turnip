@@ -4,7 +4,7 @@ module Turnip.Eval.Util where
 
 import Turnip.Eval.Types
 import Control.Lens
-import qualified Data.Map as Map (lookup, empty)
+import qualified Data.Map as Map (lookup, empty, lookupMax)
 import Control.Applicative ((<$>))
 import Data.Map
 import Control.Monad.Except (throwError)
@@ -85,6 +85,13 @@ getTableField :: TableRef -> Value -> LuaM Value
 getTableField tr k = rawGetTableField tr k >>= \v -> return $ case v of
     Just vv -> vv
     Nothing -> Nil
+
+getTableLength :: TableRef -> LuaM Value
+getTableLength tr = do
+    (TableData td _) <- getTableData tr
+    case Map.lookupMax td of
+        Just (Number x, _) -> return $ Number x
+        _ -> return $ Number 0
 
 throwErrorStr :: String -> LuaM a
 throwErrorStr = throwError . Str

@@ -331,11 +331,7 @@ opLength (Table tr) = do
     hasMetaLen <- isJust <$> getMetaFunction "__len" (Table tr)
     if hasMetaLen
         then unaryMetaOperator "__len" (Table tr)
-        else do
-            (TableData td _) <- getTableData tr
-            case Map.lookupMax td of
-                Just (Number x, _) -> return [Number x]
-                _ -> return [Number 0]
+        else (:[]) <$> getTableLength tr
 
 opLength Nil = throwErrorStr "Attempt to get length of a nil value" -- :)
 opLength a = unaryMetaOperator "__len" a

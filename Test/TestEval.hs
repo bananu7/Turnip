@@ -580,6 +580,9 @@ spec = do
             it "should expose _G table" $
                 runParse "x = 5; return _G.x" `shouldBe` [Number 5.0]
 
+        it "_VERSION" $ do
+            runParse "return type(_VERSION)" `shouldBe` [Str "string"]
+
         describe "metatables" $ do
             it "should allow setting and getting the metatable" $
                 runParse (unlines [

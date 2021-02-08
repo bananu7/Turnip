@@ -508,6 +508,27 @@ spec = do
                         ,"return rawlen(t), #t"
                         ]) `shouldBe` [Number 4.0, Number 42.0]
 
+            describe "rawequal" $ do
+                it "nil" $
+                    runParse ("return rawequal(nil,nil)") `shouldBe` [Boolean False]
+                it "numbers" $ do
+                    runParse ("return rawequal(1,1)") `shouldBe` [Boolean True]
+                    runParse ("return rawequal(1,2)") `shouldBe` [Boolean False]
+                it "strings" $ do
+                    runParse ("return rawequal(\"\", \"\")") `shouldBe` [Boolean True]
+                    runParse ("return rawequal(\"\", \"x\")") `shouldBe` [Boolean False]
+                describe "tables" $ do
+                    it "without metatable" $
+                        runParse ("return rawequal({}, {})") `shouldBe` [Boolean False]
+                    it "with __eq" $
+                        runParse (unlines[
+                             "t,u = {}, {}"
+                            ,"mt = { __eq = function() return true end }"
+                            ,"setmetatable(t, mt)"
+                            ,"setmetatable(u, mt)"
+                            ,"return t == u, rawequal(t, u)"
+                            ]) `shouldBe` [Boolean True, Boolean False]
+
             describe "tonumber" $ do
                 it "number passtrough" $ do
                     runParse ("return tonumber(0)") `shouldBe` [Number 0]

@@ -13,6 +13,9 @@ import Turnip.Eval.Eval
 import Turnip.Eval.Lib (loadBaseLibrary)
 import Turnip.Eval.Util (throwErrorStr)
 
+import Paths_Turnip (version)
+import Data.Version (showVersion)
+
 runLuaMTWith :: Monad m => Closure -> Context -> LuaMT m a -> m (Either Value a, Context)
 runLuaMTWith c s (LuaMT f) = stripWriter <$> runRWST (runExceptT f) c s
     where
@@ -58,4 +61,7 @@ defaultCtx = Context {
   where
     gTableRef = TableRef 1
     gTable = TableData gTableData Nothing
-    gTableData = Map.fromList [(Str "_G", Table gTableRef)]
+    gTableData = Map.fromList [
+        (Str "_G", Table gTableRef),
+        (Str "_VERSION", Str $ "Turnip " ++ showVersion version)
+        ]

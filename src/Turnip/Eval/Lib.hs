@@ -11,6 +11,7 @@ import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
 import Control.Monad.Except
+import Data.Maybe (fromMaybe)
 
 import Numeric (showGFloat)
 
@@ -75,6 +76,20 @@ luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
 
+luarawget :: NativeFunction
+luarawget (Table tr : k : _) = (:[]) . fromMaybe Nil <$> rawGetTableField tr k
+luarawget _ = throwErrorStr "Invalid rawget parameters"
+
+luarawlen :: NativeFunction
+luarawlen (Str s : _) = return [Number . fromIntegral . length $ s]
+luarawlen (Table tr : _) = (:[]) <$> getTableLength tr
+luarawlen _ = throwErrorStr "Invalid rawget parameters"
+
+luarawequal :: NativeFunction
+luarawequal (Nil : Nil : _) = return [Boolean False]
+luarawequal (a : b : _) = return [Boolean $ a == b]
+luarawequal _ = throwErrorStr "rawequal needs at least two parameters" 
+
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
 luatostring (Table tr : _) = do
@@ -136,7 +151,12 @@ loadBaseLibrary = do
 
     addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
     addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
+
     addNativeFunction "rawset" (BuiltinFunction luarawset)
+    addNativeFunction "rawget" (BuiltinFunction luarawget)
+    addNativeFunction "rawlen" (BuiltinFunction luarawlen)
+    addNativeFunction "rawequal" (BuiltinFunction luarawequal)
+
     addNativeFunction "tostring" (BuiltinFunction luatostring)
     addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)

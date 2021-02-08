@@ -50,7 +50,7 @@ cabal-version:       >=1.10
 
 
 library
-  exposed-modules:     Turnip.Parser, Turnip.AST, Turnip.Eval
+  exposed-modules:     Turnip.Parser, Turnip.AST, Turnip.Eval, Paths_Turnip
   
   other-modules:       Turnip.Eval.Closure,
                        Turnip.Eval.Eval,
@@ -107,7 +107,8 @@ executable main
                        Turnip.Eval.Util,
                        Turnip.Eval.UtilNumbers,
                        Turnip.Parser,
-                       Turnip.Repl
+                       Turnip.Repl,
+                       Paths_Turnip
   
     ghc-options: -Wall -Wno-missing-home-modules
 

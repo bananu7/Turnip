@@ -469,6 +469,66 @@ spec = do
                         ,"return select(2, f())"
                         ]) `shouldBe` [Number 43.0, Number 44.0]
 
+            describe "rawget" $ do
+                it "without a metatable/__index" $
+                    runParse (unlines[
+                         "t = { x = 42 }"
+                        ,"return rawget(t, \"x\")"
+                        ]) `shouldBe` [Number 42.0]
+                it "with __index, missing key" $
+                    runParse (unlines[
+                         "t = { }"
+                        ,"setmetatable(t, { __index = function(t,i) return 43 end })"
+                        ,"return rawget(t, \"x\"), t.x"
+                        ]) `shouldBe` [Nil, Number 43.0]
+                it "with __index, existing key" $
+                    runParse (unlines[
+                         "t = { x = 5 }"
+                        ,"setmetatable(t, { __index = function(t,i) return 43 end })"
+                        ,"return rawget(t, \"x\"), t.x"
+                        ]) `shouldBe` [Number 5.0, Number 5.0]
+
+            describe "rawlen" $ do
+                it "strings" $ 
+                    runParse (unlines[
+                        "return rawlen(\"xyz\")"
+                        ]) `shouldBe` [Number 3.0]
+
+                it "table w/o __len" $ do
+                    runParse (unlines[
+                         "t = {1,2,3,4}"
+                        ,"return rawlen(t), #t"
+                        ]) `shouldBe` [Number 4.0, Number 4.0]
+
+                it "table with __len" $ do
+                    runParse (unlines[
+                         "t = {1,2,3,4}"
+                        ,"mt = { __len = function() return 42 end }"
+                        ,"setmetatable(t, mt)"
+                        ,"return rawlen(t), #t"
+                        ]) `shouldBe` [Number 4.0, Number 42.0]
+
+            describe "rawequal" $ do
+                it "nil" $
+                    runParse ("return rawequal(nil,nil)") `shouldBe` [Boolean False]
+                it "numbers" $ do
+                    runParse ("return rawequal(1,1)") `shouldBe` [Boolean True]
+                    runParse ("return rawequal(1,2)") `shouldBe` [Boolean False]
+                it "strings" $ do
+                    runParse ("return rawequal(\"\", \"\")") `shouldBe` [Boolean True]
+                    runParse ("return rawequal(\"\", \"x\")") `shouldBe` [Boolean False]
+                describe "tables" $ do
+                    it "without metatable" $
+                        runParse ("return rawequal({}, {})") `shouldBe` [Boolean False]
+                    it "with __eq" $
+                        runParse (unlines[
+                             "t,u = {}, {}"
+                            ,"mt = { __eq = function() return true end }"
+                            ,"setmetatable(t, mt)"
+                            ,"setmetatable(u, mt)"
+                            ,"return t == u, rawequal(t, u)"
+                            ]) `shouldBe` [Boolean True, Boolean False]
+
             describe "tonumber" $ do
                 it "number passtrough" $ do
                     runParse ("return tonumber(0)") `shouldBe` [Number 0]
@@ -519,6 +579,9 @@ spec = do
         describe "_G" $ do
             it "should expose _G table" $
                 runParse "x = 5; return _G.x" `shouldBe` [Number 5.0]
+
+        it "_VERSION" $ do
+            runParse "return type(_VERSION)" `shouldBe` [Str "string"]
 
         describe "metatables" $ do
             it "should allow setting and getting the metatable" $

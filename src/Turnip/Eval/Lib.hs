@@ -53,7 +53,7 @@ luaassert (a : []) = if not $ coerceToBool [a] then luaerror [Str "assertion fai
 luaassert _ = throwErrorStr "Bad argument to 'assert': value expected"
 
 luapcall :: NativeFunction
-luapcall (Function fref : _) = ((callRef fref []) >>= prependTrue) `catchError` pcallHandler
+luapcall (Function fref : args) = ((callRef fref args) >>= prependTrue) `catchError` pcallHandler
     where
         prependTrue result = return $ Boolean True : result
         pcallHandler e = return [Boolean False, e]

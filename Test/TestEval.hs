@@ -450,6 +450,13 @@ spec = do
                     runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
                     runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
 
+                it "should properly rely args to the function" $
+                    runParse (unlines[
+                         "x = 1"
+                        ,"pcall(function(nx) x = nx end, 2)"
+                        ,"return x"
+                        ]) `shouldBe` [Number 2.0]
+
             describe "tostring" $ do
                 it "booleans" $ do
                     runParse ("return tostring(true)") `shouldBe` [Str "true"]

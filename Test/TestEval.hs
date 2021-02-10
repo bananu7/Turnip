@@ -420,6 +420,10 @@ spec = do
                 it "error value" $
                     runParseFail "assert(false, 42)" `shouldBe` [Number 42.0]
 
+            describe "error" $ do
+                it "stops the execution and errs out" $
+                    runParseFail "error(42); return 43" `shouldBe` [Number 42.0]
+
             describe "pcall" $ do
                 it "should properly contain simple errors" $ do
                     runParse (unlines[

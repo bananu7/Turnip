@@ -8,6 +8,9 @@ import TestUtil
 runParse :: String -> [Value]
 runParse = successful . run . parse
 
+runParseFail :: String -> [Value]
+runParseFail = failure . run . parse
+
 testFile :: String -> String -> Spec
 testFile desc path =
     runIO (readFile $ "Test/lua/" ++ path) >>=
@@ -409,6 +412,14 @@ spec = do
                     ]) `shouldBe` [Number 5.0, Number 4.0]
 
         describe "standard library" $ do
+            describe "assert" $ do
+                it "not hit if true" $
+                    runParse "assert(true); return 1" `shouldBe` [Number 1.0]
+                it "no description" $
+                    runParseFail "assert(false)" `shouldBe` [Str "assertion failed!"]
+                it "error value" $
+                    runParseFail "assert(false, 42)" `shouldBe` [Number 42.0]
+
             describe "pcall" $ do
                 it "should properly contain simple errors" $ do
                     runParse (unlines[

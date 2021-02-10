@@ -47,6 +47,11 @@ luaerror :: NativeFunction
 luaerror (a:_) = throwError a
 luaerror _ = throwError Nil
 
+luaassert :: NativeFunction
+luaassert (a : msg : _) = if not $ coerceToBool [a] then luaerror [msg] else return [Nil]
+luaassert (a : []) = if not $ coerceToBool [a] then luaerror [Str "assertion failed!"] else return [Nil]
+luaassert _ = throwErrorStr "Bad argument to 'assert': value expected"
+
 luapcall :: NativeFunction
 luapcall (Function fref : _) = ((callRef fref []) >>= prependTrue) `catchError` pcallHandler
     where
@@ -147,6 +152,7 @@ loadBaseLibrary = do
     loadBaseLibraryGen
 
     addNativeFunction "error" (BuiltinFunction luaerror)
+    addNativeFunction "assert" (BuiltinFunction luaassert)
     addNativeFunction "pcall" (BuiltinFunction luapcall)
 
     addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)

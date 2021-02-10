@@ -50,13 +50,16 @@ cabal-version:       >=1.10
 
 
 library
-  exposed-modules:     Turnip.Parser, Turnip.AST, Turnip.Eval, Paths_Turnip
+  exposed-modules:     Turnip.Parser,
+                       Turnip.AST,
+                       Turnip.Eval,
+                       Turnip.Eval.Types,
+                       Paths_Turnip
   
   other-modules:       Turnip.Eval.Closure,
                        Turnip.Eval.Eval,
                        Turnip.Eval.Util,
                        Turnip.Eval.UtilNumbers,
-                       Turnip.Eval.Types,
                        Turnip.Eval.TH,
                        Turnip.Eval.Lib,
                        Turnip.Eval.Metatables

@@ -8,6 +8,9 @@ import TestUtil
 runParse :: String -> [Value]
 runParse = successful . run . parse
 
+runParseFail :: String -> [Value]
+runParseFail = failure . run . parse
+
 testFile :: String -> String -> Spec
 testFile desc path =
     runIO (readFile $ "Test/lua/" ++ path) >>=
@@ -409,6 +412,18 @@ spec = do
                     ]) `shouldBe` [Number 5.0, Number 4.0]
 
         describe "standard library" $ do
+            describe "assert" $ do
+                it "not hit if true" $
+                    runParse "assert(true); return 1" `shouldBe` [Number 1.0]
+                it "no description" $
+                    runParseFail "assert(false)" `shouldBe` [Str "assertion failed!"]
+                it "error value" $
+                    runParseFail "assert(false, 42)" `shouldBe` [Number 42.0]
+
+            describe "error" $ do
+                it "stops the execution and errs out" $
+                    runParseFail "error(42); return 43" `shouldBe` [Number 42.0]
+
             describe "pcall" $ do
                 it "should properly contain simple errors" $ do
                     runParse (unlines[
@@ -434,6 +449,13 @@ spec = do
                 it "should work with non-string errors" $ do
                     runParse ("return pcall(function() error() end)") `shouldBe` [Boolean False, Nil]
                     runParse ("return pcall(function() error(42) end)") `shouldBe` [Boolean False, Number 42]
+
+                it "should properly rely args to the function" $
+                    runParse (unlines[
+                         "x = 1"
+                        ,"pcall(function(nx) x = nx end, 2)"
+                        ,"return x"
+                        ]) `shouldBe` [Number 2.0]
 
             describe "tostring" $ do
                 it "booleans" $ do

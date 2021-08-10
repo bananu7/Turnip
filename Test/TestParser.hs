@@ -84,13 +84,26 @@ spec = do
 
             it "nested table (t[i][u] = v)" $
                 parse "t[i][u] = v" `shouldBe` Block [Assignment [LFieldRef (FieldRef (Var "t") (Var "i")) (Var "u")] [Var "v"]]
-{-}
-        describe "should parse simple comparisons" $ do
-            mapM_ (\op -> it op $ (parse $ "return 1 " ++ show op ++ " 2") 
+
+        describe "should parse boolean operators (comparison and arithmetic)" $ do
+            mapM_ (\(ops, op) -> it ops $ (parse $ "return 1 " ++ ops ++ " 2") 
                             `shouldBe`
                           (Block [Return [BinOp op (Number 1) (Number 2)]])
                   )
-                  [OpEqual, OpNotEqual, OpGreater, OpLess, OpGE, OpLE]-}
+                  [
+                    ("==", OpEqual),
+                    ("~=", OpNotEqual),
+                    (">", OpGreater),
+                    ("<", OpLess),
+                    (">=", OpGE),
+                    ("<=", OpLE),
+                    ("^", OpRaise),
+                    ("*", OpMult),
+                    ("/", OpDivide),
+                    ("%", OpModulo),
+                    ("+", OpPlus),
+                    ("-", OpMinus)
+                  ]
 
         describe "should parse concatenation operator (..)" $ do
             it "simple usage" $ parse "return a .. b" `shouldBe` (Block [Return [BinOp OpConcat (Var "a") (Var "b")]])

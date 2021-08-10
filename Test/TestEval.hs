@@ -110,7 +110,11 @@ spec = do
         describe "functions" $ do
             describe "should eval functions" $ do
                 it "trivial empty" $
-                    runParse "function f() end; return f()" `shouldBe` [Nil]
+                    runParse "function f() end; return f()" `shouldBe` []
+                it "empty return" $
+                    runParse "function f() return end; return f()" `shouldBe` []
+                it "return nil" $ -- see special case #70
+                    runParse "function f() return nil end; return f()" `shouldBe` [Nil]
                 it "simple return" $
                     runParse "function f() return 5 end; return f()" `shouldBe` [Number 5.0]
                 it "return of a passed argument" $

@@ -102,7 +102,7 @@ callFunction (FunctionData cls block names hasVarargs) args = do
             res <- execBlock block
             case res of
                 ReturnBubble vs -> return vs
-                _ -> return [Nil]
+                _ -> return []
 
 evalArgsWithSpill :: [AST.Expr] -> LuaM [Value]
 evalArgsWithSpill [] = return []

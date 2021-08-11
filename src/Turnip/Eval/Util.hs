@@ -76,6 +76,7 @@ makeNewLambda f = do
         return newRef
 
 setTableField :: TableRef -> (Value, Value) -> LuaM ()
+setTableField _    (Nil, _) = throwErrorStr "Table index is nil"
 setTableField tRef (k,v) = LuaMT $ tables . at tRef . traversed . mapData %= insert k v
 
 rawGetTableField :: TableRef -> Value -> LuaM (Maybe Value)

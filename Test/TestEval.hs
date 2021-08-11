@@ -302,6 +302,9 @@ spec = do
             it "should properly pass self to method calls" $ do
                 runParse "t = { x = 5, f = function(self) return self.x end }; return t:f()"
                     `shouldBe` [Number 5.0]
+            it "nil shouldn't be a valid table key" $ do
+                runParseFail "t = {}; t[nil] = 42" `shouldBe` [Str "Table index is nil"]
+                runParseFail "t = { [nil] = 42 }" `shouldBe` [Str "Table index is nil"]
 
         describe "while loop" $ do
             it "should properly skip a loop with a false clause" $ do

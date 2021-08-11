@@ -26,7 +26,15 @@ spec = do
             it "should parse negative numbers" $ do
                 parse "return -3" `shouldBe` Block [Return [UnOp OpUnaryMinus (Number 3.0)]]
                 parse "return -2.9" `shouldBe` Block [Return [UnOp OpUnaryMinus (Number 2.9)]]            
-            it "should parse strings" $ parse "return \"test\"" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "test")
+            describe "string literals" $ do
+                it "doubly quoted" $
+                    parse "return \"test\"" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "test")
+                it "singly quoted" $
+                    parse "return 'test'" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "test")
+                it "singly quoted in doubly quoted" $
+                    parse "return \"abc'ABC'abc\"" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "abc'ABC'abc")
+                it "doubly quoted in singly quoted" $
+                    parse "return 'abc\"ABC\"abc'" `shouldSatisfy` (\(Block [Return [StringLiteral _ s]]) -> s == "abc\"ABC\"abc")
 
             describe "tables" $ do
                 it "empty table literal" $ parse "return {}" `shouldBe` Block [Return [TableCons []]]

@@ -372,7 +372,14 @@ lexer = P.makeTokenParser(
 whiteSpace= P.whiteSpace lexer
 -- lexeme    = P.lexeme lexer
 symbol    = P.symbol lexer
-stringl   = P.stringLiteral lexer
+
+-- Perhaps this should be implemented differently and not as a combination of builtin
+-- and mine, but it seems to work just fine.
+stringl   = try (P.stringLiteral lexer) <|> (singleQuotedLiteral)
+    where
+        singleQuotedLiteral :: Parser String
+        singleQuotedLiteral = (char '\'' *> manyTill anyChar (char '\''))
+
 number    = try (P.float lexer) <|> (fromIntegral <$> (P.integer lexer))
 parens    = P.parens lexer
 semi      = P.semi lexer

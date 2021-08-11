@@ -36,6 +36,7 @@ uniqueTableRef = LuaMT $ do
 coerceToBool :: [Value] -> Bool
 coerceToBool (Boolean x:_) = x
 coerceToBool (Nil:_) = False
+coerceToBool (Number n:_) = not $ isNaN n
 coerceToBool (_h:_) = True
 coerceToBool _ = False
 

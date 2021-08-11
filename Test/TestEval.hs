@@ -81,6 +81,8 @@ spec = do
                         runParse "return false or 3" `shouldBe` [Number 3.0]
                         runParse "return nil or 4" `shouldBe` [Number 4.0]
                         runParse "return false or true" `shouldBe` [Boolean True]
+                    it "NaN coerces to false" $
+                        runParse "return 0/0 or 42" `shouldBe` [Number 42.0]
                     it "both coerced false" $ do
                         runParse "return false or nil" `shouldBe` [Nil]
                         runParse "return nil or nil" `shouldBe` [Nil]

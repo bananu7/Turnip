@@ -5,7 +5,6 @@ module Turnip.Eval.Util where
 import Turnip.Eval.Types
 import Control.Lens
 import qualified Data.Map as Map (lookup, empty, lookupMax)
-import Control.Applicative ((<$>))
 import Data.Map
 import Control.Monad.Except (throwError)
 

@@ -221,12 +221,23 @@ eval (AST.TableCons entries) = do
                 setTableField tr (Number (fromIntegral ix), v)            
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
-evalExpressionList :: [AST.Expr] -> LuaM [Value]
-evalExpressionList xs = do
+evalForExpressionList :: [AST.Expr] -> LuaM (Value, Value, Value)
+evalForExpressionList xs = do
+    -- this is a bit confusing. if multiple expressions are on one comma-sep
+    -- list, all but the last one will only have their heads taken, while the
+    -- last one is fully unrolled
+
     front <- mapM evalHead (init xs)
     remainingPack <- eval (last xs)
 
-    return $ front ++ remainingPack
+    -- if, after that, there's less than 3 elements remaining, they
+    -- are filled with Nils
+    let result =  front ++ remainingPack
+    return $ case result of
+        []          -> (Nil, Nil, Nil)
+        (f:[])      -> (f, Nil, Nil)
+        (f:s:[])    -> (f, s, Nil)
+        (f:s:v:_)   -> (f, s, v)
 
 --------------
 
@@ -465,7 +476,7 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
     -- (When we use simple iterators, the factory returns
     -- only the iterator function, so the invariant state
     -- and the control variable get nil.)
-    [f, s, var] <- padWithNils 3 <$> evalExpressionList explist
+    (f, s, var) <- evalForExpressionList explist
 
     -- A function reference is (hopefully )returned after evaluating
     -- the explist

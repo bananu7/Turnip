@@ -1,7 +1,8 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 
 module Turnip.Eval
-    ( runWith
+    ( run
+    , runWith
     , runWithM
     , evalWith
     , evalWithM
@@ -58,6 +59,15 @@ blockRunner b = do
     case result of
         ReturnBubble vs -> return vs
         _ -> throwErrorStr "The block didn't end with a returned result"
+
+
+-- Those default runners are just for testing
+runM :: forall m. Monad m => AST.Block -> m (Either Value [Value])
+runM b = fst <$> runWithM defaultCtx b
+
+-- helper for pure usage
+run :: AST.Block -> Either Value [Value]
+run b = runIdentity $ runM b
 
 defaultCtx :: Context
 defaultCtx = Context {

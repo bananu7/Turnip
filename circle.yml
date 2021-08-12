@@ -2,20 +2,18 @@ version: 2
 jobs:
   build:
     docker:
-      - image: bananu7/haskell:0.0.1
+      - image: bananu7/haskell:lts-18.5
     steps:
       - checkout
       - restore_cache:
           keys: 
-            - stack-deps-10.5
-            - stack-deps-8.21
-            - stack-deps
+            - stack-deps-18.5
       - run: stack setup
       - run: stack clean
       - run: stack test --no-run-tests
       - run: stack test
       - save_cache:
-          key: stack-deps-10.5
+          key: stack-deps-18.5
           paths:
             - ".stack-work"
             - "/root/.stack"

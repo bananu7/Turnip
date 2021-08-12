@@ -18,10 +18,10 @@ data ReplConfig = ReplConfig
   , interactive      :: Bool
   }
 
-data ReplBlock = ReplBlock AST.Block | ReplExpr [AST.Expr]
+data ReplBlock = ReplBlock AST.Block | ReplExpr AST.Expr
 
 replBlock :: Parser ReplBlock
-replBlock = (ReplBlock . AST.Block <$> block) <|> (ReplExpr <$> explist)
+replBlock = (ReplExpr <$> expr) <|> (ReplBlock . AST.Block <$> block)
 
 parseLuaRepl :: String -> Either ParseError ReplBlock
 parseLuaRepl = parse replBlock ""
@@ -67,8 +67,8 @@ repl cfg = do
             Right (ReplBlock b) -> do
                 maybeResult <- state $ \s -> runWith s b
                 printResult maybeResult
-            Right (ReplExpr xs) -> do
-                maybeResult <- mapM_ (\x -> state $ \s -> evalWith s x) xs
+            Right (ReplExpr e) -> do
+                maybeResult <- state $ \s -> evalWith s e
                 printResult maybeResult
             Left err ->
                 liftIO . putStrLn $ "Parse error " ++ show err

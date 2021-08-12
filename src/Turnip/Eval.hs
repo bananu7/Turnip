@@ -34,6 +34,9 @@ runWithM ctx b = runLuaMT ctx (blockRunner b)
 runWith :: Context -> AST.Block -> (Either Value [Value], Context)
 runWith ctx b = runIdentity $ runWithM ctx b
 
+evalWith :: Context -> AST.Expr -> (Either Value [Value], Context)
+evalWith ctx e = runIdentity $ evalWithM ctx e
+
 -- In this case Either is used both explicitely (with lift)
 -- and implicitly (with its MonadError instance)
 blockRunner :: forall m. Monad m => AST.Block -> LuaMT m [Value]

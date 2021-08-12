@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-} -- a lot of helpers
 {-# OPTIONS_GHC -Wno-unused-do-bind #-} -- annoying discards of static data
 
-module Turnip.Parser( prettyLuaFromFile, parseLua ) where
+module Turnip.Parser( prettyLuaFromFile, parseLua, block, explist) where
 
 import Turnip.AST
 
@@ -18,6 +18,7 @@ import Data.Maybe
 
 parseLua :: String -> Either ParseError Block
 parseLua text = parse program "" text
+
 
 -- This is for parser testing
 prettyLuaFromFile :: FilePath -> IO ()

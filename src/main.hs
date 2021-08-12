@@ -1,10 +1,26 @@
 module Main where
 
+import Options.Applicative
+
 import Turnip.Repl
-import Turnip.Eval (defaultCtx)
+
+replConfig :: Parser ReplConfig
+replConfig = ReplConfig
+      <$> strOption
+          ( long "file"
+         <> short 'f'
+         <> metavar "PATH"
+         <> value ""
+         <> help "File to run" )
+      <*> switch
+          ( long "interactive"
+         <> short 'i'
+         <> help "Whether to be quiet" )
 
 main :: IO ()
-main = do
-    let ctx = defaultCtx
-    ctx' <- handleCommandLine ctx
-    repl ctx'
+main = repl =<< execParser opts
+  where
+    opts = info (replConfig <**> helper)
+      ( fullDesc
+     <> progDesc "Print a greeting for TARGET"
+     <> header "Turnip REPL" )

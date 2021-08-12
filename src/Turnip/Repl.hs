@@ -6,18 +6,14 @@ import Turnip.Parser
 import Turnip.Eval
 import Control.Monad.State
 import System.IO
-import System.Environment (getArgs)
 
 import Paths_Turnip (version)
 import Data.Version (showVersion)
 
-handleCommandLine :: Context -> IO Context
-handleCommandLine ctx = do
-    args <- getArgs
-
-    case args of
-        (path:_) -> runFileFromCommandline path ctx
-        _ -> return ctx
+data ReplConfig = ReplConfig
+  { file             :: String
+  , interactive      :: Bool
+  }
 
 runFileFromCommandline :: String -> Context -> IO Context
 runFileFromCommandline path ctx = do
@@ -39,12 +35,17 @@ runFileFromCommandline path ctx = do
 disableBuffering :: IO ()
 disableBuffering = hSetBuffering stdout NoBuffering
 
-repl :: Context -> IO ()
-repl ctx = do
+repl :: ReplConfig -> IO ()
+repl cfg = do
+    let ctx = defaultCtx
     disableBuffering 
     putStrLn $ "Turnip REPL v" ++ showVersion version ++ "\n"
 
-    (flip evalStateT) ctx $ forever $ do
+    ctx' <- case file cfg of
+                "" -> return ctx
+                filePath -> runFileFromCommandline filePath ctx
+
+    (flip evalStateT) ctx' $ forever $ do
         line <- liftIO $ do
             putStr "> "
             getLine

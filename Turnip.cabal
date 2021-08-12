@@ -97,6 +97,7 @@ executable main
                        , lens
                        , template-haskell
                        , either
+                       , optparse-applicative >= 0.16
                        , Turnip
 
     other-modules:     Turnip.AST,

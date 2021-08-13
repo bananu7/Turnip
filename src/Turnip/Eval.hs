@@ -20,7 +20,6 @@ import Control.Monad.Except
 import Turnip.Eval.Types
 import Turnip.Eval.Eval
 import Turnip.Eval.Lib (loadBaseLibrary)
-import Turnip.Eval.Util (throwErrorStr)
 
 import Paths_Turnip (version)
 import Data.Version (showVersion)
@@ -58,7 +57,7 @@ blockRunner b = do
     result <- execBlock b
     case result of
         ReturnBubble vs -> return vs
-        _ -> throwErrorStr "The block didn't end with a returned result"
+        _ -> return []
 
 
 -- Those default runners are just for testing

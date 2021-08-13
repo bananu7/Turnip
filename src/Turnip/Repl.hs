@@ -11,7 +11,7 @@ import Paths_Turnip (version)
 import Data.Version (showVersion)
 
 import qualified Turnip.AST as AST
-import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>))
+import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>), try)
 
 data ReplConfig = ReplConfig
   { file             :: String
@@ -21,7 +21,7 @@ data ReplConfig = ReplConfig
 data ReplBlock = ReplBlock AST.Block | ReplExpr AST.Expr
 
 replBlock :: Parser ReplBlock
-replBlock = (ReplExpr <$> expr) <|> (ReplBlock . AST.Block <$> block)
+replBlock = try (ReplExpr <$> expr) <|> (ReplBlock . AST.Block <$> block)
 
 parseLuaRepl :: String -> Either ParseError ReplBlock
 parseLuaRepl = parse replBlock ""

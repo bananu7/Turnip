@@ -37,8 +37,7 @@ runFileFromCommandline path ctx = do
                 maybeResult <- state $ \s -> runWith s ast
                 case maybeResult of
                     Right result -> liftIO $ print result
-                    Left err -> do
-                        liftIO . putStrLn $ "Lua error " ++ show err
+                    Left err -> liftIO . putStrLn $ "Lua error " ++ show err
 
             Left err -> do
                 liftIO . putStrLn $ "Parse error " ++ show err
@@ -57,9 +56,7 @@ repl cfg = do
                 filePath -> runFileFromCommandline filePath ctx
 
     (flip evalStateT) ctx' $ forever $ do
-        line <- liftIO $ do
-            putStr "> "
-            getLine
+        line <- liftIO $ putStr "> " >> getLine
 
         let maybeAST = parseLuaRepl line
 
@@ -73,6 +70,8 @@ repl cfg = do
             Left err ->
                 liftIO . putStrLn $ "Parse error " ++ show err
     where
+        -- don't print empty result value (still prints Nil)
+        printResult (Right []) = return ()
         printResult (Right result) = liftIO $ print result
         printResult (Left err) = liftIO . putStrLn $ "Lua error " ++ show err
 

@@ -412,12 +412,13 @@ runUntil (h:t) f = do
         -- if there was no bubble breaking the block execution
         -- just move on to the next statement
         EmptyBubble -> runUntil t f
+        -- if there was, return that bubble
         x -> return x
         
 runUntil [] _ = return EmptyBubble
 
 execBlock :: AST.Block -> LuaM Bubble
-execBlock (AST.Block stmts) = runUntil stmts $ \stmt -> execStmt stmt
+execBlock (AST.Block stmts) = runUntil stmts execStmt
 
 execStmt :: AST.Stmt -> LuaM Bubble
 

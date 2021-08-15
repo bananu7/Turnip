@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-} -- a lot of helpers
 {-# OPTIONS_GHC -Wno-unused-do-bind #-} -- annoying discards of static data
 
-module Turnip.Parser( prettyLuaFromFile, parseLua ) where
+module Turnip.Parser( prettyLuaFromFile, parseLua, block, expr) where
 
 import Turnip.AST
 

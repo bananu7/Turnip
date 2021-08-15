@@ -64,6 +64,7 @@ library
                        Turnip.Eval.Lib,
                        Turnip.Eval.Metatables,
                        Turnip.PrettyPrint
+                       Turnip.Eval.GC
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    

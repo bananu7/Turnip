@@ -17,7 +17,6 @@ import Control.Lens hiding (Context)
 import Control.Monad.Except
 import Control.Monad.RWS
 
--- TODO - think about reference counting on those
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 

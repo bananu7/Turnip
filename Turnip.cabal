@@ -10,7 +10,7 @@ name:                Turnip
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.6.1.1
+version:             0.6.2.0
 
 -- A short (one-line) description of the package.
 synopsis:            Pure Lua VM for Haskell.

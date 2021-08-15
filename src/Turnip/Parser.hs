@@ -19,7 +19,6 @@ import Data.Maybe
 parseLua :: String -> Either ParseError Block
 parseLua text = parse program "" text
 
-
 -- This is for parser testing
 prettyLuaFromFile :: FilePath -> IO ()
 prettyLuaFromFile fname = do

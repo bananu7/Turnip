@@ -1,7 +1,7 @@
 module Turnip.PrettyPrint where
 
 import Turnip.AST as AST
-import qualified Turnip.Eval.Types
+import qualified Turnip.Eval.Types as Eval
 
 import Data.List (intercalate)
 import Numeric
@@ -57,7 +57,9 @@ instance PrettyPrint Block where
     prettyPrint (Block stmts) = "\n" ++ (intercalate "\n" . map prettyPrint $ stmts)
 
 -- for live values
-instance PrettyPrint Turnip.Eval.Types.Value where
-    prettyPrint (Turnip.Eval.Types.Number n) = showFFloat (Just 0) n ""
+instance PrettyPrint Eval.Value where
+    prettyPrint (Eval.Number n) = showFFloat (Just 0) n ""
+    prettyPrint (Eval.Str s) = "\"" ++ s ++ "\""
+    prettyPrint (Eval.Boolean b) = show b
     prettyPrint x = show x
 

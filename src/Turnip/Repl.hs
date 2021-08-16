@@ -11,6 +11,7 @@ import Paths_Turnip (version)
 import Data.Version (showVersion)
 
 import qualified Turnip.AST as AST
+import Turnip.PrettyPrint
 import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>), try, eof)
 
 data ReplConfig = ReplConfig
@@ -72,6 +73,6 @@ repl cfg = do
     where
         -- don't print empty result value (still prints Nil)
         printResult (Right []) = return ()
-        printResult (Right result) = liftIO $ print result
+        printResult (Right result) = liftIO . putStrLn . concatMap prettyPrint $ result
         printResult (Left err) = liftIO . putStrLn $ "Lua error " ++ show err
 

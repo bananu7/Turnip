@@ -62,7 +62,8 @@ library
                        Turnip.Eval.UtilNumbers,
                        Turnip.Eval.TH,
                        Turnip.Eval.Lib,
-                       Turnip.Eval.Metatables
+                       Turnip.Eval.Metatables,
+                       Turnip.PrettyPrint
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    
@@ -111,6 +112,7 @@ executable main
                        Turnip.Eval.Util,
                        Turnip.Eval.UtilNumbers,
                        Turnip.Parser,
+                       Turnip.PrettyPrint,
                        Turnip.Repl,
                        Paths_Turnip
   

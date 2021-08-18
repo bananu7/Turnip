@@ -63,7 +63,7 @@ type TableMapData = Map.Map Value Value
 data TableData = TableData {
     _mapData :: TableMapData,
     _metatable :: Maybe TableRef -- Can be either nil or some table
-    }
+    } deriving Show
 
 data Context = Context {
     _gRef :: TableRef,

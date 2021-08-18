@@ -18,7 +18,7 @@ import Data.Maybe (fromMaybe)
 import Numeric (showGFloat)
 
 -- for diagnostic
-import qualified Data.Map as Map (size)
+import qualified Data.Map as Map (size, map)
 import Control.Monad.State (get)
 
 -- math helpers

@@ -16,6 +16,7 @@ import Data.Version (showVersion)
 import Control.Monad.State
 import System.IO
 import Control.Monad.Except (catchError)
+import Data.List (intercalate)
 
 data ReplConfig = ReplConfig
   { file             :: String
@@ -65,7 +66,7 @@ repl cfg = do
 
 printResult :: MonadIO m => [Value] -> LuaMT m ()
 printResult [] = return () -- don't print empty result value (still prints Nil)
-printResult result = liftIO . putStrLn . concatMap prettyPrint $ result
+printResult result = liftIO . putStrLn . intercalate ", " . map prettyPrint $ result
 
 printError :: MonadIO m => Value -> LuaMT m ()
 printError err = liftIO . putStrLn $ "Lua error " ++ show err

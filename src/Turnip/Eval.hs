@@ -1,11 +1,12 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 
 module Turnip.Eval
-    ( run
+    ( runWithDefault
     , runWith
     , runWithM
     , evalWith
     , evalWithM
+    , runLuaMT
     , defaultCtx
     , Context()
     , Value(..)
@@ -24,49 +25,42 @@ import Turnip.Eval.Lib (loadBaseLibrary)
 import Paths_Turnip (version)
 import Data.Version (showVersion)
 
-runLuaMTWith :: Monad m => Closure -> Context -> LuaMT m a -> m (Either Value a, Context)
-runLuaMTWith c s (LuaMT f) = stripWriter <$> runRWST (runExceptT f) c s
+execBlockResult :: forall m. Monad m => AST.Block -> LuaMT m [Value]
+execBlockResult b = extractResult <$> execBlock b
+    where 
+        extractResult (ReturnBubble vs) = vs
+        extractResult _ = []
+
+runLuaMTWith :: Monad m => Closure -> LuaMT m a -> Context -> m (Either Value a, Context)
+runLuaMTWith cls (LuaMT f) ctx = stripWriter <$> runRWST (runExceptT f) cls ctx
     where
-        stripWriter (r, c', _w) = (r, c')
+        stripWriter (r, c, _w) = (r, c)
 
 -- This is for when you don't care about the closure (want to run code globally)
-runLuaMT :: Monad m => Context -> LuaMT m a -> m (Either Value a, Context)
+runLuaMT :: Monad m => LuaMT m a -> Context -> m (Either Value a, Context)
 runLuaMT = runLuaMTWith []
 
 -- Context isn't under Either because it's always modified up to
 -- the point where the error happened.
-runWithM :: Monad m => Context -> AST.Block -> m (Either Value [Value], Context)
-runWithM ctx b = runLuaMT ctx (blockRunner b)
-
-evalWithM :: Monad m => Context -> AST.Expr -> m (Either Value [Value], Context)
-evalWithM ctx e = runLuaMT ctx (eval e)
+runWithM :: Monad m => AST.Block -> Context -> m (Either Value [Value], Context)
+runWithM b = runLuaMT (execBlockResult b) 
 
 -- helper for pure usage
-runWith :: Context -> AST.Block -> (Either Value [Value], Context)
-runWith ctx b = runIdentity $ runWithM ctx b
+runWith :: AST.Block -> Context -> (Either Value [Value], Context)
+runWith b = runIdentity . runWithM b
 
-evalWith :: Context -> AST.Expr -> (Either Value [Value], Context)
-evalWith ctx e = runIdentity $ evalWithM ctx e
+evalWithM :: Monad m => AST.Expr -> Context -> m (Either Value [Value], Context)
+evalWithM e = runLuaMT (eval e)
 
--- In this case Either is used both explicitely (with lift)
--- and implicitly (with its MonadError instance)
-blockRunner :: forall m. Monad m => AST.Block -> LuaMT m [Value]
-blockRunner b = do
-    -- TODO loadBaseLibrary should be only called once for a given context
-    loadBaseLibrary
-    result <- execBlock b
-    case result of
-        ReturnBubble vs -> return vs
-        _ -> return []
-
+evalWith :: AST.Expr -> Context -> (Either Value [Value], Context)
+evalWith e = runIdentity . evalWithM e
 
 -- Those default runners are just for testing
-runM :: forall m. Monad m => AST.Block -> m (Either Value [Value])
-runM b = fst <$> runWithM defaultCtx b
+runWithDefaultM :: forall m. Monad m => AST.Block -> m (Either Value [Value])
+runWithDefaultM b = fst <$> runLuaMT (loadBaseLibrary >> execBlockResult b) defaultCtx
 
--- helper for pure usage
-run :: AST.Block -> Either Value [Value]
-run b = runIdentity $ runM b
+runWithDefault :: AST.Block -> Either Value [Value]
+runWithDefault b = runIdentity $ runWithDefaultM b
 
 defaultCtx :: Context
 defaultCtx = Context {

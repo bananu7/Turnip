@@ -6,10 +6,10 @@ import Turnip.Eval
 import TestUtil
 
 runParse :: String -> [Value]
-runParse = successful . run . parse
+runParse = successful . runWithDefault . parse
 
 runParseFail :: String -> [Value]
-runParseFail = failure . run . parse
+runParseFail = failure . runWithDefault . parse
 
 testFile :: String -> String -> Spec
 testFile desc path =

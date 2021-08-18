@@ -5,6 +5,8 @@ import Test.Hspec
 import Turnip.Eval
 import TestUtil
 
+import Data.List (isPrefixOf)
+
 runParse :: String -> [Value]
 runParse = successful . runWithDefault . parse
 
@@ -606,6 +608,13 @@ spec = do
                     it "function()" $ runParse ("return tonumber(function()end)") `shouldBe` [Nil]
                     it "\"f\"" $ runParse ("return tonumber(\"f\")") `shouldBe` [Nil]
                     it "\"3-10\"" $ runParse ("return tonumber(\"3-10\")") `shouldBe` [Nil]
+
+            describe "loadstring" $ do
+                it "loads trivial code" $
+                    runParse ("loadstring('x = 1')(); return x") `shouldBe` [Number 1]
+                it "properly fails on wrong code" $
+                    runParseFail ("loadstring('this is not lua code')") `shouldSatisfy` (\[Str err] -> "Parse error" `isPrefixOf` err)
+
 
         describe "_G" $ do
             it "should expose _G table" $

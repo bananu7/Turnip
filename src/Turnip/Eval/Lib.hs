@@ -10,6 +10,7 @@ import Turnip.Eval.Util
 import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, call)
 import Turnip.Eval.Metatables
+import qualified Turnip.Parser as Parser
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
 
@@ -147,6 +148,16 @@ luaselect (Number n : args) =
         Nothing -> throwErrorStr "Wrong argument to select (number has no integer representation)"
 luaselect _ = throwErrorStr "Wrong argument to select, either number or string '#' required."
 
+lualoadstring :: NativeFunction
+lualoadstring (Str src : _) = do
+    b <- case Parser.parseLua src of
+            Right block -> return block
+            Left err -> throwErrorStr $ "Parse error: " ++ show err
+
+    f <- makeNewLambda (FunctionData [] b [] False)
+    return [Function f]
+lualoadstring _ = throwErrorStr "Wrong argument to loadstring, string required."
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
@@ -167,3 +178,5 @@ loadBaseLibrary = do
     addNativeFunction "tonumber" (BuiltinFunction luatonumber)
     addNativeFunction "type" (BuiltinFunction luatype)
     addNativeFunction "select" (BuiltinFunction luaselect)
+
+    addNativeFunction "loadstring" (BuiltinFunction lualoadstring)

@@ -10,11 +10,16 @@ import Turnip.Eval.Util
 import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, callFunction, call)
 import Turnip.Eval.Metatables
+import Turnip.Eval.GC
 import qualified Turnip.Parser as Parser
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
 
 import Numeric (showGFloat)
+
+-- for diagnostic
+import qualified Data.Map as Map (size)
+import Control.Monad.State (get)
 
 -- math helpers
 deg :: Floating a => a -> a
@@ -178,6 +183,14 @@ loadstring src = do
     f <- makeNewLambda (FunctionData [] b [] False)
     return [Function f]
 
+luacollectgarbage :: NativeFunction
+luacollectgarbage _ = gc >> return []
+
+diagnostic :: NativeFunction
+diagnostic _ = do
+    (Context _ fs ts _) <- get
+    return [Number . fromIntegral . Map.size $ fs, Number . fromIntegral . Map.size $ ts]
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
@@ -201,3 +214,7 @@ loadBaseLibrary = do
 
     -- loadstring has been removed in 5.2
     addNativeFunction "load" (BuiltinFunction luaload)
+
+    addNativeFunction "collectgarbage" (BuiltinFunction luacollectgarbage)
+
+    addNativeFunction "diagnostic" (BuiltinFunction diagnostic)

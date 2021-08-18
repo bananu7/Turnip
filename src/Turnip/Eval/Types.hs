@@ -21,9 +21,7 @@ newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
 newtype LuaMT m a = LuaMT (ExceptT Value (RWST Closure () Context m) a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadError Value)
-
--- MonadState Context is not provided on purpose
+    deriving (Functor, Applicative, Monad, MonadIO, MonadError Value, MonadState Context)
 
 -- potentially I could provide those, but the user can also add them himself
 -- MonadCont, MonadReader Closure, MonadWriter (if ever)

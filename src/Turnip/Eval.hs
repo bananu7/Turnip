@@ -1,11 +1,9 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
 
 module Turnip.Eval
-    ( runWithDefault
-    , runWith
-    , runWithM
-    , evalWith
-    , evalWithM
+    ( eval
+    , execBlockResult
+    , runWithDefault
     , runLuaMT
     , defaultCtx
     , Context()
@@ -39,21 +37,6 @@ runLuaMTWith cls (LuaMT f) ctx = stripWriter <$> runRWST (runExceptT f) cls ctx
 -- This is for when you don't care about the closure (want to run code globally)
 runLuaMT :: Monad m => LuaMT m a -> Context -> m (Either Value a, Context)
 runLuaMT = runLuaMTWith []
-
--- Context isn't under Either because it's always modified up to
--- the point where the error happened.
-runWithM :: Monad m => AST.Block -> Context -> m (Either Value [Value], Context)
-runWithM b = runLuaMT (execBlockResult b) 
-
--- helper for pure usage
-runWith :: AST.Block -> Context -> (Either Value [Value], Context)
-runWith b = runIdentity . runWithM b
-
-evalWithM :: Monad m => AST.Expr -> Context -> m (Either Value [Value], Context)
-evalWithM e = runLuaMT (eval e)
-
-evalWith :: AST.Expr -> Context -> (Either Value [Value], Context)
-evalWith e = runIdentity . evalWithM e
 
 -- Those default runners are just for testing
 runWithDefaultM :: forall m. Monad m => AST.Block -> m (Either Value [Value])

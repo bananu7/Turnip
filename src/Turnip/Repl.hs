@@ -1,18 +1,21 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Turnip.Repl where
+module Turnip.Repl (repl, ReplConfig(..)) where
 
-import Turnip.Parser
+import qualified Turnip.Parser as Parser
 import Turnip.Eval
-import Control.Monad.State
-import System.IO
+import Turnip.Eval.Lib (loadBaseLibrary)
+import Turnip.Eval.Types (LuaMT)
+import qualified Turnip.AST as AST
+import Turnip.PrettyPrint
+import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>), try, eof)
 
 import Paths_Turnip (version)
 import Data.Version (showVersion)
 
-import qualified Turnip.AST as AST
-import Turnip.PrettyPrint
-import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>), try, eof)
+import Control.Monad.State
+import System.IO
+import Control.Monad.Except (catchError)
 
 data ReplConfig = ReplConfig
   { file             :: String
@@ -22,57 +25,51 @@ data ReplConfig = ReplConfig
 data ReplBlock = ReplBlock AST.Block | ReplExpr AST.Expr deriving (Show, Eq)
 
 replBlock :: Parser ReplBlock
-replBlock = try (ReplExpr <$> expr <* eof) <|> (ReplBlock . AST.Block <$> block <* eof)
+replBlock = try (ReplExpr <$> Parser.expr <* eof) <|> (ReplBlock . AST.Block <$> Parser.block <* eof)
 
 parseLuaRepl :: String -> Either ParseError ReplBlock
 parseLuaRepl = parse replBlock ""
 
-runFileFromCommandline :: String -> Context -> IO Context
-runFileFromCommandline path ctx = do
-    source <- readFile path
-    flip execStateT ctx $ do
-        let maybeAST = parseLua source
+runFileFromCommandline :: (MonadIO m) => String -> LuaMT m ()
+runFileFromCommandline path = do
+    source <- liftIO $ readFile path
 
-        case maybeAST of
-            Right ast -> do
-                maybeResult <- state $ \s -> runWith s ast
-                case maybeResult of
-                    Right result -> liftIO $ print result
-                    Left err -> liftIO . putStrLn $ "Lua error " ++ show err
-
-            Left err -> do
-                liftIO . putStrLn $ "Parse error " ++ show err
+    let maybeAST = Parser.parseLua source
+    case maybeAST of
+        Right block -> (execBlockResult block >>= printResult) `catchError` printError
+        Left err -> printParseError err
 
 disableBuffering :: IO ()
 disableBuffering = hSetBuffering stdout NoBuffering
 
 repl :: ReplConfig -> IO ()
 repl cfg = do
-    let ctx = defaultCtx
     disableBuffering 
     putStrLn $ "Turnip REPL v" ++ showVersion version ++ "\n"
 
-    ctx' <- case file cfg of
-                "" -> return ctx
-                filePath -> runFileFromCommandline filePath ctx
+    _ <- flip runLuaMT defaultCtx $ do
+        loadBaseLibrary
 
-    (flip evalStateT) ctx' $ forever $ do
-        line <- liftIO $ putStr "> " >> getLine
+        let filePath = file cfg
+        when (filePath /= "") $ runFileFromCommandline filePath
 
-        let maybeAST = parseLuaRepl line
+        forever $ do
+            line <- liftIO $ putStr "> " >> getLine
 
-        case maybeAST of
-            Right (ReplBlock b) -> do
-                maybeResult <- state $ \s -> runWith s b
-                printResult maybeResult
-            Right (ReplExpr e) -> do
-                maybeResult <- state $ \s -> evalWith s e
-                printResult maybeResult
-            Left err ->
-                liftIO . putStrLn $ "Parse error " ++ show err
-    where
-        -- don't print empty result value (still prints Nil)
-        printResult (Right []) = return ()
-        printResult (Right result) = liftIO . putStrLn . concatMap prettyPrint $ result
-        printResult (Left err) = liftIO . putStrLn $ "Lua error " ++ show err
+            let maybeAST = parseLuaRepl line
+            case maybeAST of
+                Right (ReplBlock b) -> (execBlockResult b >>= printResult) `catchError` printError
+                Right (ReplExpr e)  -> (eval e >>= printResult) `catchError` printError
+                Left err            -> printParseError err
+    return ()
+
+printResult :: MonadIO m => [Value] -> LuaMT m ()
+printResult [] = return () -- don't print empty result value (still prints Nil)
+printResult result = liftIO . putStrLn . concatMap prettyPrint $ result
+
+printError :: MonadIO m => Value -> LuaMT m ()
+printError err = liftIO . putStrLn $ "Lua error " ++ show err
+
+printParseError :: MonadIO m => ParseError -> LuaMT m ()
+printParseError err = liftIO . putStrLn $ "Parse error " ++ show err
 

@@ -8,7 +8,7 @@ import Turnip.Eval.Types
 import Turnip.Eval.TH
 import Turnip.Eval.Util
 import Turnip.Eval.UtilNumbers
-import Turnip.Eval.Eval (callRef, call)
+import Turnip.Eval.Eval (callRef, callFunction, call)
 import Turnip.Eval.Metatables
 import qualified Turnip.Parser as Parser
 import Control.Monad.Except
@@ -148,15 +148,35 @@ luaselect (Number n : args) =
         Nothing -> throwErrorStr "Wrong argument to select (number has no integer representation)"
 luaselect _ = throwErrorStr "Wrong argument to select, either number or string '#' required."
 
-lualoadstring :: NativeFunction
-lualoadstring (Str src : _) = do
-    b <- case Parser.parseLua src of
-            Right block -> return block
-            Left err -> throwErrorStr $ "Parse error: " ++ show err
+luaload :: NativeFunction -- ld, source, mode, env
+luaload (Str src : _) = loadstring src
+luaload (Function f : _) = do
+    fd <- getFunctionData f
+    src <- getChunkSource fd ""
+    loadstring src
 
+    where
+        getChunkSource fd src = do
+            chunkPiece <- callFunction fd []
+            case chunkPiece of
+                -- https://www.lua.org/manual/5.4/manual.html#pdf-load
+                -- "Each call to ld must return a string that concatenates with previous results.
+                -- A return of an empty string, nil, or no value signals the end of the chunk."
+                []       -> return src
+                [Str ""] -> return src
+                [Nil]    -> return src
+                [Str s]  -> getChunkSource fd (src ++ s)
+                _ -> throwErrorStr "Function passed to 'load' didn't return a string."
+
+luaload _ = throwErrorStr "Wrong argument to loadstring, string required."
+
+loadstring :: String -> LuaM [Value]
+loadstring src = do
+    b <- case Parser.parseLua src of
+        Right block -> return block
+        Left err -> throwErrorStr $ "Parse error: " ++ show err
     f <- makeNewLambda (FunctionData [] b [] False)
     return [Function f]
-lualoadstring _ = throwErrorStr "Wrong argument to loadstring, string required."
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
@@ -179,4 +199,5 @@ loadBaseLibrary = do
     addNativeFunction "type" (BuiltinFunction luatype)
     addNativeFunction "select" (BuiltinFunction luaselect)
 
-    addNativeFunction "loadstring" (BuiltinFunction lualoadstring)
+    -- loadstring has been removed in 5.2
+    addNativeFunction "load" (BuiltinFunction luaload)

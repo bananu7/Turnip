@@ -82,10 +82,14 @@ setTableField tRef (k,v) = LuaMT $ tables . at tRef . traversed . mapData %= ins
 rawGetTableField :: TableRef -> Value -> LuaM (Maybe Value)
 rawGetTableField tRef k = (^. mapData . at k) <$> getTableData tRef
 
+rawGetTableFieldByIndex :: TableRef -> Int -> LuaM (Maybe (Value, Value))
+rawGetTableFieldByIndex tRef i = (^. mapData . elemAt i) <$> getTableData tRef
+
 getTableField :: TableRef -> Value -> LuaM Value
-getTableField tr k = rawGetTableField tr k >>= \v -> return $ case v of
-    Just vv -> vv
-    Nothing -> Nil
+getTableField tr k = maybe const Nil <$> rawGetTableField tr k
+
+getTableFieldByIndex :: TableRef -> Int -> LuaM (Value, Value)
+getTableFieldByIndex tr i = maybe const (Nil, Nil) <$> rawGetTableFieldByIndex
 
 getTableLength :: TableRef -> LuaM Value
 getTableLength tr = do

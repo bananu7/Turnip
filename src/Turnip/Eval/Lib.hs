@@ -178,6 +178,28 @@ loadstring src = do
     f <- makeNewLambda (FunctionData [] b [] False)
     return [Function f]
 
+luanext :: NativeFunction
+luanext (Table tr : _)       = do
+    (k,v) <- getTableFieldByIndex tr 0
+    return [k, v]
+luanext (Table tr : Nil : _) = do
+    (k,v) <- getTableFieldByIndex tr 0
+    return [k, v]
+luanext (Table tr : i : _)   = do
+    td <- getTableData tr
+    let ix = lookupIndex i $ (td ^. mapData)
+
+    case ix of
+        Nothing -> return [Nil]
+    let (k,v) = getTableFieldByIndex tr (ix + 1)
+    [k, v]
+
+luanext _ = throwErrorStr "Wrong argument to 'next', table and  required."
+
+luapairs :: NativeFunction
+luapairs (Table tr : _) = -- call next or someshit
+luapairs _ = throwErrorStr "Wrong argument to 'pairs', table required."
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen

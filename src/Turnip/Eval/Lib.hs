@@ -201,32 +201,37 @@ luanext (Table tr : _)       = do
     
 luanext _ = throwErrorStr "Wrong argument to 'next', table [and key] required."
 
-luapairs :: NativeFunction
-luapairs (Table tr : _) = error "Not implemented yet - luapairs" -- call next or someshit
-luapairs _ = throwErrorStr "Wrong argument to 'pairs', table required."
+ -- directly from https://www.lua.org/pil/7.3.html
+ -- it takes a reference to `next` which it depends on
+genluapairs :: FunctionRef -> NativeFunction
+genluapairs nextRef (Table tr : _) = return [Function nextRef, Table tr, Nil]
+genluapairs _ _ = throwErrorStr "Wrong argument to 'pairs', table required."
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
 
-    addNativeFunction "error" (BuiltinFunction luaerror)
-    addNativeFunction "assert" (BuiltinFunction luaassert)
-    addNativeFunction "pcall" (BuiltinFunction luapcall)
+    _ <- addNativeFunction "error" (BuiltinFunction luaerror)
+    _ <- addNativeFunction "assert" (BuiltinFunction luaassert)
+    _ <- addNativeFunction "pcall" (BuiltinFunction luapcall)
 
-    addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
-    addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
+    _ <- addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
+    _ <- addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
 
-    addNativeFunction "rawset" (BuiltinFunction luarawset)
-    addNativeFunction "rawget" (BuiltinFunction luarawget)
-    addNativeFunction "rawlen" (BuiltinFunction luarawlen)
-    addNativeFunction "rawequal" (BuiltinFunction luarawequal)
+    _ <- addNativeFunction "rawset" (BuiltinFunction luarawset)
+    _ <- addNativeFunction "rawget" (BuiltinFunction luarawget)
+    _ <- addNativeFunction "rawlen" (BuiltinFunction luarawlen)
+    _ <- addNativeFunction "rawequal" (BuiltinFunction luarawequal)
 
-    addNativeFunction "tostring" (BuiltinFunction luatostring)
-    addNativeFunction "tonumber" (BuiltinFunction luatonumber)
-    addNativeFunction "type" (BuiltinFunction luatype)
-    addNativeFunction "select" (BuiltinFunction luaselect)
+    _ <- addNativeFunction "tostring" (BuiltinFunction luatostring)
+    _ <- addNativeFunction "tonumber" (BuiltinFunction luatonumber)
+    _ <- addNativeFunction "type" (BuiltinFunction luatype)
+    _ <- addNativeFunction "select" (BuiltinFunction luaselect)
 
     -- loadstring has been removed in 5.2
-    addNativeFunction "load" (BuiltinFunction luaload)
+    _ <- addNativeFunction "load" (BuiltinFunction luaload)
 
-    addNativeFunction "next" (BuiltinFunction luanext)
+    _ <- addNativeFunction "next" (BuiltinFunction luanext) >>= \nextRef ->
+            addNativeFunction "pairs" (BuiltinFunction (genluapairs nextRef))
+
+    return ()

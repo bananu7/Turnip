@@ -45,16 +45,18 @@ genDecls es = concat <$> mapM (\(sig, _, tempName, origName) -> genDec sig tempN
 
 genLibLoadFunction :: [Entry] -> Q [Dec]
 genLibLoadFunction xs = do
-    let stmts = mapM toAddFunctionStatement xs
-    let body = stmts >>= return . DoE    
+    decls <- mapM toAddFunctionStatement xs
+    ret <- noBindS [e| return () |]
+
+    let body = return . DoE $ (decls ++ [ret])
 
     [d|
         loadBaseLibraryGen :: Eval.LuaM ()
-        loadBaseLibraryGen = $( body )
+        loadBaseLibraryGen = $(body)
         |]
     where
         toAddFunctionStatement :: Entry -> Q Stmt
-        toAddFunctionStatement (_, luaName, tempName, _) = noBindS $ [e| addNativeFunction $(litE $ stringL luaName) (Eval.BuiltinFunction $(varE tempName)) |]
+        toAddFunctionStatement (_, luaName, tempName, _) = bindS wildP [e| addNativeFunction $(litE $ stringL luaName) (Eval.BuiltinFunction $(varE tempName)) |]
 
 -- |Generates a declaration of a function compatible with Lua interface
 -- @param tempName - the new name

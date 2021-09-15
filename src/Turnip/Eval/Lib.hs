@@ -178,26 +178,101 @@ loadstring src = do
     f <- makeNewLambda (FunctionData [] b [] False)
     return [Function f]
 
+-- TODO: duplication
+luanext :: NativeFunction
+luanext (Table tr : Nil : _) = do
+    f <- getFirstTableField tr
+    case f of
+        (Nil, Nil) -> return [Nil]
+        (k,v) -> return [k, v]
+
+luanext (Table tr : k : _)   = do
+    f <- getNextTableField tr k
+    case f of
+        Just (Nil, Nil) -> return [Nil]
+        Just (k',v) -> return [k', v]
+        Nothing -> throwErrorStr "Wrong argument no 'next', invalid key"
+
+luanext (Table tr : _)       = do
+    f <- getFirstTableField tr
+    case f of
+        (Nil, Nil) -> return [Nil]
+        (k,v) -> return [k, v]
+    
+luanext _ = throwErrorStr "Wrong argument to 'next', table [and key] required."
+
+ -- directly from https://www.lua.org/pil/7.3.html
+ -- it takes a reference to `next` which it depends on
+ -- Lua allows the C API to push C functions to the stack directly;
+ -- maybe I could change the types to allow that somehow?
+genluapairs :: FunctionRef -> NativeFunction 
+genluapairs nextRef (x : _) = do
+    mpairs <- getMetaFunction "__pairs" x
+    case mpairs of
+        Just pairs -> callRef pairs [x]
+        Nothing -> return [Function nextRef, x, Nil]
+genluapairs _ _ = throwErrorStr "Wrong argument to 'pairs' (value expected)"
+
+{- This is directly based on 7.3 as well:
+
+    function iter (a, i)
+      i = i + 1
+      local v = a[i]
+      if v then
+        return i, v
+      end
+    end
+
+    function ipairs (a)
+      return iter, a, 0
+    end
+-}
+
+luaiter :: NativeFunction
+luaiter (Table tr : Number i : _) = do
+    v <- getTableField tr (Number $ i+1)
+    if coerceToBool [v]
+        then return [Number $ i+1, v]
+        else return []
+luaiter _ = throwErrorStr "Wrong argument to 'iter', table and index required."
+
+genluaipairs :: FunctionRef -> NativeFunction
+genluaipairs iterRef (x : _) = do
+    mipairs <- getMetaFunction "__ipairs" x
+    case mipairs of
+        Just ipairs -> callRef ipairs [x]
+        Nothing -> return [Function iterRef, x, Number 0]
+genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs', table required."
+
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     loadBaseLibraryGen
 
-    addNativeFunction "error" (BuiltinFunction luaerror)
-    addNativeFunction "assert" (BuiltinFunction luaassert)
-    addNativeFunction "pcall" (BuiltinFunction luapcall)
+    _ <- addNativeFunction "error" (BuiltinFunction luaerror)
+    _ <- addNativeFunction "assert" (BuiltinFunction luaassert)
+    _ <- addNativeFunction "pcall" (BuiltinFunction luapcall)
 
-    addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
-    addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
+    _ <- addNativeFunction "getmetatable" (BuiltinFunction luagetmetatable)
+    _ <- addNativeFunction "setmetatable" (BuiltinFunction luasetmetatable)
 
-    addNativeFunction "rawset" (BuiltinFunction luarawset)
-    addNativeFunction "rawget" (BuiltinFunction luarawget)
-    addNativeFunction "rawlen" (BuiltinFunction luarawlen)
-    addNativeFunction "rawequal" (BuiltinFunction luarawequal)
+    _ <- addNativeFunction "rawset" (BuiltinFunction luarawset)
+    _ <- addNativeFunction "rawget" (BuiltinFunction luarawget)
+    _ <- addNativeFunction "rawlen" (BuiltinFunction luarawlen)
+    _ <- addNativeFunction "rawequal" (BuiltinFunction luarawequal)
 
-    addNativeFunction "tostring" (BuiltinFunction luatostring)
-    addNativeFunction "tonumber" (BuiltinFunction luatonumber)
-    addNativeFunction "type" (BuiltinFunction luatype)
-    addNativeFunction "select" (BuiltinFunction luaselect)
+    _ <- addNativeFunction "tostring" (BuiltinFunction luatostring)
+    _ <- addNativeFunction "tonumber" (BuiltinFunction luatonumber)
+    _ <- addNativeFunction "type" (BuiltinFunction luatype)
+    _ <- addNativeFunction "select" (BuiltinFunction luaselect)
 
     -- loadstring has been removed in 5.2
-    addNativeFunction "load" (BuiltinFunction luaload)
+    _ <- addNativeFunction "load" (BuiltinFunction luaload)
+
+    nextRef <- addNativeFunction "next" (BuiltinFunction luanext)
+    _ <- addNativeFunction "pairs" (BuiltinFunction (genluapairs nextRef))
+
+    iterRef <- createNativeFunction (BuiltinFunction luaiter)
+    _ <- addNativeFunction "ipairs" (BuiltinFunction (genluaipairs iterRef))
+
+    return ()

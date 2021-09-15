@@ -435,6 +435,46 @@ spec = do
                 it "stops the execution and errs out" $
                     runParseFail "error(42); return 43" `shouldBe` [Number 42.0]
 
+            describe "next" $ do
+                it "properly returns nil on an empty table" $ do
+                    runParse "return next({})" `shouldBe` [Nil]
+                    runParse "return next({}, nil)" `shouldBe` [Nil]
+                it "properly returns first result in a numeric table" $ do
+                    runParse "return next({4,5,6})" `shouldBe` [Number 1, Number 4]
+                    runParse "return next({4,5,6}, nil)" `shouldBe` [Number 1, Number 4]
+                it "properly returns first result in a keyed table" $ do
+                    runParse "return next({x = 1, y = 2, z = 3})" `shouldBe` [Str "x", Number 1]
+                    runParse "return next({x = 1, y = 2, z = 3}, nil)" `shouldBe` [Str "x", Number 1]
+                it "properly iterates until the end in a numeric table" $
+                    runParse (unlines[
+                         "t={4,5,6}"
+                        ,"a,b = next(t)"    -- 1,4
+                        ,"c,d = next(t,a)"  -- 2,5
+                        ,"e,f = next(t,c)"  -- 3,6
+                        ,"g = next(t, e)" -- nil
+                        ,"return a,b,c,d,e,f,g"
+                        ]) `shouldBe` (map Number [1,4,2,5,3,6]) ++ [Nil]
+
+            describe "pairs" $ do
+                -- one could add a test that verifies whether pairs returns next etc.
+                -- but I think that a functional test is preferrable here.
+                it "allows iteration" $
+                    runParse (unlines[
+                         "t={4, 5, x=6, 7}"
+                        ,"u={}"
+                        ,"for k,v in pairs(t) do u[k]=v end"
+                        ,"return u[1], u[2], u[3], u.x"
+                        ]) `shouldBe` [Number 4, Number 5, Number 7, Number 6]
+
+            describe "ipairs" $ do
+                it "allows iteration" $
+                    runParse (unlines[
+                         "t={4, 5, x=6, 7}"
+                        ,"u={}"
+                        ,"for k,v in ipairs(t) do u[k] = v end"
+                        ,"return u[1], u[2], u[3], u.x"
+                        ]) `shouldBe` [Number 4, Number 5, Number 7, Nil]
+
             describe "pcall" $ do
                 it "should properly contain simple errors" $ do
                     runParse (unlines[
@@ -793,6 +833,20 @@ spec = do
                         ,"setmetatable(t, { x = 3, __metatable = { x = 4 }})"
                         ,"return getmetatable(t).x"
                     ]) `shouldBe` [Number 4.0]
+
+                it "should allow setting __pairs" $
+                    runParse (unlines [
+                         "t={}"
+                        ,"setmetatable(t, { __pairs = function() return 42 end })"
+                        ,"return pairs(t)"
+                    ]) `shouldBe` [Number 42]
+
+                it "should allow setting __ipairs" $
+                    runParse (unlines [
+                         "t={}"
+                        ,"setmetatable(t, { __ipairs = function() return 42 end })"
+                        ,"return ipairs(t)"
+                    ]) `shouldBe` [Number 42]
 
 main :: IO ()
 main = hspec spec

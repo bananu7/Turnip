@@ -203,9 +203,38 @@ luanext _ = throwErrorStr "Wrong argument to 'next', table [and key] required."
 
  -- directly from https://www.lua.org/pil/7.3.html
  -- it takes a reference to `next` which it depends on
+ -- Lua allows the C API to push C functions to the stack directly;
+ -- maybe I could change the types to allow that somehow?
 genluapairs :: FunctionRef -> NativeFunction
 genluapairs nextRef (Table tr : _) = return [Function nextRef, Table tr, Nil]
 genluapairs _ _ = throwErrorStr "Wrong argument to 'pairs', table required."
+
+{- This is directly based on 7.3 as well:
+
+    function iter (a, i)
+      i = i + 1
+      local v = a[i]
+      if v then
+        return i, v
+      end
+    end
+
+    function ipairs (a)
+      return iter, a, 0
+    end
+-}
+
+luaiter :: NativeFunction
+luaiter (Table tr : Number i : _) = do
+    v <- getTableField tr (Number $ i+1)
+    if coerceToBool [v]
+        then return [Number $ i+1, v]
+        else return []
+luaiter _ = throwErrorStr "Wrong argument to 'iter', table and index required."
+
+genluaipairs :: FunctionRef -> NativeFunction
+genluaipairs iterRef (Table tr : _) = return [Function iterRef, Table tr, Number 0]
+genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs', table required."
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
@@ -231,7 +260,10 @@ loadBaseLibrary = do
     -- loadstring has been removed in 5.2
     _ <- addNativeFunction "load" (BuiltinFunction luaload)
 
-    _ <- addNativeFunction "next" (BuiltinFunction luanext) >>= \nextRef ->
-            addNativeFunction "pairs" (BuiltinFunction (genluapairs nextRef))
+    nextRef <- addNativeFunction "next" (BuiltinFunction luanext)
+    _ <- addNativeFunction "pairs" (BuiltinFunction (genluapairs nextRef))
+
+    iterRef <- createNativeFunction (BuiltinFunction luaiter)
+    _ <- addNativeFunction "ipairs" (BuiltinFunction (genluaipairs iterRef))
 
     return ()

@@ -454,6 +454,27 @@ spec = do
                         ,"g = next(t, e)" -- nil
                         ,"return a,b,c,d,e,f,g"
                         ]) `shouldBe` (map Number [1,4,2,5,3,6]) ++ [Nil]
+
+            describe "pairs" $ do
+                --it "returns a default set" $
+                --    runParse "return pairs({})" `should` [Function ]
+                it "allows iteration" $
+                    runParse (unlines[
+                         "t={4, 5, x=6, 7}"
+                        ,"u={}"
+                        ,"for k,v in pairs(t) do u[k]=v end"
+                        ,"return u[1], u[2], u[3], u.x"
+                        ]) `shouldBe` [Number 4, Number 5, Number 7, Number 6]
+
+            describe "ipairs" $ do
+                it "allows iteration" $
+                    runParse (unlines[
+                         "t={4, 5, x=6, 7}"
+                        ,"u={}"
+                        ,"for k,v in ipairs(t) do u[k] = v end"
+                        ,"return u[1], u[2], u[3], u.x"
+                        ]) `shouldBe` [Number 4, Number 5, Number 7, Nil]
+
             describe "pcall" $ do
                 it "should properly contain simple errors" $ do
                     runParse (unlines[

@@ -48,15 +48,22 @@ extractVal (Just v) = v
 getGlobalTableRef :: LuaM TableRef
 getGlobalTableRef = LuaMT $ use gRef
 
+setGlobal :: Value -> Value -> LuaM ()
+setGlobal k v = LuaMT $ do
+    gTabRef <- use gRef
+    tables . at gTabRef . traversed . mapData . at k .= Just v
+
+createNativeFunction :: FunctionData -> LuaM FunctionRef
+createNativeFunction fdata = do
+    newRef <- uniqueFunctionRef
+    LuaMT $ functions . at newRef .= Just fdata
+    return newRef
+
 addNativeFunction :: String -> FunctionData -> LuaM FunctionRef
 addNativeFunction name fdata = do
-    newRef <- uniqueFunctionRef
-    LuaMT $ do
-        functions . at newRef .= Just fdata
-
-        gTabRef <- use gRef
-        tables . at gTabRef . traversed . mapData . at (Str name) .= Just (Function newRef)
-        return newRef
+    newRef <- createNativeFunction fdata
+    setGlobal (Str name) (Function newRef)
+    return newRef
 
 makeNewTableWith :: TableMapData -> LuaM TableRef
 makeNewTableWith initial = do

@@ -834,5 +834,19 @@ spec = do
                         ,"return getmetatable(t).x"
                     ]) `shouldBe` [Number 4.0]
 
+                it "should allow setting __pairs" $
+                    runParse (unlines [
+                         "t={}"
+                        ,"setmetatable(t, { __pairs = function() return 42 end })"
+                        ,"return pairs(t)"
+                    ]) `shouldBe` [Number 42]
+
+                it "should allow setting __ipairs" $
+                    runParse (unlines [
+                         "t={}"
+                        ,"setmetatable(t, { __ipairs = function() return 42 end })"
+                        ,"return ipairs(t)"
+                    ]) `shouldBe` [Number 42]
+
 main :: IO ()
 main = hspec spec

@@ -205,9 +205,13 @@ luanext _ = throwErrorStr "Wrong argument to 'next', table [and key] required."
  -- it takes a reference to `next` which it depends on
  -- Lua allows the C API to push C functions to the stack directly;
  -- maybe I could change the types to allow that somehow?
-genluapairs :: FunctionRef -> NativeFunction
-genluapairs nextRef (Table tr : _) = return [Function nextRef, Table tr, Nil]
-genluapairs _ _ = throwErrorStr "Wrong argument to 'pairs', table required."
+genluapairs :: FunctionRef -> NativeFunction 
+genluapairs nextRef (x : _) = do
+    mpairs <- getMetaFunction "__pairs" x
+    case mpairs of
+        Just pairs -> callRef pairs [x]
+        Nothing -> return [Function nextRef, x, Nil]
+genluapairs _ _ = throwErrorStr "Wrong argument to 'pairs' (value expected)"
 
 {- This is directly based on 7.3 as well:
 
@@ -233,8 +237,13 @@ luaiter (Table tr : Number i : _) = do
 luaiter _ = throwErrorStr "Wrong argument to 'iter', table and index required."
 
 genluaipairs :: FunctionRef -> NativeFunction
-genluaipairs iterRef (Table tr : _) = return [Function iterRef, Table tr, Number 0]
+genluaipairs iterRef (x : _) = do
+    mipairs <- getMetaFunction "__ipairs" x
+    case mipairs of
+        Just ipairs -> callRef ipairs [x]
+        Nothing -> return [Function iterRef, x, Number 0]
 genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs', table required."
+
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do

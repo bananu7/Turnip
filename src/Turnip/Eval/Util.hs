@@ -4,7 +4,7 @@ module Turnip.Eval.Util where
 
 import Turnip.Eval.Types
 import Control.Lens
-import qualified Data.Map as Map (lookup, empty, lookupMax)
+import qualified Data.Map as Map (lookup, empty, lookupMax, split, findMin, notMember, null)
 import Data.Map
 import Control.Monad.Except (throwError)
 
@@ -77,19 +77,30 @@ makeNewLambda f = do
 
 setTableField :: TableRef -> (Value, Value) -> LuaM ()
 setTableField _    (Nil, _) = throwErrorStr "Table index is nil"
-setTableField tRef (k,v) = LuaMT $ tables . at tRef . traversed . mapData %= insert k v
+setTableField tr (k,v) = LuaMT $ tables . at tr . traversed . mapData %= insert k v
 
 rawGetTableField :: TableRef -> Value -> LuaM (Maybe Value)
-rawGetTableField tRef k = (^. mapData . at k) <$> getTableData tRef
-
-rawGetTableFieldByIndex :: TableRef -> Int -> LuaM (Maybe (Value, Value))
-rawGetTableFieldByIndex tRef i = (^. mapData . elemAt i) <$> getTableData tRef
+rawGetTableField tr k = (^. mapData . at k) <$> getTableData tr
 
 getTableField :: TableRef -> Value -> LuaM Value
-getTableField tr k = maybe const Nil <$> rawGetTableField tr k
+getTableField tr k = maybe Nil id <$> rawGetTableField tr k
 
-getTableFieldByIndex :: TableRef -> Int -> LuaM (Value, Value)
-getTableFieldByIndex tr i = maybe const (Nil, Nil) <$> rawGetTableFieldByIndex
+getFirstTableField :: TableRef -> LuaM (Value, Value)
+getFirstTableField tr = Map.findMin . (^. mapData) <$> getTableData tr
+
+-- This is a Maybe Value because Nil is a legitimate result, while
+-- Nothing means that the passed key doesn't exist and errors out;
+-- this mirrors the behavior of the original next.
+getNextTableField :: TableRef -> Value -> LuaM (Maybe (Value, Value))
+getNextTableField tr k = do
+    md <- (^. mapData) <$> getTableData tr
+    if Map.notMember k md then
+        return Nothing
+    else
+        let (_, right) = Map.split k md in
+        return . Just $ if Map.null right
+            then (Nil, Nil)
+            else Map.findMin right
 
 getTableLength :: TableRef -> LuaM Value
 getTableLength tr = do

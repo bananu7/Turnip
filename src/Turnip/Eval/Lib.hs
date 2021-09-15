@@ -180,24 +180,22 @@ loadstring src = do
 
 luanext :: NativeFunction
 luanext (Table tr : _)       = do
-    (k,v) <- getTableFieldByIndex tr 0
+    (k,v) <- getFirstTableField tr
     return [k, v]
 luanext (Table tr : Nil : _) = do
-    (k,v) <- getTableFieldByIndex tr 0
+    (k,v) <- getFirstTableField tr
     return [k, v]
-luanext (Table tr : i : _)   = do
-    td <- getTableData tr
-    let ix = lookupIndex i $ (td ^. mapData)
-
-    case ix of
-        Nothing -> return [Nil]
-    let (k,v) = getTableFieldByIndex tr (ix + 1)
-    [k, v]
-
-luanext _ = throwErrorStr "Wrong argument to 'next', table and  required."
+luanext (Table tr : k : _)   = do
+    p <- getNextTableField tr k
+    case p of
+        Just (Nil, Nil) -> return [Nil]
+        Just (k,v) -> return [k, v]
+        Nothing -> throwErrorStr "Wrong argument no 'next', invalid key"
+    
+luanext _ = throwErrorStr "Wrong argument to 'next', table [and key] required."
 
 luapairs :: NativeFunction
-luapairs (Table tr : _) = -- call next or someshit
+luapairs (Table tr : _) = error "Not implemented yet - luapairs" -- call next or someshit
 luapairs _ = throwErrorStr "Wrong argument to 'pairs', table required."
 
 loadBaseLibrary :: LuaM ()

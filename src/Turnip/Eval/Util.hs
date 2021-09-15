@@ -86,7 +86,11 @@ getTableField :: TableRef -> Value -> LuaM Value
 getTableField tr k = maybe Nil id <$> rawGetTableField tr k
 
 getFirstTableField :: TableRef -> LuaM (Value, Value)
-getFirstTableField tr = Map.findMin . (^. mapData) <$> getTableData tr
+getFirstTableField tr = do
+    md <- (^. mapData) <$> getTableData tr
+    if Map.null md
+        then return (Nil, Nil)
+        else return (Map.findMin md)
 
 -- This is a Maybe Value because Nil is a legitimate result, while
 -- Nothing means that the passed key doesn't exist and errors out;

@@ -178,19 +178,26 @@ loadstring src = do
     f <- makeNewLambda (FunctionData [] b [] False)
     return [Function f]
 
+-- TODO: duplication
 luanext :: NativeFunction
-luanext (Table tr : _)       = do
-    (k,v) <- getFirstTableField tr
-    return [k, v]
 luanext (Table tr : Nil : _) = do
-    (k,v) <- getFirstTableField tr
-    return [k, v]
+    f <- getFirstTableField tr
+    case f of
+        (Nil, Nil) -> return [Nil]
+        (k,v) -> return [k, v]
+
 luanext (Table tr : k : _)   = do
-    p <- getNextTableField tr k
-    case p of
+    f <- getNextTableField tr k
+    case f of
         Just (Nil, Nil) -> return [Nil]
-        Just (k,v) -> return [k, v]
+        Just (k',v) -> return [k', v]
         Nothing -> throwErrorStr "Wrong argument no 'next', invalid key"
+
+luanext (Table tr : _)       = do
+    f <- getFirstTableField tr
+    case f of
+        (Nil, Nil) -> return [Nil]
+        (k,v) -> return [k, v]
     
 luanext _ = throwErrorStr "Wrong argument to 'next', table [and key] required."
 
@@ -221,3 +228,5 @@ loadBaseLibrary = do
 
     -- loadstring has been removed in 5.2
     addNativeFunction "load" (BuiltinFunction luaload)
+
+    addNativeFunction "next" (BuiltinFunction luanext)

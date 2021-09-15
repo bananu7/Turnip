@@ -435,6 +435,25 @@ spec = do
                 it "stops the execution and errs out" $
                     runParseFail "error(42); return 43" `shouldBe` [Number 42.0]
 
+            describe "next" $ do
+                it "properly returns nil on an empty table" $ do
+                    runParse "return next({})" `shouldBe` [Nil]
+                    runParse "return next({}, nil)" `shouldBe` [Nil]
+                it "properly returns first result in a numeric table" $ do
+                    runParse "return next({4,5,6})" `shouldBe` [Number 1, Number 4]
+                    runParse "return next({4,5,6}, nil)" `shouldBe` [Number 1, Number 4]
+                it "properly returns first result in a keyed table" $ do
+                    runParse "return next({x = 1, y = 2, z = 3})" `shouldBe` [Str "x", Number 1]
+                    runParse "return next({x = 1, y = 2, z = 3}, nil)" `shouldBe` [Str "x", Number 1]
+                it "properly iterates until the end in a numeric table" $
+                    runParse (unlines[
+                         "t={4,5,6}"
+                        ,"a,b = next(t)"    -- 1,4
+                        ,"c,d = next(t,a)"  -- 2,5
+                        ,"e,f = next(t,c)"  -- 3,6
+                        ,"g = next(t, e)" -- nil
+                        ,"return a,b,c,d,e,f,g"
+                        ]) `shouldBe` (map Number [1,4,2,5,3,6]) ++ [Nil]
             describe "pcall" $ do
                 it "should properly contain simple errors" $ do
                     runParse (unlines[

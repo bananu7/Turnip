@@ -456,8 +456,8 @@ spec = do
                         ]) `shouldBe` (map Number [1,4,2,5,3,6]) ++ [Nil]
 
             describe "pairs" $ do
-                --it "returns a default set" $
-                --    runParse "return pairs({})" `should` [Function ]
+                -- one could add a test that verifies whether pairs returns next etc.
+                -- but I think that a functional test is preferrable here.
                 it "allows iteration" $
                     runParse (unlines[
                          "t={4, 5, x=6, 7}"

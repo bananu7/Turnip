@@ -22,3 +22,11 @@ getMetaFunction fstr v = do
                 Just (Function fr) -> return $ Just fr
                 _                  -> return Nothing
         Nothing -> return Nothing
+
+getMetatableHider :: Value -> LuaM (Maybe Value)
+getMetatableHider v = do
+    mt <- getMetatable v
+    case mt of
+        Just mtr -> rawGetTableField mtr (Str "__metatable")
+        Nothing -> return Nothing
+

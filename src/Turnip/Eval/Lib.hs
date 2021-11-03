@@ -12,6 +12,7 @@ import Turnip.Eval.Eval (callRef, callFunction, call)
 import Turnip.Eval.Metatables
 import qualified Turnip.Parser as Parser
 import Control.Monad.Except
+import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
 
 import Numeric (showGFloat)
@@ -76,7 +77,11 @@ luasetmetatable (Table tr : Table mtr : _) = do
 luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
 
 luagetmetatable :: NativeFunction
-luagetmetatable (v : _) = maybe [v] (:[]) <$> (getMetatableHider v)
+luagetmetatable (v : _) = do
+    mth <- getMetatableHider v
+    mt <- getMetatable v
+    return $ maybe [Nil] (:[]) (mth <|> (Table <$> mt))
+
 luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expected"
 
 

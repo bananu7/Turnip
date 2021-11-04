@@ -679,6 +679,9 @@ spec = do
                     ,"return getmetatable(a).x"
                     ]) `shouldBe` [Number 8.0]
 
+            it "default tables should have no metatable" $
+                runParse "return getmetatable({})" `shouldBe` [Nil]
+
             describe "metatable operators" $ do
                 it "should allow setting the __unm metafunction" $
                     runParse (unlines [

@@ -1,49 +1,21 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Turnip.Eval.Lib (loadBaseLibrary) where
 
 import Turnip.Eval.Types
-import Turnip.Eval.TH
 import Turnip.Eval.Util
 import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, callFunction, call)
 import Turnip.Eval.Metatables
 import qualified Turnip.Parser as Parser
+
+import qualified Turnip.Eval.Lib.Math as Math (loadBaseLibraryGen)
+
 import Control.Monad.Except
 import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
-
 import Numeric (showGFloat)
-
--- math helpers
-deg :: Floating a => a -> a
-deg x = x / pi * 180
-
-$(do
-    entries <- sequence [
-        -- math
-         entry (Sig [NumberT] NumberT) "math.abs" 'abs
-        ,entry (Sig [NumberT] NumberT) "math.acos" 'acos
-        ,entry (Sig [NumberT] NumberT) "math.asin" 'asin
-        ,entry (Sig [NumberT] NumberT) "math.atan" 'asin
-        ,entry (Sig [NumberT, NumberT] NumberT) "math.atan2" 'atan2
-        --,entry (Sig [NumberT] NumberT) "math.ceil" 'ceiling
-        ,entry (Sig [NumberT] NumberT) "math.cos" 'cos
-        ,entry (Sig [NumberT] NumberT) "math.cosh" 'cosh
-        ,entry (Sig [NumberT] NumberT) "math.deg" 'deg
-        ,entry (Sig [NumberT] NumberT) "math.exp" 'exp
-        --,entry (Sig [NumberT] NumberT) "math.floor" 'floor
-        --,entry (Sig [NumberT] NumberT) "math.fmod" 'fmod
-        --,entry (Sig [NumberT] NumberT) "math.frexp" 'frexp
-        ]
-
-    temps <- genDecls entries
-    loadLib <- genLibLoadFunction entries
-
-    return $ temps ++ loadLib
- )
 
 luaerror :: NativeFunction
 luaerror (a:_) = throwError a
@@ -260,7 +232,7 @@ genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs' (value expected)"
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
-    loadBaseLibraryGen
+    Math.loadBaseLibraryGen "math"
 
     _ <- addNativeFunction "error" (BuiltinFunction luaerror)
     _ <- addNativeFunction "assert" (BuiltinFunction luaassert)

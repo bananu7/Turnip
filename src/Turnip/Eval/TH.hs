@@ -44,19 +44,17 @@ genDecls :: [Entry] -> Q [Dec]
 genDecls es = concat <$> mapM (\(sig, _, tempName, origName) -> genDec sig tempName origName) es
 
 genLibLoadFunction :: [Entry] -> Q [Dec]
-genLibLoadFunction xs = do
-    decls <- mapM toAddFunctionStatement xs
-    ret <- noBindS [e| return () |]
-
-    let body = return . DoE $ (decls ++ [ret])
+genLibLoadFunction entries = do
+    let funs = ListE <$> mapM toModuleItem entries
 
     [d|
-        loadBaseLibraryGen :: Eval.LuaM ()
-        loadBaseLibraryGen = $(body)
+        loadBaseLibraryGen :: String -> Eval.LuaM ()
+        loadBaseLibraryGen modName = addNativeModule modName $(funs)
         |]
     where
-        toAddFunctionStatement :: Entry -> Q Stmt
-        toAddFunctionStatement (_, luaName, tempName, _) = bindS wildP [e| addNativeFunction $(litE $ stringL luaName) (Eval.BuiltinFunction $(varE tempName)) |]
+        toModuleItem :: Entry -> Q Exp
+        toModuleItem (_, luaName, tempName, _) = [e| (luaName, Eval.BuiltinFunction $(varE tempName)) |]
+
 
 -- |Generates a declaration of a function compatible with Lua interface
 -- @param tempName - the new name

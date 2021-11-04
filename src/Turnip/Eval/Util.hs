@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 
 module Turnip.Eval.Util where
 
@@ -64,6 +65,13 @@ addNativeFunction name fdata = do
     newRef <- createNativeFunction fdata
     setGlobal (Str name) (Function newRef)
     return newRef
+
+addNativeModule :: String -> [(String, FunctionData)] -> LuaM ()
+addNativeModule modName funs = do
+    tr <- makeNewTable
+    funs' <- mapM (\(n, fd) -> createNativeFunction fd >>= \f -> return (Str n, Function f)) funs
+    mapM_ (setTableField tr) funs'
+    setGlobal (Str modName) (Table tr)
 
 makeNewTableWith :: TableMapData -> LuaM TableRef
 makeNewTableWith initial = do

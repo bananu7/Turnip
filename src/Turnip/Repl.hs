@@ -5,7 +5,7 @@ module Turnip.Repl (repl, ReplConfig(..)) where
 import qualified Turnip.Parser as Parser
 import Turnip.Eval
 import Turnip.Eval.Lib (loadBaseLibrary)
-import Turnip.Eval.Types (LuaMT)
+import Turnip.Eval.Types (LuaMT, _ioOutCb, _ioInCb)
 import qualified Turnip.AST as AST
 import Turnip.PrettyPrint
 import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>), try, eof)
@@ -47,7 +47,9 @@ repl cfg = do
     disableBuffering 
     putStrLn $ "Turnip REPL v" ++ showVersion version ++ "\n"
 
-    _ <- flip runLuaMT defaultCtx $ do
+    let ctx = (defaultCtx :: Context IO) { _ioOutCb = putStrLn, _ioInCb = return ""}
+
+    _ <- flip runLuaMT ctx $ do
         loadBaseLibrary
 
         let filePath = file cfg

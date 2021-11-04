@@ -8,6 +8,7 @@ import Turnip.Eval.Util
 import Turnip.Eval.UtilNumbers
 import Turnip.Eval.Eval (callRef, callFunction, call)
 import Turnip.Eval.Metatables
+import Turnip.Eval.IO
 import qualified Turnip.Parser as Parser
 
 import qualified Turnip.Eval.Lib.Math as Math (loadBaseLibraryGen)
@@ -230,6 +231,14 @@ genluaipairs iterRef (x : _) = do
 genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs' (value expected)"
 
 
+luaprint :: NativeFunction
+luaprint p = do
+    ps <- luatostring p
+    case ps of
+        [Str s] -> ioOut s >> return [Nil]
+        _ -> throwErrorStr "Can't print this value"
+
+
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
     Math.loadBaseLibraryGen "math"
@@ -259,5 +268,7 @@ loadBaseLibrary = do
 
     iterRef <- createNativeFunction (BuiltinFunction luaiter)
     _ <- addNativeFunction "ipairs" (BuiltinFunction (genluaipairs iterRef))
+
+    _ <- addNativeFunction "print" (BuiltinFunction luaprint)
 
     return ()

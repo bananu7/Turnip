@@ -58,6 +58,7 @@ library
   
   other-modules:       Turnip.Eval.Closure,
                        Turnip.Eval.Eval,
+                       Turnip.Eval.IO,
                        Turnip.Eval.Util,
                        Turnip.Eval.UtilNumbers,
                        Turnip.Eval.TH,
@@ -106,6 +107,7 @@ executable main
                        Turnip.Eval,
                        Turnip.Eval.Closure,
                        Turnip.Eval.Eval,
+                       Turnip.Eval.IO,
                        Turnip.Eval.Metatables,
                        Turnip.Eval.Lib,
                        Turnip.Eval.Lib.Math,

@@ -21,7 +21,7 @@ import Control.Monad.RWS
 newtype TableRef = TableRef Int deriving (Ord, Eq, Show)
 newtype FunctionRef = FunctionRef Int deriving (Ord, Eq, Show)
 
-newtype LuaMT m a = LuaMT (ExceptT Value (RWST Closure () Context m) a)
+newtype LuaMT m a = LuaMT (ExceptT Value (RWST Closure () (Context m) m) a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadError Value)
 
 -- MonadState Context is not provided on purpose
@@ -68,11 +68,13 @@ data TableData = TableData {
     _metatable :: Maybe TableRef -- Can be either nil or some table
     }
 
-data Context = Context {
+data Context m = Context {
     _gRef :: TableRef,
     _functions :: Map.Map FunctionRef FunctionData,
     _tables :: Map.Map TableRef TableData,
-    _lastId :: Int
+    _lastId :: Int,
+    _ioOutCb :: String -> m (),
+    _ioInCb :: m String
     }
 makeLenses ''Context
 

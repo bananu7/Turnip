@@ -43,13 +43,13 @@ entry sig luaName origName = do
 genDecls :: [Entry] -> Q [Dec]
 genDecls es = concat <$> mapM (\(sig, _, tempName, origName) -> genDec sig tempName origName) es
 
-genLibLoadFunction :: String -> [Entry] -> Q [Dec]
-genLibLoadFunction modName entries = do
+genLibLoadFunction :: [Entry] -> Q [Dec]
+genLibLoadFunction entries = do
     let funs = ListE <$> mapM toModuleItem entries
 
     [d|
-        loadBaseLibraryGen :: Eval.LuaM ()
-        loadBaseLibraryGen = addNativeModule modName $(funs)
+        loadBaseLibraryGen :: String -> Eval.LuaM ()
+        loadBaseLibraryGen modName = addNativeModule modName $(funs)
         |]
     where
         toModuleItem :: Entry -> Q Exp

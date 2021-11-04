@@ -29,7 +29,7 @@ $(do
         ]
 
     temps <- genDecls entries
-    loadLib <- genLibLoadFunction "math" entries
+    loadLib <- genLibLoadFunction entries
 
     return $ temps ++ loadLib
  )

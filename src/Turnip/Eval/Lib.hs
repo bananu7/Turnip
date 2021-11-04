@@ -232,7 +232,7 @@ genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs' (value expected)"
 
 loadBaseLibrary :: LuaM ()
 loadBaseLibrary = do
-    Math.loadBaseLibraryGen
+    Math.loadBaseLibraryGen "math"
 
     _ <- addNativeFunction "error" (BuiltinFunction luaerror)
     _ <- addNativeFunction "assert" (BuiltinFunction luaassert)

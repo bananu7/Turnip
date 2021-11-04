@@ -219,5 +219,12 @@ spec = do
                         For ["k", "v"] (ForIter [Call (Var "pairs") [Var "t"]]) (Block [])
                     ]
 
+        describe "comments" $ do
+            it "single-line" $
+                parse (unlines [
+                     "x = 3"
+                    ,"--x = 4"
+                ]) `shouldBe` Block [Assignment [LVar "x"] [Number 3.0]]
+
 main :: IO ()
 main = hspec spec

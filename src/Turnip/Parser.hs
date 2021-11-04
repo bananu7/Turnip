@@ -365,9 +365,12 @@ lexer :: P.TokenParser()
 lexer = P.makeTokenParser(
             emptyDef
             {reservedNames = ["end","in","repeat","break","false","local","return","do",
-                    "for","nil","then","else","function","not","true","elseif","if","until","while"],
-            reservedOpNames = ["+","-","*","/","^","%","..","<","<=",">",">=","==","~=","and","or","not"]}
-            )
+                    "for","nil","then","else","function","not","true","elseif","if","until","while"]
+            ,reservedOpNames = ["+","-","*","/","^","%","..","<","<=",">",">=","==","~=","and","or","not"]
+            ,commentStart = "--[["
+            ,commentEnd = "]]"
+            ,commentLine = "--"
+            })
 
 whiteSpace= P.whiteSpace lexer
 -- lexeme    = P.lexeme lexer

@@ -67,14 +67,17 @@ luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 -- "If metatable is nil, removes the metatable of the given table.
 -- If the original metatable has a __metatable field, raises an error."
 luasetmetatable :: NativeFunction
-luasetmetatable (Table tr : Nil : _) = setMetatable tr Nothing >> return [Table tr] -- clear metatable
-luasetmetatable (Table tr : Table mtr : _) = do
+luasetmetatable (Table tr : mtv : _) = do
     mth <- getMetatableHider (Table tr)
     case mth of
         Just _ -> throwErrorStr "Cannot change a protected metatable"
-        Nothing -> setMetatable tr (Just mtr) >> return [Table tr]
+        Nothing ->
+            case mtv of
+                Nil -> setMetatable tr Nothing >> return [Table tr]
+                Table mtr -> setMetatable tr (Just mtr) >> return [Table tr]
+                _ -> throwErrorStr "Wrong 2nd parameter to setmetatable, table or nil expected"
 
-luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
+luasetmetatable _ = throwErrorStr "Wrong parameter to setmetatable, table expected"
 
 luagetmetatable :: NativeFunction
 luagetmetatable (v : _) = do

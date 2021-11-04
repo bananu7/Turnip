@@ -12,23 +12,24 @@ deg x = x / pi * 180
 $(do
     entries <- sequence [
         -- math
-         entry (Sig [NumberT] NumberT) "math.abs" 'abs
-        ,entry (Sig [NumberT] NumberT) "math.acos" 'acos
-        ,entry (Sig [NumberT] NumberT) "math.asin" 'asin
-        ,entry (Sig [NumberT] NumberT) "math.atan" 'asin
-        ,entry (Sig [NumberT, NumberT] NumberT) "math.atan2" 'atan2
-        --,entry (Sig [NumberT] NumberT) "math.ceil" 'ceiling
-        ,entry (Sig [NumberT] NumberT) "math.cos" 'cos
-        ,entry (Sig [NumberT] NumberT) "math.cosh" 'cosh
-        ,entry (Sig [NumberT] NumberT) "math.deg" 'deg
-        ,entry (Sig [NumberT] NumberT) "math.exp" 'exp
-        --,entry (Sig [NumberT] NumberT) "math.floor" 'floor
-        --,entry (Sig [NumberT] NumberT) "math.fmod" 'fmod
-        --,entry (Sig [NumberT] NumberT) "math.frexp" 'frexp
+         entry (Sig [NumberT] NumberT) "abs" 'abs
+        ,entry (Sig [NumberT] NumberT) "acos" 'acos
+        ,entry (Sig [NumberT] NumberT) "asin" 'asin
+        ,entry (Sig [NumberT] NumberT) "atan" 'atan
+        ,entry (Sig [NumberT, NumberT] NumberT) "atan2" 'atan2
+        --,entry (Sig [NumberT] NumberT) "ceil" 'ceiling
+        ,entry (Sig [NumberT] NumberT) "cos" 'cos
+        ,entry (Sig [NumberT] NumberT) "cosh" 'cosh
+        ,entry (Sig [NumberT] NumberT) "deg" 'deg
+        ,entry (Sig [NumberT] NumberT) "exp" 'exp
+        --,entry (Sig [NumberT] NumberT) "floor" 'floor
+        --,entry (Sig [NumberT] NumberT) "fmod" 'fmod
+        --,entry (Sig [NumberT] NumberT) "frexp" 'frexp
+        ,entry (Sig [NumberT] NumberT) "sin" 'sin
         ]
 
     temps <- genDecls entries
-    loadLib <- genLibLoadFunction entries
+    loadLib <- genLibLoadFunction "math" entries
 
     return $ temps ++ loadLib
  )

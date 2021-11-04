@@ -108,6 +108,7 @@ executable main
                        Turnip.Eval.Eval,
                        Turnip.Eval.Metatables,
                        Turnip.Eval.Lib,
+                       Turnip.Eval.Lib.Math,
                        Turnip.Eval.Types,
                        Turnip.Eval.TH,
                        Turnip.Eval.Util,

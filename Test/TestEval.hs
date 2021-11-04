@@ -827,12 +827,27 @@ spec = do
                         ,"return t.x, t.y"
                     ]) `shouldBe` [Number 11.0, Number 13.0]
 
-                it "should allow setting the __metatable hider" $
-                    runParse (unlines [
-                         "t = {}"
-                        ,"setmetatable(t, { x = 3, __metatable = { x = 4 }})"
-                        ,"return getmetatable(t).x"
-                    ]) `shouldBe` [Number 4.0]
+                describe "__metatable" $ do
+                    it "should allow setting the __metatable hider" $
+                        runParse (unlines [
+                             "t = {}"
+                            ,"setmetatable(t, { x = 3, __metatable = { x = 4 }})"
+                            ,"return getmetatable(t).x"
+                        ]) `shouldBe` [Number 4.0]
+
+                    it "should prevent clearing the metatable if a hider is present" $
+                        runParseFail (unlines [
+                             "t = {}"
+                            ,"setmetatable(t, { __metatable = { }})"
+                            ,"setmetatable(t,nil)"
+                        ]) `shouldSatisfy` (\[Str err] -> "Cannot change a protected metatable" `isPrefixOf` err)
+
+                    it "should prevent changing the metatable if a hider is present" $
+                        runParseFail (unlines [
+                             "t = {}"
+                            ,"setmetatable(t, { __metatable = { }})"
+                            ,"setmetatable(t, { })"
+                        ]) `shouldSatisfy` (\[Str err] -> "Cannot change a protected metatable" `isPrefixOf` err)
 
                 it "should allow setting __pairs" $
                     runParse (unlines [

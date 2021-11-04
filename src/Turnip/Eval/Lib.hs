@@ -16,6 +16,7 @@ import qualified Turnip.Eval.Lib.Math as Math (loadBaseLibraryGen)
 import Control.Monad.Except
 import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
+import Data.List (intercalate)
 import Numeric (showGFloat)
 
 luaerror :: NativeFunction
@@ -89,7 +90,10 @@ luatostring (Table tr : _) = do
     case mt of
         Just mtr -> do
             toString <- getTableField mtr (Str "__tostring")
-            call toString [(Table tr)]
+            str <- call toString [(Table tr)]
+            case str of
+                (Str s : _) -> return [Str s]
+                _ -> throwErrorStr "'__tostring' must return a string"
         Nothing -> return [Str $ "table: " ++ show tr]
 
 luatostring (Function fr : _) = return [Str $ "function: " ++ show fr]
@@ -232,11 +236,13 @@ genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs' (value expected)"
 
 
 luaprint :: NativeFunction
-luaprint p = do
-    ps <- luatostring p
-    case ps of
-        [Str s] -> ioOut s >> return [Nil]
-        _ -> throwErrorStr "Can't print this value"
+luaprint values = do
+    strs <- mapM (\v -> luatostring [v] >>= realStr) values
+    ioOut (intercalate "\t" strs) >> return [Nil]
+
+    where
+        realStr [Str s] = return s
+        realStr _ = throwErrorStr "Can't print this value" -- should never happen
 
 
 loadBaseLibrary :: LuaM ()

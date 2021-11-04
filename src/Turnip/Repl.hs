@@ -47,7 +47,7 @@ repl cfg = do
     disableBuffering 
     putStrLn $ "Turnip REPL v" ++ showVersion version ++ "\n"
 
-    let ctx = (defaultCtx :: Context IO) { _ioOutCb = putStrLn, _ioInCb = return ""}
+    let ctx = (defaultCtx :: Context IO) { _ioOutCb = putStrLn, _ioInCb = getLine }
 
     _ <- flip runLuaMT ctx $ do
         loadBaseLibrary

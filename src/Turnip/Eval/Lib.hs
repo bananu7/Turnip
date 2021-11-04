@@ -12,6 +12,7 @@ import Turnip.Eval.Eval (callRef, callFunction, call)
 import Turnip.Eval.Metatables
 import qualified Turnip.Parser as Parser
 import Control.Monad.Except
+import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
 
 import Numeric (showGFloat)
@@ -61,30 +62,41 @@ luapcall (Function fref : args) = ((callRef fref args) >>= prependTrue) `catchEr
 luapcall (_a : _) = return [Boolean False, Str "Attempt to call something that isn't a function"]
 luapcall _ = throwErrorStr "Bad argument to 'pcall': value expected"
 
+
+-- from https://www.lua.org/manual/5.4/manual.html#pdf-setmetatables
+-- "If metatable is nil, removes the metatable of the given table.
+-- If the original metatable has a __metatable field, raises an error."
 luasetmetatable :: NativeFunction
-luasetmetatable (Table tr : Nil : _) = setMetatable tr Nothing >> return [Nil] -- reset to nil
-luasetmetatable (Table tr : Table mtr : _) = setMetatable tr (Just mtr) >> return [Nil]
-luasetmetatable _ = throwErrorStr "Wrong parameters to setmetatable"
+luasetmetatable (Table tr : mtv : _) = do
+    mth <- getMetatableHider (Table tr)
+    case mth of
+        Just _ -> throwErrorStr "Cannot change a protected metatable"
+        Nothing ->
+            case mtv of
+                Nil -> setMetatable tr Nothing >> return [Table tr]
+                Table mtr -> setMetatable tr (Just mtr) >> return [Table tr]
+                _ -> throwErrorStr "Wrong 2nd parameter to setmetatable, table or nil expected"
+
+luasetmetatable _ = throwErrorStr "Wrong parameter to setmetatable, table expected"
 
 luagetmetatable :: NativeFunction
-luagetmetatable (t : _) = do
-    mt <- getMetatable t
-    case mt of
-        Just mtr -> do
-            metatableHider <- rawGetTableField mtr (Str "__metatable")
-            case metatableHider of
-                Just mth -> return [mth]
-                Nothing -> return [Table mtr]
-        Nothing -> return [Nil]
+luagetmetatable (v : _) = do
+    mth <- getMetatableHider v
+    mt <- getMetatable v
+    return $ maybe [Nil] (:[]) (mth <|> (Table <$> mt))
+
 luagetmetatable _ = throwErrorStr "Wrong argument to luagetmetatable, table expected"
+
 
 luarawset :: NativeFunction
 luarawset (Table tr : k : v : _) = setTableField tr (k,v) >> return [Table tr]
 luarawset _ = throwErrorStr "Invalid rawset parameters"
 
+
 luarawget :: NativeFunction
 luarawget (Table tr : k : _) = (:[]) . fromMaybe Nil <$> rawGetTableField tr k
 luarawget _ = throwErrorStr "Invalid rawget parameters"
+
 
 luarawlen :: NativeFunction
 luarawlen (Str s : _) = return [Number . fromIntegral . length $ s]
@@ -95,6 +107,7 @@ luarawequal :: NativeFunction
 luarawequal (Nil : Nil : _) = return [Boolean False]
 luarawequal (a : b : _) = return [Boolean $ a == b]
 luarawequal _ = throwErrorStr "rawequal needs at least two parameters" 
+
 
 luatostring :: NativeFunction
 luatostring (Nil : _) = return [Str "nil"]
@@ -242,7 +255,7 @@ genluaipairs iterRef (x : _) = do
     case mipairs of
         Just ipairs -> callRef ipairs [x]
         Nothing -> return [Function iterRef, x, Number 0]
-genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs', table required."
+genluaipairs _ _ = throwErrorStr "Wrong argument to 'ipairs' (value expected)"
 
 
 loadBaseLibrary :: LuaM ()

@@ -13,6 +13,7 @@ import Text.ParserCombinators.Parsec (Parser, ParseError, parse, (<|>), try, eof
 import Paths_Turnip (version)
 import Data.Version (showVersion)
 
+import Control.Monad (when, forever)
 import Control.Monad.State
 import System.IO
 import Control.Monad.Except (catchError)
@@ -44,7 +45,7 @@ disableBuffering = hSetBuffering stdout NoBuffering
 
 repl :: ReplConfig -> IO ()
 repl cfg = do
-    disableBuffering 
+    disableBuffering
     putStrLn $ "Turnip REPL v" ++ showVersion version ++ "\n"
 
     _ <- flip runLuaMT defaultCtx $ do
@@ -72,4 +73,3 @@ printError err = liftIO . putStrLn $ "Lua error " ++ show err
 
 printParseError :: MonadIO m => ParseError -> LuaMT m ()
 printParseError err = liftIO . putStrLn $ "Parse error " ++ show err
-

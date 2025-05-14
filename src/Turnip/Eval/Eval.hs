@@ -11,7 +11,7 @@ import Turnip.Eval.Util
 import Turnip.Eval.Metatables
 import Turnip.Eval.Closure
 
-import Control.Monad.Except
+import Control.Monad (forM_)
 import Control.Monad.State
 import qualified Data.Map as Map
 import Data.Maybe (isJust)
@@ -142,7 +142,7 @@ eval (AST.Call fn args) = do
     fnV <- evalHead fn
     argVs <- evalArgsWithSpill args
 
-    case fnV of 
+    case fnV of
         Function ref -> callRef ref argVs
         Table tref -> callMeta tref argVs
         x -> throwErrorStr $ "Trying to call something that doesn't eval to a function! (" ++ show x ++ ")"
@@ -172,7 +172,7 @@ eval (AST.FieldRef t k) = do
 
     where
         getTableFieldWithMetatable :: TableRef -> Value -> LuaM [Value]
-        getTableFieldWithMetatable tr tk = 
+        getTableFieldWithMetatable tr tk =
             rawGetTableField tr tk >>= \mv -> case mv of
                 Just v -> return [v]
                 Nothing -> do
@@ -218,7 +218,7 @@ eval (AST.TableCons entries) = do
 
             lift $ do
                 v <- evalHead ev
-                setTableField tr (Number (fromIntegral ix), v)            
+                setTableField tr (Number (fromIntegral ix), v)
 
 -- TODO - should a comma-separated expression list have a dedicated AST node
 evalForExpressionList :: [AST.Expr] -> LuaM (Value, Value, Value)
@@ -356,7 +356,7 @@ opEqual a b
 
 opNotEqual :: BinaryOperatorImpl
 opNotEqual Nil Nil = return [Boolean False]
-opNotEqual a b 
+opNotEqual a b
     | a == b = return [Boolean False]
     | otherwise = (:[]) . Boolean . not <$> eqHelper a b
 
@@ -401,7 +401,7 @@ opAnd a rhs = do
     if not $ coerceToBool [a] then
         return [a]
     else
-        (:[]) <$> evalHead rhs 
+        (:[]) <$> evalHead rhs
 
 --------------
 
@@ -414,7 +414,7 @@ runUntil (h:t) f = do
         EmptyBubble -> runUntil t f
         -- if there was, return that bubble
         x -> return x
-        
+
 runUntil [] _ = return EmptyBubble
 
 execBlock :: AST.Block -> LuaM Bubble
@@ -482,8 +482,8 @@ execStmt (AST.For names (AST.ForIter explist) b) = do
     -- A function reference is (hopefully )returned after evaluating
     -- the explist
     fv <- case f of
-        Function fref -> getFunctionData fref 
-        _ -> throwErrorStr "The iterator is not a function" 
+        Function fref -> getFunctionData fref
+        _ -> throwErrorStr "The iterator is not a function"
 
     newCls <- makeNewTableWith . Map.fromList $ map (\n -> (Str n, Nil)) names
 
@@ -518,7 +518,7 @@ execStmt (AST.While e b) = do
             -- While 'contains' the break bubble and turns it into
             -- an empty one, closing the statement.
             BreakBubble -> return EmptyBubble
-            -- Any other bubble (like return) can't be handled, 
+            -- Any other bubble (like return) can't be handled,
             -- and is forwarded.
             x -> return x
     else
@@ -616,7 +616,7 @@ assignLValue (AST.LFieldRef t k) v = do
         _ -> throwErrorStr "Trying to assign to a field of non-table"
     where
         setTableFieldWithNewindex :: TableRef -> (Value,Value) -> LuaM ()
-        setTableFieldWithNewindex tr (tk, tv) = 
+        setTableFieldWithNewindex tr (tk, tv) =
             rawGetTableField tr tk >>= \mv -> case mv of
                 -- if key is already present, do regular insert
                 Just _ -> regularSet
@@ -633,5 +633,3 @@ assignLValue (AST.LFieldRef t k) v = do
                         Nothing -> regularSet
             where
                 regularSet = setTableField tr (tk, tv)
-
-

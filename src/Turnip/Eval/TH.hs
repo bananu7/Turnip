@@ -23,12 +23,12 @@ typeToName t = case t of
     BooleanT -> 'Eval.Boolean
 
 -- |Transforms a constructor Name into a pattern match for a newly introduced name
-toPatName :: Name -> Q (Pat, Name) 
+toPatName :: Name -> Q (Pat, Name)
 toPatName p = do
     name <- newName "x"
     liftM2 (,) (conP p [varP name]) (pure name)
 
-typeToMatch :: TypeT -> Q (Pat, Name) 
+typeToMatch :: TypeT -> Q (Pat, Name)
 typeToMatch = toPatName . typeToName
 
 type Entry = (Sig, String, Name, Name)
@@ -39,7 +39,7 @@ entry sig luaName origName = do
     return (sig, luaName, tempName, origName)
     where
         toSafeSuffix = concat . map (show . ord)
-        
+
 genDecls :: [Entry] -> Q [Dec]
 genDecls es = concat <$> mapM (\(sig, _, tempName, origName) -> genDec sig tempName origName) es
 
@@ -67,7 +67,7 @@ genDec (Sig paramTs returnT) tempName origName = do
       -- the generated function accepts one param, with a pattern of (t1 : t2 : t3 : ... : _),
       -- where t1..tn are the types in its signature
       inputPattern :: Q Pat
-      inputPattern = return $ foldr (\par pat -> ConP '(:) [par, pat]) WildP listOfPatterns
+      inputPattern = return $ foldr (\par pat -> ConP '(:) [] [par, pat]) WildP listOfPatterns
 
     let
       params :: Q [Exp]
